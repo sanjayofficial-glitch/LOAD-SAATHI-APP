@@ -110,8 +110,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   ) => {
     if (!supabase) return { error: new Error('Supabase not configured') };
     
-    // Sign up the user with metadata. 
-    // The database trigger will use this metadata to create the profile.
     const { error } = await supabase.auth.signUp({
       email,
       password,
@@ -130,6 +128,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const signIn = async (email: string, password: string) => {
     if (!supabase) return { error: new Error('Supabase not configured') };
+    
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -139,6 +138,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     if (data.user) {
       const profile = await fetchUserProfile(data.user.id);
+      // If profile is missing, we don't block the login, but we set it to null
+      // The UI can then prompt the user to complete their profile if needed.
       setUserProfile(profile);
     }
 
