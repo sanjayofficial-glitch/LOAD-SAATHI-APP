@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -13,8 +13,19 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const { signIn } = useAuth();
+  const { signIn, userProfile } = useAuth();
   const navigate = useNavigate();
+
+  // If user is already logged in, redirect them
+  useEffect(() => {
+    if (userProfile) {
+      if (userProfile.user_type === 'trucker') {
+        navigate('/trucker/dashboard');
+      } else {
+        navigate('/shipper/dashboard');
+      }
+    }
+  }, [userProfile, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,7 +45,7 @@ const Login = () => {
         showError(message);
       } else {
         showSuccess('Logged in successfully!');
-        navigate('/');
+        // The useEffect above will handle the redirect once userProfile is loaded
       }
     } catch (err) {
       setErrorMsg('An unexpected error occurred. Please try again.');

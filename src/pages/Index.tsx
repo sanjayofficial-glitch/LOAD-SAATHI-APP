@@ -1,11 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Truck, Package, IndianRupee, Users, CheckCircle, Database, AlertCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Truck, Package, IndianRupee, Users, CheckCircle, Database, AlertCircle, ArrowRight } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 
 const Index = () => {
+  const { userProfile, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'no-env' | 'no-tables'>('checking');
+
+  useEffect(() => {
+    // Redirect authenticated users to their dashboard
+    if (!authLoading && userProfile) {
+      if (userProfile.user_type === 'trucker') {
+        navigate('/trucker/dashboard');
+      } else {
+        navigate('/shipper/dashboard');
+      }
+    }
+  }, [userProfile, authLoading, navigate]);
 
   useEffect(() => {
     const checkConnection = async () => {
@@ -15,14 +30,12 @@ const Index = () => {
       }
 
       try {
-        // Try to fetch from the users table to see if it exists
         const { error } = await supabase.from('users').select('id').limit(1);
         if (error) {
           if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
             setDbStatus('no-tables');
           } else {
-            console.error("DB Check Error:", error);
-            setDbStatus('connected'); // Env is there, but maybe table is empty
+            setDbStatus('connected');
           }
         } else {
           setDbStatus('connected');
@@ -34,6 +47,17 @@ const Index = () => {
 
     checkConnection();
   }, []);
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-orange-50">
+        <div className="text-center">
+          <Truck className="h-12 w-12 text-orange-600 animate-bounce mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Loading LoadSaathi...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50">
@@ -69,15 +93,15 @@ const Index = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link 
               to="/register?type=shipper" 
-              className="bg-orange-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-700 transition-all shadow-lg hover:shadow-xl"
+              className="bg-orange-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center"
             >
-              I'm a Shipper - Find Trucks
+              I'm a Shipper - Find Trucks <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
             <Link 
               to="/register?type=trucker" 
-              className="bg-white text-orange-600 border-2 border-orange-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-50 transition-all"
+              className="bg-white text-orange-600 border-2 border-orange-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-50 transition-all flex items-center justify-center"
             >
-              I'm a Trucker - Earn Extra
+              I'm a Trucker - Earn Extra <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
           </div>
         </section>
@@ -167,7 +191,6 @@ const Index = () => {
           </div>
           <p className="text-gray-400 mb-8">Connecting India's truckers with shippers</p>
           
-          {/* Connection Status Badge */}
           <div className="inline-flex items-center px-4 py-2 rounded-full bg-gray-800 border border-gray-700">
             <Database className="h-4 w-4 mr-2 text-gray-400" />
             <span className="text-xs font-medium text-gray-400 mr-2">Supabase:</span>
@@ -188,11 +211,6 @@ const Index = () => {
               </Badge>
             )}
           </div>
-          {dbStatus === 'no-tables' && (
-            <p className="text-[10px] text-yellow-500/60 mt-2">
-              Please run the SQL schema in your Supabase SQL Editor.
-            </p>
-          )}
         </div>
       </footer>
     </div>
