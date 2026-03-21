@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { Request } from '@/types';
@@ -15,7 +16,7 @@ import {
   DialogTrigger 
 } from "@/components/ui/dialog";
 import { showSuccess, showError } from '@/utils/toast';
-import { Package, Star, Phone, MapPin } from 'lucide-react';
+import { Package, Star, Phone, MapPin, MessageSquare } from 'lucide-react';
 
 const MyShipments = () => {
   const { userProfile } = useAuth();
@@ -76,7 +77,7 @@ const MyShipments = () => {
             <Card key={req.id} className="overflow-hidden">
               <CardContent className="p-6">
                 <div className="flex flex-col md:flex-row justify-between gap-6">
-                  <div className="space-y-3">
+                  <div className="space-y-3 flex-1">
                     <div className="flex items-center gap-2">
                       <h3 className="text-lg font-bold text-gray-900">{req.goods_description}</h3>
                       <Badge variant={
@@ -99,7 +100,7 @@ const MyShipments = () => {
                     </div>
 
                     {req.status === 'accepted' && req.trip?.trucker && (
-                      <div className="bg-orange-50 p-3 rounded-lg flex items-center justify-between">
+                      <div className="bg-orange-50 p-3 rounded-lg flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center">
                           <div className="w-8 h-8 bg-orange-200 rounded-full flex items-center justify-center mr-3">
                             <Star className="h-4 w-4 text-orange-700" />
@@ -109,12 +110,20 @@ const MyShipments = () => {
                             <p className="text-sm font-bold text-orange-900">{req.trip.trucker.full_name}</p>
                           </div>
                         </div>
-                        <a href={`tel:${req.trip.trucker.phone}`}>
-                          <Button size="sm" className="bg-orange-600 hover:bg-orange-700">
-                            <Phone className="h-4 w-4 mr-2" />
-                            Call {req.trip.trucker.phone}
-                          </Button>
-                        </a>
+                        <div className="flex gap-2">
+                          <Link to={`/chat/${req.id}`}>
+                            <Button size="sm" variant="outline" className="border-orange-200 text-orange-700 hover:bg-orange-100">
+                              <MessageSquare className="h-4 w-4 mr-2" />
+                              Chat
+                            </Button>
+                          </Link>
+                          <a href={`tel:${req.trip.trucker.phone}`}>
+                            <Button size="sm" className="bg-orange-600 hover:bg-orange-700">
+                              <Phone className="h-4 w-4 mr-2" />
+                              Call
+                            </Button>
+                          </a>
+                        </div>
                       </div>
                     )}
                   </div>

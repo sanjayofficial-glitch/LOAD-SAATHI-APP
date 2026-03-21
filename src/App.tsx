@@ -18,6 +18,7 @@ import MyTrips from "./pages/trucker/MyTrips";
 import MyShipments from "./pages/shipper/MyShipments";
 import Profile from "./pages/Profile";
 import AdminDashboard from "./pages/admin/Dashboard";
+import Chat from "./pages/Chat";
 
 const queryClient = new QueryClient();
 
@@ -89,6 +90,11 @@ const App = () => (
             <Route path="/trips/:id" element={
               <ProtectedRoute>
                 <TripDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/chat/:requestId" element={
+              <ProtectedRoute>
+                <Chat />
               </ProtectedRoute>
             } />
             <Route path="/profile" element={
