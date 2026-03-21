@@ -43,11 +43,6 @@ const BrowseTrips = () => {
 
   const hasGeminiKey = !!import.meta.env.VITE_GEMINI_API_KEY;
 
-  const INDIAN_CITIES = [
-    'Delhi', 'Mumbai', 'Chennai', 'Bangalore', 'Kolkata', 'Hyderabad',
-    'Pune', 'Ahmedabad', 'Jaipur', 'Surat', 'Lucknow', 'Kanpur'
-  ];
-
   const fetchTrips = useCallback(async () => {
     const { data } = await supabase
       .from('trips')
@@ -68,15 +63,34 @@ const BrowseTrips = () => {
   useEffect(() => {
     fetchTrips();
 
-    // Real-time subscription for trips table
+    // Real-time subscription for ALL trips (not just user-specific)
     const channel = supabase
       .channel('public:trips')
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
-        table: 'trips' 
+        table: 'trips'       }, () => {
+        console.log("[BrowseTrips] Change detected in trips table, refetching all trips");
+        fetchTrips();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchTrips]);
+
+  // Additional subscription for capacity updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('public:trips_capacity')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'trips',
+        filter: 'available_capacity_tonnes <> 0'
       }, () => {
-        console.log("[BrowseTrips] Change detected, re-fetching...");
+        console.log("[BrowseTrips] Capacity update detected, refetching trips");
         fetchTrips();
       })
       .subscribe();
@@ -172,8 +186,7 @@ const BrowseTrips = () => {
             </div>
             <form onSubmit={handleAiSearch} className="flex flex-col sm:flex-row gap-3">
               <div className="flex-1 relative">
-                <Input
-                  placeholder='Try: "I want to send 2 tonnes from Jaipur to Delhi next week"'
+                <Input                  placeholder='Try: "I want to send 2 tonnes from Jaipur to Delhi next week"'
                   value={aiQuery}
                   onChange={(e) => setAiQuery(e.target.value)}
                   className="bg-white/10 border-white/20 text-white placeholder:text-white/60 focus:bg-white/20 h-12"
@@ -256,8 +269,7 @@ const BrowseTrips = () => {
               </div>
               <div>
                 <Label className="text-sm font-medium mb-1 block">Min Capacity (tonnes)</Label>
-                <Input
-                  type="number"
+                <Input                  type="number"
                   min="0.1"
                   step="0.1"
                   value={filters.minCapacity}
@@ -324,8 +336,7 @@ const BrowseTrips = () => {
                     <div className="flex items-center text-sm text-gray-600">
                       <Calendar className="h-4 w-4 mr-2" />
                       {new Date(trip.departure_date).toLocaleDateString('en-IN', { 
-                        day: 'numeric', 
-                        month: 'short', 
+                        day: 'numeric',                         month: 'short', 
                         year: 'numeric' 
                       })}
                     </div>
