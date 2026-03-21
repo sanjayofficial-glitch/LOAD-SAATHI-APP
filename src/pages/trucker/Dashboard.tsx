@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
@@ -26,7 +26,7 @@ const TruckerDashboard = () => {
   const [pendingRequests, setPendingRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     if (!userProfile) return;
 
     const { data: tripsData } = await supabase
@@ -37,29 +37,58 @@ const TruckerDashboard = () => {
 
     if (tripsData) {
       setTrips(tripsData as Trip[]);
-    }
+      
+      const tripIds = tripsData.map(t => t.id);
+      if (tripIds.length > 0) {
+        const { data: requestsData } = await supabase
+          .from('requests')
+          .select(`
+            *,
+            trip:trips(*),
+            shipper:users(*)
+          `)
+          .in('trip_id', tripIds)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false });
 
-    const { data: requestsData } = await supabase
-      .from('requests')
-      .select(`
-        *,
-        trip:trips(*),
-        shipper:users(*)
-      `)
-      .in('trip_id', tripsData?.map(t => t.id) || [])
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
-
-    if (requestsData) {
-      setPendingRequests(requestsData as Request[]);
+        if (requestsData) {
+          setPendingRequests(requestsData as Request[]);
+        }
+      }
     }
 
     setLoading(false);
-  };
+  }, [userProfile]);
 
   useEffect(() => {
     fetchData();
-  }, [userProfile]);
+
+    if (userProfile) {
+      // Subscribe to new requests for this trucker's trips
+      const channel = supabase
+        .channel('trucker_dashboard_sync')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'requests' 
+        }, () => {
+          fetchData(); // Re-fetch when any request changes
+        })
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'trips',
+          filter: `trucker_id=eq.${userProfile.id}`
+        }, () => {
+          fetchData();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [userProfile, fetchData]);
 
   const handleAcceptRequest = async (request: Request) => {
     if (!request.trip) return;
@@ -71,7 +100,6 @@ const TruckerDashboard = () => {
       return;
     }
 
-    // 1. Update request status
     const { error: requestError } = await supabase
       .from('requests')
       .update({ status: 'accepted' })
@@ -82,7 +110,6 @@ const TruckerDashboard = () => {
       return;
     }
 
-    // 2. Update trip capacity
     const { error: tripError } = await supabase
       .from('trips')
       .update({ available_capacity_tonnes: newCapacity })
@@ -91,7 +118,7 @@ const TruckerDashboard = () => {
     if (tripError) {
       showError('Failed to update trip capacity');
     } else {
-      showSuccess('Request accepted and capacity updated!');
+      showSuccess('Request accepted!');
       fetchData();
       refreshProfile();
     }
@@ -119,7 +146,7 @@ const TruckerDashboard = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your dashboard...</p>
+          <p className="text-gray-600">Syncing dashboard...</p>
         </div>
       </div>
     );
@@ -132,7 +159,7 @@ const TruckerDashboard = () => {
           Welcome back, {userProfile?.full_name}!
         </h1>
         <p className="text-gray-600 mt-2">
-          Manage your trips and requests
+          Manage your trips and requests in real-time
         </p>
       </div>
 
@@ -195,7 +222,7 @@ const TruckerDashboard = () => {
                         <div>
                           <p className="font-semibold">{request.goods_description}</p>
                           <p className="text-sm text-gray-500">
-                            {request.weight_tonnes} tonnes • {request.pickup_address} → {request.delivery_address}
+                            {request.weight_tonnes} tonnes • {request.pickup_address || 'N/A'} → {request.delivery_address || 'N/A'}
                           </p>
                           <p className="text-sm text-gray-500 mt-1">
                             Trip: {request.trip?.origin_city} → {request.trip?.destination_city}

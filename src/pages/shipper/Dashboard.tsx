@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
@@ -22,20 +22,16 @@ const ShipperDashboard = () => {
   const [requests, setRequests] = useState<(Request & { trip: any })[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (userProfile) {
-      fetchRequests();
-    }
-  }, [userProfile]);
-
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
+    if (!userProfile) return;
+    
     const { data } = await supabase
       .from('requests')
       .select(`
         *,
         trip:trips(*)
       `)
-      .eq('shipper_id', userProfile?.id)
+      .eq('shipper_id', userProfile.id)
       .order('created_at', { ascending: false })
       .limit(5);
 
@@ -43,7 +39,29 @@ const ShipperDashboard = () => {
       setRequests(data as (Request & { trip: any })[]);
     }
     setLoading(false);
-  };
+  }, [userProfile]);
+
+  useEffect(() => {
+    fetchRequests();
+
+    if (userProfile) {
+      const channel = supabase
+        .channel('shipper_dashboard_sync')
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'requests',
+          filter: `shipper_id=eq.${userProfile.id}`
+        }, () => {
+          fetchRequests();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [userProfile, fetchRequests]);
 
   const pendingRequests = requests.filter(r => r.status === 'pending');
   const acceptedRequests = requests.filter(r => r.status === 'accepted');
@@ -53,7 +71,7 @@ const ShipperDashboard = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your dashboard...</p>
+          <p className="text-gray-600">Syncing dashboard...</p>
         </div>
       </div>
     );
@@ -66,11 +84,10 @@ const ShipperDashboard = () => {
           Welcome back, {userProfile?.full_name}!
         </h1>
         <p className="text-gray-600 mt-2">
-          Manage your shipments and find available trucks
+          Your shipments are being tracked in real-time
         </p>
       </div>
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -116,7 +133,6 @@ const ShipperDashboard = () => {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-8">
-        {/* Recent Requests */}
         <div className="lg:col-span-2">
           <Card>
             <CardHeader>
@@ -140,13 +156,8 @@ const ShipperDashboard = () => {
                         <div>
                           <p className="font-semibold">{request.goods_description}</p>
                           <p className="text-sm text-gray-500">
-                            {request.weight_tonnes} tonnes • {request.pickup_address} → {request.delivery_address}
+                            {request.weight_tonnes} tonnes • {request.trip?.origin_city} → {request.trip?.destination_city}
                           </p>
-                          {request.trip && (
-                            <p className="text-sm text-gray-500 mt-1">
-                              {request.trip.origin_city} → {request.trip.destination_city} on {new Date(request.trip.departure_date).toLocaleDateString('en-IN')}
-                            </p>
-                          )}
                         </div>
                         <Badge variant="outline" className={
                           request.status === 'pending' ? 'bg-yellow-50 text-yellow-700' :
@@ -163,7 +174,7 @@ const ShipperDashboard = () => {
                         {request.status === 'accepted' && request.trip?.trucker && (
                           <div className="flex items-center space-x-2">
                             <span className="text-sm font-medium text-green-600">
-                              {request.trip.trucker.full_name} ({request.trip.trucker.phone})
+                              {request.trip.trucker.full_name}
                             </span>
                             <a href={`tel:${request.trip.trucker.phone}`}>
                               <Button size="sm" className="bg-green-600 hover:bg-green-700">
@@ -182,7 +193,6 @@ const ShipperDashboard = () => {
           </Card>
         </div>
 
-        {/* Quick Actions */}
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -201,38 +211,6 @@ const ShipperDashboard = () => {
                   View All Shipments
                 </Button>
               </Link>
-              <Link to="/profile">
-                <Button className="w-full justify-start" variant="outline">
-                  <User className="h-4 w-4 mr-2" />
-                  Edit Profile
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>How It Works</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ol className="space-y-3 text-sm">
-                <li className="flex items-start">
-                  <span className="bg-orange-100 text-orange-700 rounded-full w-5 h-5 flex items-center justify-center mr-2 flex-shrink-0 font-medium">1</span>
-                  <span>Browse available trucks by route</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="bg-orange-100 text-orange-700 rounded-full w-5 h-5 flex items-center justify-center mr-2 flex-shrink-0 font-medium">2</span>
-                  <span>Send booking request with your goods details</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="bg-orange-100 text-orange-700 rounded-full w-5 h-5 flex items-center justify-center mr-2 flex-shrink-0 font-medium">3</span>
-                  <span>Wait for trucker to accept</span>
-                </li>
-                <li className="flex items-start">
-                  <span className="bg-orange-100 text-orange-700 rounded-full w-5 h-5 flex items-center justify-center mr-2 flex-shrink-0 font-medium">4</span>
-                  <span>Get contact info and call directly</span>
-                </li>
-              </ol>
             </CardContent>
           </Card>
         </div>
