@@ -61,16 +61,37 @@ const TruckerDashboard = () => {
     fetchData();
   }, [userProfile]);
 
-  const handleAcceptRequest = async (requestId: string) => {
-    const { error } = await supabase
+  const handleAcceptRequest = async (request: Request) => {
+    if (!request.trip) return;
+
+    const newCapacity = request.trip.available_capacity_tonnes - request.weight_tonnes;
+    
+    if (newCapacity < 0) {
+      showError('Not enough capacity left in this trip!');
+      return;
+    }
+
+    // 1. Update request status
+    const { error: requestError } = await supabase
       .from('requests')
       .update({ status: 'accepted' })
-      .eq('id', requestId);
+      .eq('id', request.id);
 
-    if (error) {
+    if (requestError) {
       showError('Failed to accept request');
+      return;
+    }
+
+    // 2. Update trip capacity
+    const { error: tripError } = await supabase
+      .from('trips')
+      .update({ available_capacity_tonnes: newCapacity })
+      .eq('id', request.trip_id);
+
+    if (tripError) {
+      showError('Failed to update trip capacity');
     } else {
-      showSuccess('Request accepted!');
+      showSuccess('Request accepted and capacity updated!');
       fetchData();
       refreshProfile();
     }
@@ -200,7 +221,7 @@ const TruckerDashboard = () => {
                           </Button>
                           <Button 
                             size="sm"
-                            onClick={() => handleAcceptRequest(request.id)}
+                            onClick={() => handleAcceptRequest(request)}
                             className="bg-green-600 hover:bg-green-700"
                           >
                             <CheckCircle className="h-4 w-4 mr-1" />

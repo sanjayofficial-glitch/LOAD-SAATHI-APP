@@ -19,7 +19,8 @@ import {
   Filter,
   X,
   Sparkles,
-  Loader2
+  Loader2,
+  ArrowRight
 } from 'lucide-react';
 
 const BrowseTrips = () => {
@@ -40,6 +41,8 @@ const BrowseTrips = () => {
   });
   const [showFilters, setShowFilters] = useState(false);
 
+  const hasGeminiKey = !!import.meta.env.VITE_GEMINI_API_KEY;
+
   const INDIAN_CITIES = [
     'Delhi', 'Mumbai', 'Chennai', 'Bangalore', 'Kolkata', 'Hyderabad',
     'Pune', 'Ahmedabad', 'Jaipur', 'Surat', 'Lucknow', 'Kanpur'
@@ -58,6 +61,7 @@ const BrowseTrips = () => {
         trucker:users(*)
       `)
       .eq('status', 'active')
+      .gt('available_capacity_tonnes', 0)
       .order('departure_date', { ascending: true });
 
     if (data) {
@@ -144,33 +148,35 @@ const BrowseTrips = () => {
           <p className="text-gray-600 mt-2">Browse trips posted by truckers across India</p>
         </div>
 
-        {/* AI Smart Search */}
-        <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-xl shadow-lg mb-8 text-white">
-          <div className="flex items-center mb-4">
-            <Sparkles className="h-5 w-5 mr-2" />
-            <h2 className="text-lg font-semibold">AI Smart Search</h2>
-          </div>
-          <form onSubmit={handleAiSearch} className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 relative">
-              <Input
-                placeholder='Try: "I want to send 2 tonnes from Jaipur to Delhi next week"'
-                value={aiQuery}
-                onChange={(e) => setAiQuery(e.target.value)}
-                className="bg-white/10 border-white/20 text-white placeholder:text-white/60 focus:bg-white/20 h-12"
-              />
+        {/* AI Smart Search - Only show if key exists */}
+        {hasGeminiKey && (
+          <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-6 rounded-xl shadow-lg mb-8 text-white">
+            <div className="flex items-center mb-4">
+              <Sparkles className="h-5 w-5 mr-2" />
+              <h2 className="text-lg font-semibold">AI Smart Search</h2>
             </div>
-            <Button 
-              type="submit" 
-              className="bg-white text-orange-600 hover:bg-orange-50 h-12 px-8 font-bold"
-              disabled={aiLoading}
-            >
-              {aiLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Search with AI'}
-            </Button>
-          </form>
-          <p className="text-xs text-white/70 mt-3">
-            Describe your shipment in plain words and our AI will fill the filters for you.
-          </p>
-        </div>
+            <form onSubmit={handleAiSearch} className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 relative">
+                <Input
+                  placeholder='Try: "I want to send 2 tonnes from Jaipur to Delhi next week"'
+                  value={aiQuery}
+                  onChange={(e) => setAiQuery(e.target.value)}
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/60 focus:bg-white/20 h-12"
+                />
+              </div>
+              <Button 
+                type="submit" 
+                className="bg-white text-orange-600 hover:bg-orange-50 h-12 px-8 font-bold"
+                disabled={aiLoading}
+              >
+                {aiLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Search with AI'}
+              </Button>
+            </form>
+            <p className="text-xs text-white/70 mt-3">
+              Describe your shipment in plain words and our AI will fill the filters for you.
+            </p>
+          </div>
+        )}
 
         {/* Search & Filters */}
         <div className="bg-white p-6 rounded-lg shadow-sm mb-8">
@@ -281,10 +287,10 @@ const BrowseTrips = () => {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredTrips.map((trip) => (
-              <Card key={trip.id} className="hover:shadow-lg transition-shadow">
+              <Card key={trip.id} className="hover:shadow-lg transition-shadow border-orange-50">
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-4">
-                    <div>
+                    <div className="space-y-1">
                       <div className="flex items-center text-lg font-bold text-gray-900">
                         <MapPin className="h-4 w-4 text-orange-600 mr-1" />
                         {trip.origin_city}
@@ -294,7 +300,7 @@ const BrowseTrips = () => {
                         {trip.destination_city}
                       </div>
                     </div>
-                    <Badge variant="outline" className="bg-green-50 text-green-700">
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                       Active
                     </Badge>
                   </div>
@@ -310,38 +316,39 @@ const BrowseTrips = () => {
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <Truck className="h-4 w-4 mr-2" />
-                      {trip.vehicle_type} • {trip.vehicle_number}
+                      {trip.vehicle_type}
                     </div>
                     <div className="flex items-center text-sm text-gray-600">
                       <IndianRupee className="h-4 w-4 mr-2" />
-                      <span className="font-semibold text-lg text-orange-600">
+                      <span className="font-bold text-lg text-orange-600">
                         ₹{trip.price_per_tonne.toLocaleString()}
                       </span>
-                      <span className="text-gray-500">/tonne</span>
+                      <span className="text-gray-500 ml-1">/tonne</span>
                     </div>
-                    <div className="flex items-center text-sm">
-                      <span className="font-medium">Available:</span>
-                      <span className="ml-2 font-bold text-blue-600">{trip.available_capacity_tonnes} tonnes</span>
+                    <div className="flex items-center justify-between bg-orange-50 p-2 rounded text-sm">
+                      <span className="font-medium text-orange-800">Available Space:</span>
+                      <span className="font-bold text-orange-900">{trip.available_capacity_tonnes} tonnes</span>
                     </div>
                   </div>
 
                   <div className="border-t pt-4">
-                    <div className="flex items-center mb-3">
-                      <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center mr-3">
-                        <span className="text-sm font-semibold">
+                    <div className="flex items-center mb-4">
+                      <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mr-3">
+                        <span className="text-sm font-bold text-orange-600">
                           {trip.trucker?.full_name?.charAt(0) || 'T'}
                         </span>
                       </div>
                       <div>
-                        <p className="font-medium text-sm">{trip.trucker?.full_name}</p>
+                        <p className="font-bold text-sm text-gray-900">{trip.trucker?.full_name}</p>
                         <p className="text-xs text-gray-500">
                           Rating: {trip.trucker?.rating?.toFixed(1) || '0.0'} ★
                         </p>
                       </div>
                     </div>
                     <Link to={`/trips/${trip.id}`}>
-                      <Button className="w-full bg-orange-600 hover:bg-orange-700">
-                        View Details & Request
+                      <Button className="w-full bg-orange-600 hover:bg-orange-700 group">
+                        View Details
+                        <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
                       </Button>
                     </Link>
                   </div>
