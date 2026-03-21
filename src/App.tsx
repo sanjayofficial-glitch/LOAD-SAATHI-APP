@@ -17,7 +17,7 @@ const TruckerDashboard = lazy(() => import("./pages/trucker/Dashboard"));
 const ShipperDashboard = lazy(() => import("./pages/shipper/Dashboard"));
 const PostTrip = lazy(() => import("./pages/trucker/PostTrip"));
 const EditTrip = lazy(() => import("./pages/trucker/EditTrip"));
-const BrowseTrips = lazy(() => import("./pages/shipper/BrowseTrips"));
+const BrowseTrips = lazy(() => import("./pages/shipper/BrowseTrips")); // Fixed by ensuring default export
 const TripDetail = lazy(() => import("./pages/TripDetail"));
 const MyTrips = lazy(() => import("./pages/trucker/MyTrips"));
 const MyShipments = lazy(() => import("./pages/shipper/MyShipments"));
