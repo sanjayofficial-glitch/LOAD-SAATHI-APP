@@ -1,34 +1,55 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { showSuccess, showError } from '@/utils/toast';
-import { Truck } from 'lucide-react';
+import { Truck, Loader2 } from 'lucide-react';
 
 const Register = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { signUp } = useAuth();
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [userType, setUserType] = useState<'trucker' | 'shipper'>('shipper');
   const [loading, setLoading] = useState(false);
-  const { signUp } = useAuth();
-  const navigate = useNavigate();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const type = params.get('type');
+    if (type === 'trucker' || type === 'shipper') {
+      setUserType(type);
+    }
+  }, [location]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    const { error } = await signUp(email, password, userType, fullName, phone);
-    if (error) {
-      showError(error.message);
-    } else {
-      showSuccess('Account created! Please check your email.');
-      navigate('/login');
+    
+    if (password.length < 6) {
+      showError('Password must be at least 6 characters long');
+      return;
     }
-    setLoading(false);
+
+    setLoading(true);
+    try {
+      const { error } = await signUp(email, password, userType, fullName, phone);
+      if (error) {
+        showError(error.message || 'Registration failed. Please try again.');
+      } else {
+        showSuccess('Account created! Please check your email for verification.');
+        navigate('/login');
+      }
+    } catch (err) {
+      showError('An unexpected error occurred.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,39 +63,79 @@ const Register = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>I am a...</Label>
-            <RadioGroup value={userType} onValueChange={(v: any) => setUserType(v)} className="flex space-x-4">
+            <RadioGroup 
+              value={userType} 
+              onValueChange={(v: any) => setUserType(v)} 
+              className="flex space-x-4"
+            >
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="shipper" id="shipper" />
-                <Label htmlFor="shipper">Shipper</Label>
+                <Label htmlFor="shipper" className="cursor-pointer">Shipper</Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="trucker" id="trucker" />
-                <Label htmlFor="trucker">Trucker</Label>
+                <Label htmlFor="trucker" className="cursor-pointer">Trucker</Label>
               </div>
             </RadioGroup>
           </div>
           <div className="space-y-2">
             <Label htmlFor="fullName">Full Name</Label>
-            <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+            <Input 
+              id="fullName" 
+              placeholder="Enter your full name"
+              value={fullName} 
+              onChange={(e) => setFullName(e.target.value)} 
+              required 
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="phone">Phone Number</Label>
-            <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} required />
+            <Input 
+              id="phone" 
+              type="tel"
+              placeholder="e.g. +91 9876543210"
+              value={phone} 
+              onChange={(e) => setPhone(e.target.value)} 
+              required 
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <Input 
+              id="email" 
+              type="email" 
+              placeholder="name@example.com"
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              required 
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <Input 
+              id="password" 
+              type="password" 
+              placeholder="Min. 6 characters"
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              required 
+            />
           </div>
-          <Button type="submit" className="w-full bg-orange-600 hover:bg-orange-700" disabled={loading}>
-            {loading ? 'Creating account...' : 'Register'}
+          <Button 
+            type="submit" 
+            className="w-full bg-orange-600 hover:bg-orange-700 h-11" 
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating account...
+              </>
+            ) : 'Register'}
           </Button>
         </form>
         <p className="text-center text-gray-600">
-          Already have an account? <Link to="/login" className="text-orange-600 font-medium">Login</Link>
+          Already have an account? <Link to="/login" className="text-orange-600 font-medium hover:underline">Login</Link>
         </p>
       </div>
     </div>

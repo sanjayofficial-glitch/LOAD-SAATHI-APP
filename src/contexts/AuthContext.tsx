@@ -32,17 +32,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUserProfile = async (userId: string) => {
     if (!supabase) return null;
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
 
-    if (error) {
-      console.error('Error fetching user profile:', error);
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return null;
+      }
+      return data as User;
+    } catch (err) {
+      console.error('Unexpected error fetching profile:', err);
       return null;
     }
-    return data as User;
   };
 
   const refreshProfile = async () => {
@@ -59,15 +64,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        const profile = await fetchUserProfile(session.user.id);
-        setUserProfile(profile);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          const profile = await fetchUserProfile(session.user.id);
+          setUserProfile(profile);
+        }
+      } catch (err) {
+        console.error('Error getting session:', err);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     getSession();
@@ -99,30 +109,46 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     companyName?: string
   ) => {
     if (!supabase) return { error: new Error('Supabase not configured') };
+    
+    // 1. Sign up the user with metadata
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          full_name: fullName,
+          phone: phone,
+          user_type: userType,
+        }
+      }
     });
 
     if (error) return { error };
 
+    // 2. Manually create the profile if the user was created
+    // Note: If email confirmation is on, the user might not be "logged in" yet,
+    // but we still try to create the profile record.
     if (data.user) {
-      const { error: profileError } = await supabase.from('users').insert({
+      const { error: profileError } = await supabase.from('users').upsert({
         id: data.user.id,
         email,
         user_type: userType,
         full_name: fullName,
         phone,
-        company_name: companyName,
+        company_name: companyName || null,
         is_verified: false,
         rating: 0,
         total_trips: 0,
       });
 
-      if (profileError) return { error: profileError };
-
-      const profile = await fetchUserProfile(data.user.id);
-      setUserProfile(profile);
+      if (profileError) {
+        console.error('Profile creation error:', profileError);
+        // We don't return error here because the Auth account WAS created.
+        // The user can try to log in and we can handle missing profiles then.
+      } else {
+        const profile = await fetchUserProfile(data.user.id);
+        setUserProfile(profile);
+      }
     }
 
     return { error: null };
