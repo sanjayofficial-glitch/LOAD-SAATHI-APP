@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
@@ -48,12 +48,7 @@ const BrowseTrips = () => {
     'Pune', 'Ahmedabad', 'Jaipur', 'Surat', 'Lucknow', 'Kanpur'
   ];
 
-  useEffect(() => {
-    fetchTrips();
-  }, []);
-
-  const fetchTrips = async () => {
-    setLoading(true);
+  const fetchTrips = useCallback(async () => {
     const { data } = await supabase
       .from('trips')
       .select(`
@@ -66,10 +61,30 @@ const BrowseTrips = () => {
 
     if (data) {
       setTrips(data as Trip[]);
-      setFilteredTrips(data as Trip[]);
     }
     setLoading(false);
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchTrips();
+
+    // Real-time subscription for trips table
+    const channel = supabase
+      .channel('public:trips')
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'trips' 
+      }, () => {
+        console.log("[BrowseTrips] Change detected, re-fetching...");
+        fetchTrips();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchTrips]);
 
   const handleAiSearch = async (e: React.FormEvent) => {
     e.preventDefault();
