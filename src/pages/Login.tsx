@@ -19,10 +19,11 @@ const Login = () => {
   // If user is already logged in, redirect them
   useEffect(() => {
     if (userProfile) {
+      console.log("[Login] User profile detected, redirecting...", userProfile.user_type);
       if (userProfile.user_type === 'trucker') {
-        navigate('/trucker/dashboard');
+        navigate('/trucker/dashboard', { replace: true });
       } else {
-        navigate('/shipper/dashboard');
+        navigate('/shipper/dashboard', { replace: true });
       }
     }
   }, [userProfile, navigate]);
@@ -43,13 +44,14 @@ const Login = () => {
         }
         setErrorMsg(message);
         showError(message);
+        setLoading(false); // Only stop loading on error
       } else {
+        console.log("[Login] Sign in successful, waiting for profile...");
         showSuccess('Logged in successfully!');
-        // The useEffect above will handle the redirect once userProfile is loaded
+        // We keep loading=true until the useEffect redirects us
       }
     } catch (err) {
       setErrorMsg('An unexpected error occurred. Please try again.');
-    } finally {
       setLoading(false);
     }
   };
@@ -80,6 +82,7 @@ const Login = () => {
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
               required 
+              disabled={loading}
             />
           </div>
           <div className="space-y-2">
@@ -91,6 +94,7 @@ const Login = () => {
               value={password} 
               onChange={(e) => setPassword(e.target.value)} 
               required 
+              disabled={loading}
             />
           </div>
           <Button 

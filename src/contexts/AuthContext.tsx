@@ -34,24 +34,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchUserProfile = useCallback(async (supabaseUser: SupabaseUser) => {
     if (!supabase) return null;
     
-    // Prevent redundant fetches if we already have the profile for this user
-    if (lastFetchedUserId.current === supabaseUser.id && userProfile) {
-      return userProfile;
-    }
-
     try {
+      console.log("[AuthContext] Fetching profile for:", supabaseUser.id);
       const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', supabaseUser.id)
         .maybeSingle();
 
-      if (error) return null;
+      if (error) {
+        console.error("[AuthContext] Error fetching profile:", error);
+      }
       
       lastFetchedUserId.current = supabaseUser.id;
       
-      if (data) return data as User;
+      if (data) {
+        console.log("[AuthContext] Profile found in database");
+        return data as User;
+      }
 
+      console.log("[AuthContext] Profile not found in database, using metadata fallback");
       const metadata = supabaseUser.user_metadata;
       return {
         id: supabaseUser.id,
@@ -65,13 +67,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         created_at: supabaseUser.created_at
       } as User;
     } catch (err) {
+      console.error("[AuthContext] Unexpected error in fetchUserProfile:", err);
       return null;
     }
-  }, [userProfile]);
+  }, []);
 
   const refreshProfile = useCallback(async () => {
     if (user) {
-      lastFetchedUserId.current = null; // Force a re-fetch
       const profile = await fetchUserProfile(user);
       setUserProfile(profile);
     }
@@ -80,7 +82,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let mounted = true;
 
-    // Initial session check
     const initAuth = async () => {
       try {
         const { data: { session: initialSession } } = await supabase.auth.getSession();
@@ -95,7 +96,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (mounted) setUserProfile(profile);
         }
       } catch (error) {
-        console.error("Auth initialization error:", error);
+        console.error("[AuthContext] Auth initialization error:", error);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -103,9 +104,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     initAuth();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        console.log("[AuthContext] Auth state change:", event);
         if (!mounted) return;
         
         setSession(currentSession);
