@@ -23,6 +23,11 @@ import {
   ArrowRight
 } from 'lucide-react';
 
+const INDIAN_CITIES = [
+  "Ahmedabad", "Bangalore", "Chennai", "Delhi", "Hyderabad", 
+  "Jaipur", "Kolkata", "Mumbai", "Pune", "Surat"
+];
+
 const BrowseTrips = () => {
   const { userProfile } = useAuth();
   const [trips, setTrips] = useState<Trip[]>([]);
