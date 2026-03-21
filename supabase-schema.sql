@@ -1,67 +1,25 @@
--- Create users table
-CREATE TABLE IF NOT EXISTS public.users (
-    id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
-    email TEXT UNIQUE NOT NULL,
-    user_type TEXT CHECK (user_type IN ('trucker', 'shipper')) NOT NULL,
-    full_name TEXT NOT NULL,
-    phone TEXT NOT NULL,
-    company_name TEXT,
-    is_verified BOOLEAN DEFAULT FALSE,
-    rating DECIMAL(3,2) DEFAULT 0,
-    total_trips INTEGER DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
-);
-
--- Create trips table
-CREATE TABLE IF NOT EXISTS public.trips (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    trucker_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
-    origin_city TEXT NOT NULL,
-    destination_city TEXT NOT NULL,
-    departure_date DATE NOT NULL,
-    available_capacity_tonnes DECIMAL(10,2) NOT NULL,
-    price_per_tonne DECIMAL(10,2) NOT NULL,
-    vehicle_type TEXT NOT NULL,
-    vehicle_number TEXT NOT NULL,
-    status TEXT CHECK (status IN ('active', 'completed', 'cancelled')) DEFAULT 'active',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
-);
-
--- Create requests table
-CREATE TABLE IF NOT EXISTS public.requests (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    trip_id UUID REFERENCES public.trips(id) ON DELETE CASCADE NOT NULL,
-    shipper_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
-    goods_description TEXT NOT NULL,
-    weight_tonnes DECIMAL(10,2) NOT NULL,
-    pickup_address TEXT,
-    delivery_address TEXT,
-    status TEXT CHECK (status IN ('pending', 'accepted', 'declined')) DEFAULT 'pending',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
-);
-
--- Create notifications table
-CREATE TABLE IF NOT EXISTS public.notifications (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES public.users(id) ON DELETE CASCADE NOT NULL,
-    message TEXT NOT NULL,
-    is_read BOOLEAN DEFAULT FALSE,
-    related_trip_id UUID REFERENCES public.trips(id) ON DELETE SET NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
-);
-
--- Enable RLS
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+-- Ensure RLS is enabled on core tables
 ALTER TABLE public.trips ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
--- Policies
-CREATE POLICY "Public profiles are viewable by everyone" ON public.users FOR SELECT USING (true);
-CREATE POLICY "Users can update own profile" ON public.users FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "Trips are viewable by everyone" ON public.trips FOR SELECT USING (true);
-CREATE POLICY "Truckers can insert own trips" ON public.trips FOR INSERT WITH CHECK (auth.uid() = trucker_id);
-CREATE POLICY "Truckers can update own trips" ON public.trips FOR UPDATE USING (auth.uid() = trucker_id);
-CREATE POLICY "Requests are viewable by involved parties" ON public.requests FOR SELECT USING (auth.uid() = shipper_id OR auth.uid() IN (SELECT trucker_id FROM public.trips WHERE id = trip_id));
-CREATE POLICY "Shippers can insert requests" ON public.requests FOR INSERT WITH CHECK (auth.uid() = shipper_id);
-CREATE POLICY "Users can view own notifications" ON public.notifications FOR SELECT USING (auth.uid() = user_id);
+-- Drop existing select policies to prevent conflicts
+DROP POLICY IF EXISTS "Trips are viewable by everyone" ON public.trips;
+DROP POLICY IF EXISTS "Allow public read" ON public.users;
+DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.users;
+
+-- Create robust SELECT policies for authenticated users
+-- This ensures any logged-in user (shipper or trucker) can see trips and user profiles
+CREATE POLICY "trips_read_policy" ON public.trips
+FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "users_read_policy" ON public.users
+FOR SELECT TO authenticated USING (true);
+
+-- Ensure truckers can still manage their own trips
+DROP POLICY IF EXISTS "Truckers can insert own trips" ON public.trips;
+CREATE POLICY "trips_insert_policy" ON public.trips
+FOR INSERT TO authenticated WITH CHECK (auth.uid() = trucker_id);
+
+DROP POLICY IF EXISTS "Truckers can update own trips" ON public.trips;
+CREATE POLICY "trips_update_policy" ON public.trips
+FOR UPDATE TO authenticated USING (auth.uid() = trucker_id);
