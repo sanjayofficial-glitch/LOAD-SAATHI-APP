@@ -9,8 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { 
   Search, 
-  MapPin, 
-  Calendar, 
+  MapPin,   Calendar, 
   IndianRupee, 
   Truck,
   Filter,
@@ -87,22 +86,25 @@ const BrowseTrips = () => {
     if (!aiQuery.trim()) return;
 
     setAiLoading(true);
-    const parsedFilters = await parseNaturalLanguageSearch(aiQuery);
-    
-    if (Object.keys(parsedFilters).length > 0) {
-      setFilters({
-        origin: parsedFilters.origin || '',
-        destination: parsedFilters.destination || '',
-        minCapacity: parsedFilters.weight?.toString() || '',
-        maxPrice: '',
-        date: parsedFilters.date || ''
-      });
-      setShowFilters(true);
-      showSuccess('AI parsed your search filters!');
-    } else {
-      showError('AI could not understand the search. Try being more specific.');
+    try {
+      const parsedFilters = await parseNaturalLanguageSearch(aiQuery);
+      
+      if (Object.keys(parsedFilters).length > 0) {
+        setFilters({
+          origin: parsedFilters.origin || '',
+          destination: parsedFilters.destination || '',
+          minCapacity: parsedFilters.weight?.toString() || '',
+          maxPrice: '',
+          date: parsedFilters.date || ''
+        });
+        setShowFilters(true);
+        showSuccess('AI parsed your search filters!');
+      } else {
+        showError('AI could not understand the search. Try being more specific.');
+      }
+    } finally {
+      setAiLoading(false);
     }
-    setAiLoading(false);
   };
 
   const applyFilters = useCallback(() => {
@@ -190,8 +192,7 @@ const BrowseTrips = () => {
                         />
                       </div>
                       <Button 
-                        type="submit" 
-                        className="w-full mt-3 bg-orange-600 hover:bg-orange-700"
+                        type="submit"                         className="w-full mt-3 bg-orange-600 hover:bg-orange-700"
                         disabled={aiLoading}
                       >
                         {aiLoading ? (
@@ -327,15 +328,13 @@ const BrowseTrips = () => {
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">
-                  Available Trips
-                  <Badge variant="outline" className="ml-3 bg-orange-50 text-orange-700 border-orange-200">
+                  Available Trips                  <Badge variant="outline" className="ml-3 bg-orange-50 text-orange-700 border-orange-200">
                     {filteredTrips.length} found
                   </Badge>
                 </h2>
               </div>
               <div className="text-sm text-gray-500">
-                Sorted by: Newest first
-              </div>
+                Sorted by: Newest first              </div>
             </div>
 
             {filteredTrips.length === 0 ? (
@@ -374,8 +373,7 @@ const BrowseTrips = () => {
                               </div>
                             </div>
                             <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
-                              Available
-                            </Badge>
+                              Available                            </Badge>
                           </div>
 
                           <div className="grid grid-cols-2 gap-4 text-sm">
