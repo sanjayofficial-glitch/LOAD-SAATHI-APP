@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Layout from "@/components/Layout";
 import { Truck } from "lucide-react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 // Lazy load pages
 const Index = lazy(() => import("./pages/Index"));
@@ -63,6 +64,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <SpeedInsights />
       <AuthProvider>
         <BrowserRouter>
           <Suspense fallback={<LoadingFallback />}>
