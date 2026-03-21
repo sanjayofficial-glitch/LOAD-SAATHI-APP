@@ -1,25 +1,38 @@
--- Ensure RLS is enabled on core tables
-ALTER TABLE public.trips ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+-- Function to notify trucker of new request
+CREATE OR REPLACE FUNCTION public.notify_new_request()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_trucker_id UUID;
+BEGIN
+  SELECT trucker_id INTO v_trucker_id FROM public.trips WHERE id = NEW.trip_id;
+  
+  INSERT INTO public.notifications (user_id, message, related_trip_id)
+  VALUES (v_trucker_id, 'New booking request for your trip: ' || NEW.goods_description, NEW.trip_id);
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Drop existing select policies to prevent conflicts
-DROP POLICY IF EXISTS "Trips are viewable by everyone" ON public.trips;
-DROP POLICY IF EXISTS "Allow public read" ON public.users;
-DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.users;
+-- Trigger for new requests
+DROP TRIGGER IF EXISTS on_request_created ON public.requests;
+CREATE TRIGGER on_request_created
+  AFTER INSERT ON public.requests
+  FOR EACH ROW EXECUTE FUNCTION public.notify_new_request();
 
--- Create robust SELECT policies for authenticated users
--- This ensures any logged-in user (shipper or trucker) can see trips and user profiles
-CREATE POLICY "trips_read_policy" ON public.trips
-FOR SELECT TO authenticated USING (true);
+-- Function to notify shipper of request status change
+CREATE OR REPLACE FUNCTION public.notify_request_status_change()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD.status <> NEW.status THEN
+    INSERT INTO public.notifications (user_id, message, related_trip_id)
+    VALUES (NEW.shipper_id, 'Your booking request for ' || NEW.goods_description || ' was ' || NEW.status, NEW.trip_id);
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
-CREATE POLICY "users_read_policy" ON public.users
-FOR SELECT TO authenticated USING (true);
-
--- Ensure truckers can still manage their own trips
-DROP POLICY IF EXISTS "Truckers can insert own trips" ON public.trips;
-CREATE POLICY "trips_insert_policy" ON public.trips
-FOR INSERT TO authenticated WITH CHECK (auth.uid() = trucker_id);
-
-DROP POLICY IF EXISTS "Truckers can update own trips" ON public.trips;
-CREATE POLICY "trips_update_policy" ON public.trips
-FOR UPDATE TO authenticated USING (auth.uid() = trucker_id);
+-- Trigger for status updates
+DROP TRIGGER IF EXISTS on_request_status_updated ON public.requests;
+CREATE TRIGGER on_request_status_updated
+  AFTER UPDATE ON public.requests
+  FOR EACH ROW EXECUTE FUNCTION public.notify_request_status_change();

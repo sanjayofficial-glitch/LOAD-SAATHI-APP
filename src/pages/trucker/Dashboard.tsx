@@ -6,6 +6,7 @@ import { Trip, Request } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { showSuccess, showError } from '@/utils/toast';
 import { 
   Truck, 
@@ -17,13 +18,16 @@ import {
   CheckCircle, 
   XCircle,
   Clock,
-  Star
+  Star,
+  MessageSquare,
+  Phone
 } from 'lucide-react';
 
 const TruckerDashboard = () => {
   const { userProfile, refreshProfile } = useAuth();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [pendingRequests, setPendingRequests] = useState<Request[]>([]);
+  const [acceptedRequests, setAcceptedRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
@@ -48,11 +52,12 @@ const TruckerDashboard = () => {
             shipper:users(*)
           `)
           .in('trip_id', tripIds)
-          .eq('status', 'pending')
           .order('created_at', { ascending: false });
 
         if (requestsData) {
-          setPendingRequests(requestsData as Request[]);
+          const reqs = requestsData as Request[];
+          setPendingRequests(reqs.filter(r => r.status === 'pending'));
+          setAcceptedRequests(reqs.filter(r => r.status === 'accepted'));
         }
       }
     }
@@ -64,7 +69,6 @@ const TruckerDashboard = () => {
     fetchData();
 
     if (userProfile) {
-      // Subscribe to new requests for this trucker's trips
       const channel = supabase
         .channel('trucker_dashboard_sync')
         .on('postgres_changes', { 
@@ -72,7 +76,7 @@ const TruckerDashboard = () => {
           schema: 'public', 
           table: 'requests' 
         }, () => {
-          fetchData(); // Re-fetch when any request changes
+          fetchData();
         })
         .on('postgres_changes', {
           event: '*',
@@ -207,61 +211,115 @@ const TruckerDashboard = () => {
 
       <div className="grid lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pending Requests</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {pendingRequests.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No pending requests</p>
-              ) : (
-                <div className="space-y-4">
-                  {pendingRequests.map((request) => (
-                    <div key={request.id} className="border rounded-lg p-4 bg-white">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <p className="font-semibold">{request.goods_description}</p>
-                          <p className="text-sm text-gray-500">
-                            {request.weight_tonnes} tonnes • {request.pickup_address || 'N/A'} → {request.delivery_address || 'N/A'}
-                          </p>
-                          <p className="text-sm text-gray-500 mt-1">
-                            Trip: {request.trip?.origin_city} → {request.trip?.destination_city}
-                          </p>
+          <Tabs defaultValue="pending" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-4">
+              <TabsTrigger value="pending">Pending Requests ({pendingRequests.length})</TabsTrigger>
+              <TabsTrigger value="active">Active Bookings ({acceptedRequests.length})</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="pending">
+              <Card>
+                <CardContent className="pt-6">
+                  {pendingRequests.length === 0 ? (
+                    <p className="text-gray-500 text-center py-8">No pending requests</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {pendingRequests.map((request) => (
+                        <div key={request.id} className="border rounded-lg p-4 bg-white hover:shadow-sm transition-shadow">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <p className="font-semibold text-lg">{request.goods_description}</p>
+                              <p className="text-sm text-gray-500">
+                                {request.weight_tonnes} tonnes • {request.trip?.origin_city} → {request.trip?.destination_city}
+                              </p>
+                            </div>
+                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700">
+                              Pending
+                            </Badge>
+                          </div>
+                          <div className="flex justify-between items-center pt-3 border-t">
+                            <div className="text-sm text-gray-600">
+                              Shipper: <span className="font-medium">{request.shipper?.full_name}</span>
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleDeclineRequest(request.id)}
+                                className="text-red-600 border-red-200 hover:bg-red-50"
+                              >
+                                <XCircle className="h-4 w-4 mr-1" />
+                                Decline
+                              </Button>
+                              <Button 
+                                size="sm"
+                                onClick={() => handleAcceptRequest(request)}
+                                className="bg-green-600 hover:bg-green-700"
+                              >
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Accept
+                              </Button>
+                            </div>
+                          </div>
                         </div>
-                        <Badge variant="outline" className="bg-yellow-50 text-yellow-700">
-                          Pending
-                        </Badge>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <div className="text-sm text-gray-500">
-                          Shipper: {request.shipper?.full_name} ({request.shipper?.phone})
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleDeclineRequest(request.id)}
-                            className="text-red-600 border-red-200 hover:bg-red-50"
-                          >
-                            <XCircle className="h-4 w-4 mr-1" />
-                            Decline
-                          </Button>
-                          <Button 
-                            size="sm"
-                            onClick={() => handleAcceptRequest(request)}
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            Accept
-                          </Button>
-                        </div>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="active">
+              <Card>
+                <CardContent className="pt-6">
+                  {acceptedRequests.length === 0 ? (
+                    <p className="text-gray-500 text-center py-8">No active bookings</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {acceptedRequests.map((request) => (
+                        <div key={request.id} className="border rounded-lg p-4 bg-orange-50/30 border-orange-100">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <p className="font-semibold text-lg">{request.goods_description}</p>
+                              <p className="text-sm text-gray-600">
+                                {request.weight_tonnes} tonnes • {request.trip?.origin_city} → {request.trip?.destination_city}
+                              </p>
+                            </div>
+                            <Badge className="bg-green-600">Accepted</Badge>
+                          </div>
+                          <div className="flex justify-between items-center pt-3 border-t border-orange-100">
+                            <div className="flex items-center">
+                              <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center mr-2">
+                                <Users className="h-4 w-4 text-orange-600" />
+                              </div>
+                              <div className="text-sm">
+                                <p className="font-medium text-gray-900">{request.shipper?.full_name}</p>
+                                <p className="text-xs text-gray-500">{request.shipper?.phone}</p>
+                              </div>
+                            </div>
+                            <div className="flex space-x-2">
+                              <Link to={`/chat/${request.id}`}>
+                                <Button size="sm" variant="outline" className="border-orange-200 text-orange-700 hover:bg-orange-100">
+                                  <MessageSquare className="h-4 w-4 mr-1" />
+                                  Chat
+                                </Button>
+                              </Link>
+                              <a href={`tel:${request.shipper?.phone}`}>
+                                <Button size="sm" className="bg-orange-600 hover:bg-orange-700">
+                                  <Phone className="h-4 w-4 mr-1" />
+                                  Call
+                                </Button>
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
 
         <div className="space-y-6">
