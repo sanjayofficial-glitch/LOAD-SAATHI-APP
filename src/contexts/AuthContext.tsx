@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@/types';
@@ -29,9 +29,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const lastFetchedUserId = useRef<string | null>(null);
 
   const fetchUserProfile = useCallback(async (supabaseUser: SupabaseUser) => {
     if (!supabase) return null;
+    
+    // Prevent redundant fetches if we already have the profile for this user
+    if (lastFetchedUserId.current === supabaseUser.id && userProfile) {
+      return userProfile;
+    }
+
     try {
       const { data, error } = await supabase
         .from('users')
@@ -40,6 +47,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .maybeSingle();
 
       if (error) return null;
+      
+      lastFetchedUserId.current = supabaseUser.id;
+      
       if (data) return data as User;
 
       const metadata = supabaseUser.user_metadata;
@@ -57,10 +67,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (err) {
       return null;
     }
-  }, []);
+  }, [userProfile]);
 
   const refreshProfile = useCallback(async () => {
     if (user) {
+      lastFetchedUserId.current = null; // Force a re-fetch
       const profile = await fetchUserProfile(user);
       setUserProfile(profile);
     }
@@ -69,7 +80,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let mounted = true;
 
-    // Use onAuthStateChange for both initial session and updates
+    // Initial session check
+    const initAuth = async () => {
+      try {
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        if (!mounted) return;
+
+        setSession(initialSession);
+        const currentUser = initialSession?.user ?? null;
+        setUser(currentUser);
+
+        if (currentUser) {
+          const profile = await fetchUserProfile(currentUser);
+          if (mounted) setUserProfile(profile);
+        }
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    initAuth();
+
+    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         if (!mounted) return;
@@ -82,6 +116,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const profile = await fetchUserProfile(currentUser);
           if (mounted) setUserProfile(profile);
         } else {
+          lastFetchedUserId.current = null;
           if (mounted) setUserProfile(null);
         }
         
@@ -89,17 +124,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
-    // Fallback timeout to ensure loading state doesn't hang forever
-    const timeout = setTimeout(() => {
-      if (mounted && loading) setLoading(false);
-    }, 3000);
-
     return () => {
       mounted = false;
       subscription.unsubscribe();
-      clearTimeout(timeout);
     };
-  }, [fetchUserProfile, loading]);
+  }, [fetchUserProfile]);
 
   const signUp = async (email: string, password: string, userType: 'trucker' | 'shipper', fullName: string, phone: string, companyName?: string) => {
     return await supabase.auth.signUp({
@@ -120,6 +149,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(null);
     setSession(null);
     setUserProfile(null);
+    lastFetchedUserId.current = null;
   };
 
   return (
