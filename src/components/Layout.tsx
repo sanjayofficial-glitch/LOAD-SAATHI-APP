@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
@@ -24,7 +24,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from '@/components/ui/badge';
 import { showSuccess } from '@/utils/toast';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
@@ -35,18 +34,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  useEffect(() => {
-    if (userProfile) {
-      fetchNotifications();
-      subscribeToNotifications();
-    }
-  }, [userProfile]);
-
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
+    if (!userProfile?.id) return;
+    
     const { data } = await supabase
       .from('notifications')
       .select('*')
-      .eq('user_id', userProfile?.id)
+      .eq('user_id', userProfile.id)
       .order('created_at', { ascending: false })
       .limit(10);
 
@@ -54,40 +48,46 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       setNotifications(data as Notification[]);
       setUnreadCount(data.filter(n => !n.is_read).length);
     }
-  };
+  }, [userProfile?.id]);
 
-  const subscribeToNotifications = () => {
-    const subscription = supabase
-      .channel('public:notifications')
-      .on('postgres_changes', { 
-        event: 'INSERT', 
-        schema: 'public', 
-        table: 'notifications',
-        filter: `user_id=eq.${userProfile?.id}`
-      }, (payload) => {
-        const newNotif = payload.new as Notification;
-        setNotifications(prev => [newNotif, ...prev].slice(0, 10));
-        setUnreadCount(prev => prev + 1);
-        showSuccess(newNotif.message);
-      })
-      .subscribe();
+  useEffect(() => {
+    if (userProfile) {
+      fetchNotifications();
+      
+      const subscription = supabase
+        .channel(`notifications:${userProfile.id}`)
+        .on('postgres_changes', { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'notifications',
+          filter: `user_id=eq.${userProfile.id}`
+        }, (payload) => {
+          const newNotif = payload.new as Notification;
+          setNotifications(prev => [newNotif, ...prev].slice(0, 10));
+          setUnreadCount(prev => prev + 1);
+          showSuccess(newNotif.message);
+        })
+        .subscribe();
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  };
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
+  }, [userProfile, fetchNotifications]);
 
   const markAsRead = async () => {
-    if (unreadCount === 0) return;
+    if (unreadCount === 0 || !userProfile?.id) return;
     
-    await supabase
+    const { error } = await supabase
       .from('notifications')
       .update({ is_read: true })
-      .eq('user_id', userProfile?.id)
+      .eq('user_id', userProfile.id)
       .eq('is_read', false);
     
-    setUnreadCount(0);
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    if (!error) {
+      setUnreadCount(0);
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    }
   };
 
   const handleSignOut = async () => {
@@ -107,25 +107,23 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Navigation */}
-      <nav className="bg-white border-b sticky top-0 z-50">
+      <nav className="bg-white border-b sticky top-0 z-50 shadow-sm">
         <div className="container mx-auto px-4">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <Link to="/" className="flex items-center space-x-2">
-                <Truck className="h-8 w-8 text-orange-600" />
+              <Link to="/" className="flex items-center space-x-2 group">
+                <Truck className="h-8 w-8 text-orange-600 transition-transform group-hover:scale-110" />
                 <span className="text-xl font-bold text-gray-900 hidden sm:block">LoadSaathi</span>
               </Link>
               
-              {/* Desktop Nav */}
-              <div className="hidden md:flex ml-10 space-x-4">
+              <div className="hidden md:flex ml-10 space-x-1">
                 {navItems.map((item) => (
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       location.pathname === item.path
-                        ? 'bg-orange-50 text-orange-700'
+                        ? 'bg-orange-50 text-orange-700 shadow-sm'
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                     }`}
                   >
@@ -137,13 +135,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             </div>
 
             <div className="flex items-center space-x-2 sm:space-x-4">
-              {/* Notifications */}
               <DropdownMenu onOpenChange={(open) => open && markAsRead()}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative">
+                  <Button variant="ghost" size="icon" className="relative hover:bg-orange-50">
                     <Bell className="h-5 w-5 text-gray-600" />
                     {unreadCount > 0 && (
-                      <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white">
+                      <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white">
                         {unreadCount}
                       </span>
                     )}
@@ -175,10 +172,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* User Profile */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2 px-2">
+                  <Button variant="ghost" className="flex items-center space-x-2 px-2 hover:bg-orange-50">
                     <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
                       <User className="h-4 w-4 text-orange-600" />
                     </div>
@@ -208,7 +204,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Mobile Menu Toggle */}
               <Button
                 variant="ghost"
                 size="icon"
@@ -221,9 +216,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           </div>
         </div>
 
-        {/* Mobile Nav */}
         {isMenuOpen && (
-          <div className="md:hidden border-t bg-white px-4 py-2 space-y-1">
+          <div className="md:hidden border-t bg-white px-4 py-2 space-y-1 animate-in slide-in-from-top duration-200">
             {navItems.map((item) => (
               <Link
                 key={item.path}
@@ -243,12 +237,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         )}
       </nav>
 
-      {/* Main Content */}
       <main className="flex-grow">
         {children}
       </main>
 
-      {/* Footer */}
       <footer className="bg-white border-t py-8">
         <div className="container mx-auto px-4 text-center">
           <div className="flex items-center justify-center space-x-2 mb-4">

@@ -1,3 +1,4 @@
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -5,29 +6,46 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Layout from "@/components/Layout";
-import Index from "./pages/Index";
-import NotFound from "./pages/NotFound";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import TruckerDashboard from "./pages/trucker/Dashboard";
-import ShipperDashboard from "./pages/shipper/Dashboard";
-import PostTrip from "./pages/trucker/PostTrip";
-import BrowseTrips from "./pages/shipper/BrowseTrips";
-import TripDetail from "./pages/TripDetail";
-import MyTrips from "./pages/trucker/MyTrips";
-import MyShipments from "./pages/shipper/MyShipments";
-import Profile from "./pages/Profile";
-import AdminDashboard from "./pages/admin/Dashboard";
-import Chat from "./pages/Chat";
+import { Truck } from "lucide-react";
 
-const queryClient = new QueryClient();
+// Lazy load pages
+const Index = lazy(() => import("./pages/Index"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const TruckerDashboard = lazy(() => import("./pages/trucker/Dashboard"));
+const ShipperDashboard = lazy(() => import("./pages/shipper/Dashboard"));
+const PostTrip = lazy(() => import("./pages/trucker/PostTrip"));
+const BrowseTrips = lazy(() => import("./pages/shipper/BrowseTrips"));
+const TripDetail = lazy(() => import("./pages/TripDetail"));
+const MyTrips = lazy(() => import("./pages/trucker/MyTrips"));
+const MyShipments = lazy(() => import("./pages/shipper/MyShipments"));
+const Profile = lazy(() => import("./pages/Profile"));
+const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
+const Chat = lazy(() => import("./pages/Chat"));
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 1,
+    },
+  },
+});
+
+const LoadingFallback = () => (
+  <div className="min-h-screen flex items-center justify-center bg-orange-50/30">
+    <div className="text-center">
+      <Truck className="h-10 w-10 text-orange-600 animate-bounce mx-auto mb-4" />
+      <p className="text-gray-500 font-medium animate-pulse">Loading LoadSaathi...</p>
+    </div>
+  </div>
+);
 
 const ProtectedRoute = ({ children, allowedTypes }: { children: React.ReactNode, allowedTypes?: ('trucker' | 'shipper')[] }) => {
   const { userProfile, loading } = useAuth();
 
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
-  }
+  if (loading) return <LoadingFallback />;
 
   if (!userProfile) {
     return <Navigate to="/login" />;
@@ -47,69 +65,71 @@ const App = () => (
       <Sonner />
       <AuthProvider>
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            
-            {/* Trucker Routes */}
-            <Route path="/trucker/dashboard" element={
-              <ProtectedRoute allowedTypes={['trucker']}>
-                <TruckerDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/trucker/post-trip" element={
-              <ProtectedRoute allowedTypes={['trucker']}>
-                <PostTrip />
-              </ProtectedRoute>
-            } />
-            <Route path="/trucker/my-trips" element={
-              <ProtectedRoute allowedTypes={['trucker']}>
-                <MyTrips />
-              </ProtectedRoute>
-            } />
-            
-            {/* Shipper Routes */}
-            <Route path="/shipper/dashboard" element={
-              <ProtectedRoute allowedTypes={['shipper']}>
-                <ShipperDashboard />
-              </ProtectedRoute>
-            } />
-            <Route path="/browse-trucks" element={
-              <ProtectedRoute allowedTypes={['shipper']}>
-                <BrowseTrips />
-              </ProtectedRoute>
-            } />
-            <Route path="/shipper/my-shipments" element={
-              <ProtectedRoute allowedTypes={['shipper']}>
-                <MyShipments />
-              </ProtectedRoute>
-            } />
-            
-            {/* Shared Routes */}
-            <Route path="/trips/:id" element={
-              <ProtectedRoute>
-                <TripDetail />
-              </ProtectedRoute>
-            } />
-            <Route path="/chat/:requestId" element={
-              <ProtectedRoute>
-                <Chat />
-              </ProtectedRoute>
-            } />
-            <Route path="/profile" element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            } />
-            <Route path="/admin" element={
-              <ProtectedRoute allowedTypes={['trucker']}>
-                <AdminDashboard />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              
+              {/* Trucker Routes */}
+              <Route path="/trucker/dashboard" element={
+                <ProtectedRoute allowedTypes={['trucker']}>
+                  <TruckerDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/trucker/post-trip" element={
+                <ProtectedRoute allowedTypes={['trucker']}>
+                  <PostTrip />
+                </ProtectedRoute>
+              } />
+              <Route path="/trucker/my-trips" element={
+                <ProtectedRoute allowedTypes={['trucker']}>
+                  <MyTrips />
+                </ProtectedRoute>
+              } />
+              
+              {/* Shipper Routes */}
+              <Route path="/shipper/dashboard" element={
+                <ProtectedRoute allowedTypes={['shipper']}>
+                  <ShipperDashboard />
+                </ProtectedRoute>
+              } />
+              <Route path="/browse-trucks" element={
+                <ProtectedRoute allowedTypes={['shipper']}>
+                  <BrowseTrips />
+                </ProtectedRoute>
+              } />
+              <Route path="/shipper/my-shipments" element={
+                <ProtectedRoute allowedTypes={['shipper']}>
+                  <MyShipments />
+                </ProtectedRoute>
+              } />
+              
+              {/* Shared Routes */}
+              <Route path="/trips/:id" element={
+                <ProtectedRoute>
+                  <TripDetail />
+                </ProtectedRoute>
+              } />
+              <Route path="/chat/:requestId" element={
+                <ProtectedRoute>
+                  <Chat />
+                </ProtectedRoute>
+              } />
+              <Route path="/profile" element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              } />
+              <Route path="/admin" element={
+                <ProtectedRoute allowedTypes={['trucker']}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } />
+              
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>
