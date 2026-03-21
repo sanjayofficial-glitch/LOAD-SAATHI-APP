@@ -1,4 +1,4 @@
--- Create users table that links to Supabase Auth
+-- Create users table
 CREATE TABLE IF NOT EXISTS public.users (
     id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS public.users (
     is_verified BOOLEAN DEFAULT FALSE,
     rating DECIMAL(3,2) DEFAULT 0,
     total_trips INTEGER DEFAULT 0,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
 
 -- Create trips table
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS public.trips (
     vehicle_type TEXT NOT NULL,
     vehicle_number TEXT NOT NULL,
     status TEXT CHECK (status IN ('active', 'completed', 'cancelled')) DEFAULT 'active',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
 
 -- Create requests table
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS public.requests (
     pickup_address TEXT,
     delivery_address TEXT,
     status TEXT CHECK (status IN ('pending', 'accepted', 'declined')) DEFAULT 'pending',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
 
 -- Create notifications table
@@ -47,26 +47,21 @@ CREATE TABLE IF NOT EXISTS public.notifications (
     message TEXT NOT NULL,
     is_read BOOLEAN DEFAULT FALSE,
     related_trip_id UUID REFERENCES public.trips(id) ON DELETE SET NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
 
--- Enable Row Level Security
+-- Enable RLS
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.trips ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
--- Basic RLS Policies
+-- Policies
 CREATE POLICY "Public profiles are viewable by everyone" ON public.users FOR SELECT USING (true);
 CREATE POLICY "Users can update own profile" ON public.users FOR UPDATE USING (auth.uid() = id);
-
 CREATE POLICY "Trips are viewable by everyone" ON public.trips FOR SELECT USING (true);
 CREATE POLICY "Truckers can insert own trips" ON public.trips FOR INSERT WITH CHECK (auth.uid() = trucker_id);
 CREATE POLICY "Truckers can update own trips" ON public.trips FOR UPDATE USING (auth.uid() = trucker_id);
-
 CREATE POLICY "Requests are viewable by involved parties" ON public.requests FOR SELECT USING (auth.uid() = shipper_id OR auth.uid() IN (SELECT trucker_id FROM public.trips WHERE id = trip_id));
 CREATE POLICY "Shippers can insert requests" ON public.requests FOR INSERT WITH CHECK (auth.uid() = shipper_id);
-CREATE POLICY "Involved parties can update requests" ON public.requests FOR UPDATE USING (auth.uid() = shipper_id OR auth.uid() IN (SELECT trucker_id FROM public.trips WHERE id = trip_id));
-
 CREATE POLICY "Users can view own notifications" ON public.notifications FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can update own notifications" ON public.notifications FOR UPDATE USING (auth.uid() = user_id);
