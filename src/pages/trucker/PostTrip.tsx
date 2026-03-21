@@ -1,0 +1,1 @@
+import { Truck, MapPin, Calendar, IndianRupee } from 'lucide-react';

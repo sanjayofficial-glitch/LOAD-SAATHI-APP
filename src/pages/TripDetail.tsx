@@ -1,0 +1,1 @@
+import { MapPin, Calendar, Truck, IndianRupee, Phone, ArrowLeft, CheckCircle } from 'lucide-react';
