@@ -1,8 +1,40 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Truck, Package, IndianRupee, Users, CheckCircle } from 'lucide-react';
+import { Truck, Package, IndianRupee, Users, CheckCircle, Database, AlertCircle } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
+import { Badge } from '@/components/ui/badge';
 
 const Index = () => {
+  const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'no-env' | 'no-tables'>('checking');
+
+  useEffect(() => {
+    const checkConnection = async () => {
+      if (!supabase) {
+        setDbStatus('no-env');
+        return;
+      }
+
+      try {
+        // Try to fetch from the users table to see if it exists
+        const { error } = await supabase.from('users').select('id').limit(1);
+        if (error) {
+          if (error.code === 'PGRST116' || error.message.includes('does not exist')) {
+            setDbStatus('no-tables');
+          } else {
+            console.error("DB Check Error:", error);
+            setDbStatus('connected'); // Env is there, but maybe table is empty
+          }
+        } else {
+          setDbStatus('connected');
+        }
+      } catch (e) {
+        setDbStatus('no-env');
+      }
+    };
+
+    checkConnection();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50">
       <header className="container mx-auto px-4 py-6">
@@ -133,7 +165,34 @@ const Index = () => {
             <Truck className="h-6 w-6 text-orange-400" />
             <span className="text-xl font-bold">LoadSaathi</span>
           </div>
-          <p className="text-gray-400 mb-4">Connecting India's truckers with shippers</p>
+          <p className="text-gray-400 mb-8">Connecting India's truckers with shippers</p>
+          
+          {/* Connection Status Badge */}
+          <div className="inline-flex items-center px-4 py-2 rounded-full bg-gray-800 border border-gray-700">
+            <Database className="h-4 w-4 mr-2 text-gray-400" />
+            <span className="text-xs font-medium text-gray-400 mr-2">Supabase:</span>
+            {dbStatus === 'checking' && <span className="text-xs text-gray-500 animate-pulse">Checking...</span>}
+            {dbStatus === 'connected' && (
+              <Badge variant="outline" className="bg-green-500/10 text-green-400 border-green-500/20">
+                <CheckCircle className="h-3 w-3 mr-1" /> Connected
+              </Badge>
+            )}
+            {dbStatus === 'no-env' && (
+              <Badge variant="outline" className="bg-red-500/10 text-red-400 border-red-500/20">
+                <AlertCircle className="h-3 w-3 mr-1" /> Not Connected
+              </Badge>
+            )}
+            {dbStatus === 'no-tables' && (
+              <Badge variant="outline" className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20">
+                <AlertCircle className="h-3 w-3 mr-1" /> Tables Missing
+              </Badge>
+            )}
+          </div>
+          {dbStatus === 'no-tables' && (
+            <p className="text-[10px] text-yellow-500/60 mt-2">
+              Please run the SQL schema in your Supabase SQL Editor.
+            </p>
+          )}
         </div>
       </footer>
     </div>
