@@ -110,8 +110,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   ) => {
     if (!supabase) return { error: new Error('Supabase not configured') };
     
-    // 1. Sign up the user with metadata
-    const { data, error } = await supabase.auth.signUp({
+    // Sign up the user with metadata. 
+    // The database trigger will use this metadata to create the profile.
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -119,39 +120,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           full_name: fullName,
           phone: phone,
           user_type: userType,
+          company_name: companyName || null
         }
       }
     });
 
-    if (error) return { error };
-
-    // 2. Manually create the profile if the user was created
-    // Note: If email confirmation is on, the user might not be "logged in" yet,
-    // but we still try to create the profile record.
-    if (data.user) {
-      const { error: profileError } = await supabase.from('users').upsert({
-        id: data.user.id,
-        email,
-        user_type: userType,
-        full_name: fullName,
-        phone,
-        company_name: companyName || null,
-        is_verified: false,
-        rating: 0,
-        total_trips: 0,
-      });
-
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        // We don't return error here because the Auth account WAS created.
-        // The user can try to log in and we can handle missing profiles then.
-      } else {
-        const profile = await fetchUserProfile(data.user.id);
-        setUserProfile(profile);
-      }
-    }
-
-    return { error: null };
+    return { error };
   };
 
   const signIn = async (email: string, password: string) => {
