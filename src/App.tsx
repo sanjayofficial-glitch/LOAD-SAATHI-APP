@@ -16,6 +16,7 @@ const Register = lazy(() => import("./pages/Register"));
 const TruckerDashboard = lazy(() => import("./pages/trucker/Dashboard"));
 const ShipperDashboard = lazy(() => import("./pages/shipper/Dashboard"));
 const PostTrip = lazy(() => import("./pages/trucker/PostTrip"));
+const EditTrip = lazy(() => import("./pages/trucker/EditTrip"));
 const BrowseTrips = lazy(() => import("./pages/shipper/BrowseTrips"));
 const TripDetail = lazy(() => import("./pages/TripDetail"));
 const MyTrips = lazy(() => import("./pages/trucker/MyTrips"));
@@ -80,6 +81,11 @@ const App = () => (
               <Route path="/trucker/post-trip" element={
                 <ProtectedRoute allowedTypes={['trucker']}>
                   <PostTrip />
+                </ProtectedRoute>
+              } />
+              <Route path="/trucker/edit-trip/:id" element={
+                <ProtectedRoute allowedTypes={['trucker']}>
+                  <EditTrip />
                 </ProtectedRoute>
               } />
               <Route path="/trucker/my-trips" element={

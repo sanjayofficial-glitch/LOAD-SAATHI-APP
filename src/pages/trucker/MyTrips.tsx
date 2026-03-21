@@ -7,7 +7,28 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { showSuccess, showError } from '@/utils/toast';
-import { Truck, Calendar, Eye, CheckCircle2, MapPin, IndianRupee } from 'lucide-react';
+import { 
+  Truck, 
+  Calendar, 
+  Eye, 
+  CheckCircle2, 
+  MapPin, 
+  IndianRupee, 
+  Edit, 
+  Trash2,
+  ArrowRight as ArrowRightIcon
+} from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const MyTrips = () => {
   const { userProfile } = useAuth();
@@ -39,6 +60,20 @@ const MyTrips = () => {
       showError('Failed to complete trip');
     } else {
       showSuccess('Trip marked as completed!');
+      fetchTrips();
+    }
+  };
+
+  const handleDeleteTrip = async (tripId: string) => {
+    const { error } = await supabase
+      .from('trips')
+      .delete()
+      .eq('id', tripId);
+
+    if (error) {
+      showError('Failed to delete trip. It might have active booking requests.');
+    } else {
+      showSuccess('Trip deleted successfully');
       fetchTrips();
     }
   };
@@ -85,7 +120,7 @@ const MyTrips = () => {
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center text-xl font-bold text-gray-900">
-                        {trip.origin_city} <ArrowRight className="h-4 w-4 mx-2 text-gray-400" /> {trip.destination_city}
+                        {trip.origin_city} <ArrowRightIcon className="h-4 w-4 mx-2 text-gray-400" /> {trip.destination_city}
                       </div>
                       <Badge variant={trip.status === 'active' ? 'default' : 'secondary'} className={
                         trip.status === 'active' ? 'bg-green-100 text-green-700 hover:bg-green-100' : 'bg-gray-100 text-gray-600'
@@ -110,22 +145,58 @@ const MyTrips = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 border-t md:border-t-0 pt-4 md:pt-0">
-                    <Link to={`/trips/${trip.id}`} className="flex-1 sm:flex-none">
-                      <Button variant="outline" size="sm" className="w-full">
+                  <div className="flex flex-wrap items-center gap-2 border-t md:border-t-0 pt-4 md:pt-0">
+                    <Link to={`/trips/${trip.id}`}>
+                      <Button variant="ghost" size="sm" className="hover:bg-orange-50">
                         <Eye className="h-4 w-4 mr-2" />
-                        Details
+                        View
                       </Button>
                     </Link>
+                    
                     {trip.status === 'active' && (
-                      <Button 
-                        size="sm" 
-                        className="bg-green-600 hover:bg-green-700 flex-1 sm:flex-none"
-                        onClick={() => handleCompleteTrip(trip.id)}
-                      >
-                        <CheckCircle2 className="h-4 w-4 mr-2" />
-                        Complete
-                      </Button>
+                      <>
+                        <Link to={`/trucker/edit-trip/${trip.id}`}>
+                          <Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50">
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </Button>
+                        </Link>
+                        
+                        <Button 
+                          size="sm" 
+                          className="bg-green-600 hover:bg-green-700"
+                          onClick={() => handleCompleteTrip(trip.id)}
+                        >
+                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                          Complete
+                        </Button>
+
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50">
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete your trip listing. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleDeleteTrip(trip.id)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </>
                     )}
                   </div>
                 </div>
@@ -137,11 +208,5 @@ const MyTrips = () => {
     </div>
   );
 };
-
-const ArrowRight = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M5 12h14M12 5l7 7-7 7" />
-  </svg>
-);
 
 export default MyTrips;
