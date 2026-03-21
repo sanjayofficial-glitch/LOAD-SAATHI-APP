@@ -39,11 +39,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .eq('id', supabaseUser.id)
         .maybeSingle();
 
-      if (error) console.error('Profile fetch error:', error);
-      
+      if (error) return null;
       if (data) return data as User;
 
-      // Fallback to metadata if DB record is missing
       const metadata = supabaseUser.user_metadata;
       return {
         id: supabaseUser.id,
@@ -71,28 +69,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     let mounted = true;
 
-    const initializeAuth = async () => {
-      try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
-        if (!mounted) return;
-
-        setSession(initialSession);
-        const currentUser = initialSession?.user ?? null;
-        setUser(currentUser);
-        
-        if (currentUser) {
-          const profile = await fetchUserProfile(currentUser);
-          if (mounted) setUserProfile(profile);
-        }
-      } catch (err) {
-        console.error('Auth init error:', err);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    initializeAuth();
-
+    // Use onAuthStateChange for both initial session and updates
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         if (!mounted) return;
@@ -112,11 +89,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
+    // Fallback timeout to ensure loading state doesn't hang forever
+    const timeout = setTimeout(() => {
+      if (mounted && loading) setLoading(false);
+    }, 3000);
+
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      clearTimeout(timeout);
     };
-  }, [fetchUserProfile]);
+  }, [fetchUserProfile, loading]);
 
   const signUp = async (email: string, password: string, userType: 'trucker' | 'shipper', fullName: string, phone: string, companyName?: string) => {
     return await supabase.auth.signUp({

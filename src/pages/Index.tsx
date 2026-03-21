@@ -8,21 +8,14 @@ const Index = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Only redirect if we are CERTAIN the user is logged in
     if (!authLoading && userProfile) {
       navigate(userProfile.user_type === 'trucker' ? '/trucker/dashboard' : '/shipper/dashboard');
     }
   }, [userProfile, authLoading, navigate]);
 
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-orange-50">
-        <div className="text-center">
-          <Truck className="h-12 w-12 text-orange-600 animate-bounce mx-auto mb-4" />
-          <p className="text-gray-600 font-medium">Loading LoadSaathi...</p>
-        </div>
-      </div>
-    );
-  }
+  // We no longer return a full-screen loader here. 
+  // The landing page shows immediately for everyone.
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50">
