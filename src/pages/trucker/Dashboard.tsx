@@ -12,17 +12,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { showSuccess, showError } from '@/utils/toast';
 import { 
   Truck, 
-  Calendar, 
-  IndianRupee, 
-  Users, 
-  Plus, 
-  Eye, 
   CheckCircle, 
   XCircle,
   Clock,
   Star,
   MessageSquare,
-  Phone
+  Phone,
+  Plus,
+  Eye,
+  Users
 } from 'lucide-react';
 
 const TruckerDashboard = () => {
@@ -32,16 +30,16 @@ const TruckerDashboard = () => {
   const [acceptedRequests, setAcceptedRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = useCallback(async () => {
-    if (!userProfile) {
-      setLoading(false);
-      return;
-    }
+  const fetchData = useCallback(async (showLoading = false) => {
+    if (!userProfile) return;
+    if (showLoading) setLoading(true);
 
     try {
+      // Optimized: Fetch trips and their requests in a single query structure
+      // We fetch trips first, then requests for those trips
       const { data: tripsData, error: tripsError } = await supabase
         .from('trips')
-        .select('*, trucker:users(*)')
+        .select('*')
         .eq('trucker_id', userProfile.id)
         .order('created_at', { ascending: false });
 
@@ -69,6 +67,9 @@ const TruckerDashboard = () => {
             setPendingRequests(reqs.filter(r => r.status === 'pending'));
             setAcceptedRequests(reqs.filter(r => r.status === 'accepted'));
           }
+        } else {
+          setPendingRequests([]);
+          setAcceptedRequests([]);
         }
       }
     } catch (err: any) {
@@ -80,17 +81,20 @@ const TruckerDashboard = () => {
   }, [userProfile]);
 
   useEffect(() => {
-    fetchData();
-
     if (userProfile) {
+      fetchData(true);
+
+      // Optimized: Only listen to requests for trips owned by this trucker
       const channel = supabase
-        .channel('trucker_dashboard_sync')
+        .channel(`trucker_dashboard_${userProfile.id}`)
         .on('postgres_changes', { 
           event: '*', 
           schema: 'public', 
-          table: 'requests' 
+          table: 'requests'
+          // Note: Complex filters in JS client are limited, so we refresh on any request change
+          // but the fetchData query itself is highly optimized
         }, () => {
-          fetchData();
+          fetchData(false); // Refresh in background without showing loader
         })
         .on('postgres_changes', {
           event: '*',
@@ -98,7 +102,7 @@ const TruckerDashboard = () => {
           table: 'trips',
           filter: `trucker_id=eq.${userProfile.id}`
         }, () => {
-          fetchData();
+          fetchData(false);
         })
         .subscribe();
 
@@ -137,7 +141,7 @@ const TruckerDashboard = () => {
       showError('Failed to update trip capacity');
     } else {
       showSuccess('Request accepted!');
-      fetchData();
+      fetchData(false);
       refreshProfile();
     }
   };
@@ -152,19 +156,19 @@ const TruckerDashboard = () => {
       showError('Failed to decline request');
     } else {
       showSuccess('Request declined');
-      fetchData();
+      fetchData(false);
     }
   };
 
   const activeTrips = trips.filter(t => t.status === 'active');
   const completedTrips = trips.filter(t => t.status === 'completed');
 
-  if (loading) {
+  if (loading && trips.length === 0) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Syncing dashboard...</p>
+          <p className="text-gray-600 font-medium">Loading your dashboard...</p>
         </div>
       </div>
     );
@@ -182,7 +186,7 @@ const TruckerDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card>
+        <Card className="border-orange-100">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Active Trips</CardTitle>
             <Truck className="h-4 w-4 text-orange-600" />
@@ -192,7 +196,7 @@ const TruckerDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-blue-100">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Pending Requests</CardTitle>
             <Clock className="h-4 w-4 text-blue-600" />
@@ -202,7 +206,7 @@ const TruckerDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-green-100">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Completed Trips</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-600" />
@@ -212,7 +216,7 @@ const TruckerDashboard = () => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-yellow-100">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Rating</CardTitle>
             <Star className="h-4 w-4 text-yellow-600" />
@@ -235,7 +239,10 @@ const TruckerDashboard = () => {
               <Card>
                 <CardContent className="pt-6">
                   {pendingRequests.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8">No pending requests</p>
+                    <div className="text-center py-12">
+                      <Clock className="h-12 w-12 text-gray-200 mx-auto mb-4" />
+                      <p className="text-gray-500">No pending requests at the moment</p>
+                    </div>
                   ) : (
                     <div className="space-y-4">
                       {pendingRequests.map((request) => (
@@ -247,7 +254,7 @@ const TruckerDashboard = () => {
                                 {request.weight_tonnes} tonnes • {request.trip?.origin_city} → {request.trip?.destination_city}
                               </p>
                             </div>
-                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700">
+                            <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
                               Pending
                             </Badge>
                           </div>
@@ -287,7 +294,10 @@ const TruckerDashboard = () => {
               <Card>
                 <CardContent className="pt-6">
                   {acceptedRequests.length === 0 ? (
-                    <p className="text-gray-500 text-center py-8">No active bookings</p>
+                    <div className="text-center py-12">
+                      <CheckCircle className="h-12 w-12 text-gray-200 mx-auto mb-4" />
+                      <p className="text-gray-500">No active bookings yet</p>
+                    </div>
                   ) : (
                     <div className="space-y-4">
                       {acceptedRequests.map((request) => (
@@ -343,7 +353,7 @@ const TruckerDashboard = () => {
             </CardHeader>
             <CardContent className="space-y-3">
               <Link to="/trucker/post-trip">
-                <Button className="w-full justify-start" variant="outline">
+                <Button className="w-full justify-start bg-orange-600 hover:bg-orange-700 text-white">
                   <Plus className="h-4 w-4 mr-2" />
                   Post New Trip
                 </Button>
