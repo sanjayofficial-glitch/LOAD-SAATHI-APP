@@ -25,6 +25,7 @@ const MyShipments = lazy(() => import("./pages/shipper/MyShipments"));
 const Profile = lazy(() => import("./pages/Profile"));
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
 const Chat = lazy(() => import("./pages/Chat"));
+const TestAuth = lazy(() => import("./pages/TestAuth"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -73,6 +74,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/test-auth" element={<TestAuth />} />
               
               {/* Trucker Routes */}
               <Route path="/trucker/dashboard" element={
