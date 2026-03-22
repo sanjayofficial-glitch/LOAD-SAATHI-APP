@@ -1,104 +1,58 @@
--- Users Table
-CREATE TABLE public.users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email TEXT NOT NULL UNIQUE,
-  user_type TEXT NOT NULL CHECK (user_type IN ('trucker', 'shipper')),
-  full_name TEXT,
-  phone TEXT,
-  company_name TEXT,
-  is_verified BOOLEAN DEFAULT false,
-  rating NUMERIC DEFAULT 0,
-  total_trips INT DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW()
+-- Create users table
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    full_name VARCHAR(255) NOT NULL,
+    phone VARCHAR(20),
+    user_type VARCHAR(20) NOT NULL DEFAULT 'shipper',
+    is_verified BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Trips Table
-CREATE TABLE public.trips (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  trucker_id UUID REFERENCES public.users(id),
-  origin_city TEXT NOT NULL,
-  destination_city TEXT NOT NULL,
-  departure_date TIMESTAMPTZ NOT NULL,
-  available_capacity_tonnes NUMERIC NOT NULL DEFAULT 0,
-  price_per_tonne NUMERIC NOT NULL DEFAULT 0,
-  vehicle_type TEXT NOT NULL,
-  vehicle_number TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('active', 'completed', 'cancelled')),
-  created_at TIMESTAMPTZ DEFAULT NOW()
+-- Create trips table
+CREATE TABLE trips (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    trucker_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    origin_city VARCHAR(255) NOT NULL,
+    destination_city VARCHAR(255) NOT NULL,
+    departure_date TIMESTAMPTZ NOT NULL,
+    available_capacity_tonnes NUMERIC(10,2) NOT NULL,
+    price_per_tonne NUMERIC(10,2) NOT NULL,
+    vehicle_type VARCHAR(255) NOT NULL,
+    vehicle_number VARCHAR(255) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'active',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Requests Table
-CREATE TABLE public.requests (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  trip_id UUID REFERENCES public.trips(id),
-  shipper_id UUID REFERENCES public.users(id),
-  goods_description TEXT NOT NULL,
-  weight_tonnes NUMERIC NOT NULL DEFAULT 0,
-  pickup_address TEXT NOT NULL,
-  delivery_address TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('pending', 'accepted', 'declined')),
-  created_at TIMESTAMPTZ DEFAULT NOW()
+-- Create requests table
+CREATE TABLE requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    trip_id UUID REFERENCES trips(id) ON DELETE CASCADE,
+    shipper_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    goods_description TEXT NOT NULL,
+    weight_tonnes NUMERIC(10,2) NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Notifications Table
-CREATE TABLE public.notifications (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES public.users(id),
-  message TEXT NOT NULL,
-  is_read BOOLEAN DEFAULT false,
-  related_trip_id UUID REFERENCES public.trips(id)
+-- Create notifications table
+CREATE TABLE notifications (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Add public read access policy for trips table
-ALTER TABLE public.trips ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Public read access for trips" ON public.trips
-FOR SELECT USING (true);
+-- Create RLS policies for trips and requests
+CREATE POLICY "public_read_access" ON trips FOR SELECT USING (true);
+CREATE POLICY "public_read_access" ON requests FOR SELECT USING (true);
 
--- Add public read access policy for requests table
-ALTER TABLE public.requests ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Public read access for requests" ON public.requests
-FOR SELECT USING (true);
-
--- Function to update trip capacity when request status changes
-CREATE OR REPLACE FUNCTION public.update_trip_capacity()
-RETURNS TRIGGER AS $$
-BEGIN
-  IF NEW.status = 'accepted' AND NEW.trip_id IS NOT NULL THEN
-    UPDATE public.trips 
-    SET available_capacity_tonnes = available_capacity_tonnes - NEW.weight_tonnes 
-    WHERE id = NEW.trip_id;
-  ELSIF NEW.status IN ('declined', 'cancelled') AND OLD.status = 'accepted' AND OLD.trip_id IS NOT NULL THEN
-    UPDATE public.trips 
-    SET available_capacity_tonnes = available_capacity_tonnes + OLD.weight_tonnes 
-    WHERE id = OLD.trip_id;
-  END IF;
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Create trigger for capacity updates
-DROP TRIGGER IF EXISTS on_request_status_updated ON public.requests;
-CREATE TRIGGER on_request_status_updated
-  AFTER UPDATE ON public.requests
-  FOR EACH ROW EXECUTE FUNCTION public.update_trip_capacity();
-
--- Function to notify when new trip is posted
-CREATE OR REPLACE FUNCTION public.notify_new_trip()
-RETURNS TRIGGER AS $$
-DECLARE
-  v_trucker_id UUID;
-BEGIN
-  SELECT trucker_id INTO v_trucker_id FROM public.trips WHERE id = NEW.id;
-  
-  INSERT INTO public.notifications (user_id, message, related_trip_id)
-  VALUES (v_trucker_id, 'New trip posted: ' || NEW.origin_city || ' → ' || NEW.destination_city, NEW.id);
-  
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Trigger for new trip notifications
-DROP TRIGGER IF EXISTS on_trip_created ON public.trips;
-CREATE TRIGGER on_trip_created
-  AFTER INSERT ON public.trips
-  FOR EACH ROW EXECUTE FUNCTION public.notify_new_trip();
+-- Create RLS policies for user-specific data
+CREATE POLICY "user_specific_access" ON trips FOR ALL USING (trucker_id = current_setting('jwt.claims.user_id')::UUID);
+CREATE POLICY "user_specific_access" ON requests FOR ALL USING (shipper_id = current_setting('jwt.claims.user_id')::UUID);
+CREATE POLICY "user_specific_access" ON notifications FOR ALL USING (user_id = current_setting('jwt.claims.user_id')::UUID);
