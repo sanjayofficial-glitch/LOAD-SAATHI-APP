@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,38 +33,50 @@ const TruckerDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
-    if (!userProfile) return;
-
-    const { data: tripsData } = await supabase
-      .from('trips')
-      .select('*, trucker:users(*)')
-      .eq('trucker_id', userProfile.id)
-      .order('created_at', { ascending: false });
-
-    if (tripsData) {
-      setTrips(tripsData as Trip[]);
-      
-      const tripIds = tripsData.map(t => t.id);
-      if (tripIds.length > 0) {
-        const { data: requestsData } = await supabase
-          .from('requests')
-          .select(`
-            *,
-            trip:trips(*),
-            shipper:users(*)
-          `)
-          .in('trip_id', tripIds)
-          .order('created_at', { ascending: false });
-
-        if (requestsData) {
-          const reqs = requestsData as Request[];
-          setPendingRequests(reqs.filter(r => r.status === 'pending'));
-          setAcceptedRequests(reqs.filter(r => r.status === 'accepted'));
-        }
-      }
+    if (!userProfile) {
+      setLoading(false);
+      return;
     }
 
-    setLoading(false);
+    try {
+      const { data: tripsData, error: tripsError } = await supabase
+        .from('trips')
+        .select('*, trucker:users(*)')
+        .eq('trucker_id', userProfile.id)
+        .order('created_at', { ascending: false });
+
+      if (tripsError) throw tripsError;
+
+      if (tripsData) {
+        setTrips(tripsData as Trip[]);
+        
+        const tripIds = tripsData.map(t => t.id);
+        if (tripIds.length > 0) {
+          const { data: requestsData, error: reqsError } = await supabase
+            .from('requests')
+            .select(`
+              *,
+              trip:trips(*),
+              shipper:users(*)
+            `)
+            .in('trip_id', tripIds)
+            .order('created_at', { ascending: false });
+
+          if (reqsError) throw reqsError;
+
+          if (requestsData) {
+            const reqs = requestsData as Request[];
+            setPendingRequests(reqs.filter(r => r.status === 'pending'));
+            setAcceptedRequests(reqs.filter(r => r.status === 'accepted'));
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error("Dashboard fetch error:", err);
+      showError("Failed to sync dashboard data");
+    } finally {
+      setLoading(false);
+    }
   }, [userProfile]);
 
   useEffect(() => {
