@@ -1,25 +1,18 @@
--- 1. Add missing SELECT policies for the users table
--- This allows authenticated users to see their own and others' profiles (needed for names/ratings)
-CREATE POLICY "Users can read all profiles" ON public.users
-FOR SELECT TO authenticated USING (true);
+-- 1. Drop the overly restrictive insert policy
+DROP POLICY IF EXISTS "Truckers can create trips" ON public.trips;
 
--- 2. Simplify the notify_new_trip function to avoid redundant database lookups
-CREATE OR REPLACE FUNCTION public.notify_new_trip()
- RETURNS trigger
- LANGUAGE plpgsql
- SECURITY DEFINER
-AS $function$
-BEGIN
-  -- Use NEW directly instead of selecting from the table again
-  INSERT INTO public.notifications (user_id, message, related_trip_id)
-  VALUES (NEW.trucker_id, 'New trip posted: ' || NEW.origin_city || ' → ' || NEW.destination_city, NEW.id);
-  
-  RETURN NEW;
-END;
-$function$;
+-- 2. Create a simpler, more reliable insert policy
+-- This ensures you can only post trips for your own ID
+CREATE POLICY "Users can create their own trips" ON public.trips
+FOR INSERT TO authenticated 
+WITH CHECK (trucker_id = auth.uid());
 
--- 3. Ensure RLS is enabled on all tables (just in case)
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.trips ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.requests ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+-- 3. Ensure the trucker_id is automatically set if not provided (optional but helpful)
+-- This prevents mismatches between the frontend and backend
+ALTER TABLE public.trips ALTER COLUMN trucker_id SET DEFAULT auth.uid();
+
+-- 4. Fix the update policy as well to be consistent
+DROP POLICY IF EXISTS "Truckers can update own trips" ON public.trips;
+CREATE POLICY "Users can update their own trips" ON public.trips
+FOR UPDATE TO authenticated 
+USING (trucker_id = auth.uid());
