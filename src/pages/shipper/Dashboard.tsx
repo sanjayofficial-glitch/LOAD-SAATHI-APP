@@ -23,22 +23,30 @@ const ShipperDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchRequests = useCallback(async () => {
-    if (!userProfile) return;
-    
-    const { data } = await supabase
-      .from('requests')
-      .select(`
-        *,
-        trip:trips(*)
-      `)
-      .eq('shipper_id', userProfile.id)
-      .order('created_at', { ascending: false })
-      .limit(5);
-
-    if (data) {
-      setRequests(data as (Request & { trip: any })[]);
+    if (!userProfile) {
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+    
+    try {
+      const { data } = await supabase
+        .from('requests')
+        .select(`
+          *,
+          trip:trips(*)
+        `)
+        .eq('shipper_id', userProfile.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (data) {
+        setRequests(data as (Request & { trip: any })[]);
+      }
+    } catch (error) {
+      console.error("Error fetching requests:", error);
+    } finally {
+      setLoading(false);
+    }
   }, [userProfile]);
 
   useEffect(() => {
@@ -68,7 +76,7 @@ const ShipperDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Syncing dashboard...</p>

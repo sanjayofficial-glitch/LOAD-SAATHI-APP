@@ -30,13 +30,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const lastFetchedUserId = useRef<string | null>(null);
+  const initialized = useRef(false);
 
   const fetchUserProfile = useCallback(async (supabaseUser: SupabaseUser) => {
     if (!supabase) return null;
     
     try {
-      console.log("[AuthContext] Fetching profile for:", supabaseUser.id);
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -47,14 +46,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         console.error("[AuthContext] Error fetching profile:", error);
       }
       
-      lastFetchedUserId.current = supabaseUser.id;
-      
       if (data) {
-        console.log("[AuthContext] Profile found in database");
         return data as User;
       }
 
-      console.log("[AuthContext] Profile not found in database, using metadata fallback");
+      // Fallback to metadata if profile record doesn't exist yet
       const metadata = supabaseUser.user_metadata;
       return {
         id: supabaseUser.id,
@@ -84,6 +80,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     let mounted = true;
 
     const initAuth = async () => {
+      if (initialized.current) return;
+      initialized.current = true;
+
       try {
         const { data: { session: initialSession } } = await supabase.auth.getSession();
         if (!mounted) return;
@@ -107,7 +106,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
-        console.log("[AuthContext] Auth state change:", event);
         if (!mounted) return;
         
         setSession(currentSession);
@@ -118,7 +116,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           const profile = await fetchUserProfile(currentUser);
           if (mounted) setUserProfile(profile);
         } else {
-          lastFetchedUserId.current = null;
           if (mounted) setUserProfile(null);
         }
         
@@ -126,11 +123,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
+    // Safety timeout to ensure loading state is cleared
+    const timeout = setTimeout(() => {
+      if (mounted && loading) setLoading(false);
+    }, 5000);
+
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      clearTimeout(timeout);
     };
-  }, [fetchUserProfile]);
+  }, [fetchUserProfile, loading]);
 
   const signUp = async (email: string, password: string, userType: 'trucker' | 'shipper', fullName: string, phone: string, companyName?: string) => {
     return await supabase.auth.signUp({
@@ -162,7 +165,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser(null);
     setSession(null);
     setUserProfile(null);
-    lastFetchedUserId.current = null;
   };
 
   return (

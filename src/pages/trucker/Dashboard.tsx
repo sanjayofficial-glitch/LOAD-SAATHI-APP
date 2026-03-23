@@ -31,12 +31,13 @@ const TruckerDashboard = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async (showLoading = false) => {
-    if (!userProfile) return;
+    if (!userProfile) {
+      setLoading(false);
+      return;
+    }
     if (showLoading) setLoading(true);
 
     try {
-      // Optimized: Fetch trips and their requests in a single query structure
-      // We fetch trips first, then requests for those trips
       const { data: tripsData, error: tripsError } = await supabase
         .from('trips')
         .select('*')
@@ -74,7 +75,6 @@ const TruckerDashboard = () => {
       }
     } catch (err: any) {
       console.error("Dashboard fetch error:", err);
-      showError("Failed to sync dashboard data");
     } finally {
       setLoading(false);
     }
@@ -84,17 +84,14 @@ const TruckerDashboard = () => {
     if (userProfile) {
       fetchData(true);
 
-      // Optimized: Only listen to requests for trips owned by this trucker
       const channel = supabase
         .channel(`trucker_dashboard_${userProfile.id}`)
         .on('postgres_changes', { 
           event: '*', 
           schema: 'public', 
           table: 'requests'
-          // Note: Complex filters in JS client are limited, so we refresh on any request change
-          // but the fetchData query itself is highly optimized
         }, () => {
-          fetchData(false); // Refresh in background without showing loader
+          fetchData(false);
         })
         .on('postgres_changes', {
           event: '*',
@@ -109,6 +106,8 @@ const TruckerDashboard = () => {
       return () => {
         supabase.removeChannel(channel);
       };
+    } else {
+      setLoading(false);
     }
   }, [userProfile, fetchData]);
 
@@ -163,7 +162,7 @@ const TruckerDashboard = () => {
   const activeTrips = trips.filter(t => t.status === 'active');
   const completedTrips = trips.filter(t => t.status === 'completed');
 
-  if (loading && trips.length === 0) {
+  if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
