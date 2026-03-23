@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { showSuccess, showError } from '@/utils/toast';
-import { Truck, Eye, EyeOff, Lock, AlertCircle, CheckCircle } from 'lucide-react';
+import { Truck, Eye, EyeOff, Lock, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
 
 const UpdatePassword = () => {
   const [password, setPassword] = useState('');
@@ -15,45 +14,33 @@ const UpdatePassword = () => {
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isValidSession, setIsValidSession] = useState(true);
-  const [errorMessage, setErrorMessage] = useState('');
+  const [isVerifying, setIsVerifying] = useState(true);
+  const [isValidSession, setIsValidSession] = useState(false);
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const token = searchParams.get('token');
-  const email = searchParams.get('email');
 
   useEffect(() => {
-    const validateResetLink = async () => {
+    const checkSession = async () => {
       try {
-        if (!token || !email) {
-          setIsValidSession(false);
-          setErrorMessage('Invalid reset link - missing token or email');
-          return;
-        }
-
+        // Supabase automatically handles the recovery token from the URL hash/query
+        // and sets a session. We just need to check if a session exists.
         const { data: { session }, error } = await supabase.auth.getSession();
-
-        if (error) {
+        
+        if (error || !session) {
+          console.error('No active session for password reset:', error);
           setIsValidSession(false);
-          setErrorMessage(error.message);
-          return;
+        } else {
+          setIsValidSession(true);
         }
-
-        if (session && session.user?.email === email) {
-          return;
-        }
-
-        setIsValidSession(false);
-        setErrorMessage('Invalid reset link - token mismatch');
       } catch (err) {
-        console.error('Error validating reset link:', err);
+        console.error('Error checking session:', err);
         setIsValidSession(false);
-        setErrorMessage('An error occurred while verifying your reset link.');
+      } finally {
+        setIsVerifying(false);
       }
     };
 
-    validateResetLink();
-  }, [token, email]);
+    checkSession();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,12 +58,11 @@ const UpdatePassword = () => {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.updateUser({
+      const { error } = await supabase.auth.updateUser({
         password: password,
       });
 
       if (error) {
-        console.error('Password update error:', error);
         showError(error.message || 'Failed to update password');
         setLoading(false);
         return;
@@ -85,26 +71,27 @@ const UpdatePassword = () => {
       setSuccess(true);
       showSuccess('Password updated successfully!');
 
+      // Sign out to force a fresh login with the new password
       await supabase.auth.signOut();
 
       setTimeout(() => {
         navigate('/login', { replace: true });
-      }, 2000);
+      }, 3000);
     } catch (err: any) {
-      console.error('Unexpected error:', err);
       showError(err.message || 'An unexpected error occurred');
-    } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (!token && !email) {
-      navigate('/forgot-password', { replace: true });
-    }
-  }, [token, email, navigate]);
+  if (isVerifying) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+      </div>
+    );
+  }
 
-  if (!isValidSession) {
+  if (!isValidSession && !success) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
@@ -112,9 +99,9 @@ const UpdatePassword = () => {
             <div className="bg-red-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="h-8 w-8 text-red-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900">Invalid Reset Link</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Invalid or Expired Link</h2>
             <p className="text-gray-600 mt-4">
-              {errorMessage || 'This password reset link is invalid or has expired.'}
+              This password reset link is invalid or has expired. Please request a new one.
             </p>
           </div>
           <div className="space-y-4">
@@ -179,9 +166,7 @@ const UpdatePassword = () => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-gray-700 font-medium">
-              New Password
-            </Label>
+            <Label htmlFor="password">New Password</Label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -204,15 +189,10 @@ const UpdatePassword = () => {
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            <p className="text-xs text-gray-500">
-              Must be at least 6 characters
-            </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword" className="text-gray-700 font-medium">
-              Confirm Password
-            </Label>
+            <Label htmlFor="confirmPassword">Confirm Password</Label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -244,7 +224,7 @@ const UpdatePassword = () => {
           >
             {loading ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 Updating Password...
               </>
             ) : (
@@ -252,15 +232,6 @@ const UpdatePassword = () => {
             )}
           </Button>
         </form>
-
-        <div className="text-center">
-          <Link 
-            to="/login" 
-            className="text-sm text-orange-600 hover:text-orange-700 font-medium"
-          >
-            Back to Login
-          </Link>
-        </div>
       </div>
     </div>
   );
