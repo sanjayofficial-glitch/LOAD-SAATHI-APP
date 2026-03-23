@@ -8,14 +8,21 @@ const Index = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Only redirect if we are CERTAIN the user is logged in
+    // Check if we are in a recovery flow before redirecting to dashboard
+    const isRecovery = window.location.hash.includes('type=recovery') || 
+                       window.location.search.includes('type=recovery') ||
+                       window.location.search.includes('code=');
+    
+    if (isRecovery) {
+      console.log("[Index] Recovery flow detected, skipping dashboard redirect.");
+      return;
+    }
+
+    // Only redirect if we are CERTAIN the user is logged in and NOT in recovery
     if (!authLoading && userProfile) {
       navigate(userProfile.user_type === 'trucker' ? '/trucker/dashboard' : '/shipper/dashboard');
     }
   }, [userProfile, authLoading, navigate]);
-
-  // We no longer return a full-screen loader here. 
-  // The landing page shows immediately for everyone.
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50">

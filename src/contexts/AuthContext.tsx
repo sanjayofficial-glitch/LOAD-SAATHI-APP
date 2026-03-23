@@ -108,6 +108,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       async (event, currentSession) => {
         if (!mounted) return;
         
+        console.log("[AuthContext] Auth state changed:", event);
+
+        // Handle password recovery redirect
+        if (event === 'PASSWORD_RECOVERY') {
+          console.log("[AuthContext] Password recovery detected, redirecting...");
+          window.location.href = '/update-password';
+          return;
+        }
+        
         setSession(currentSession);
         const currentUser = currentSession?.user ?? null;
         setUser(currentUser);
