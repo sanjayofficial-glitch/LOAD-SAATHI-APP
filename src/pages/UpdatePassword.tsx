@@ -77,7 +77,8 @@ const UpdatePassword = () => {
     setLoading(true);
 
     try {
-      // Update password - no need for passwordRecoveryToken as we're already in a valid session      const { data, error } = await supabase.auth.updateUser({
+      // Update password - no need for passwordRecoveryToken as we're already in a valid session
+      const { data, error } = await supabase.auth.updateUser({
         password: password,
       });
 
@@ -98,7 +99,6 @@ const UpdatePassword = () => {
       setTimeout(() => {
         navigate('/login', { replace: true });
       }, 2000);
-
     } catch (err: any) {
       console.error('Unexpected error:', err);
       showError(err.message || 'An unexpected error occurred');
@@ -209,7 +209,8 @@ const UpdatePassword = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="pl-10 pr-10"
-                required                disabled={loading}
+                required
+                disabled={loading}
                 minLength={6}
               />
               <button
@@ -254,7 +255,8 @@ const UpdatePassword = () => {
             </div>
           </div>
 
-          <Button            type="submit"
+          <Button
+            type="submit"
             className="w-full bg-orange-600 hover:bg-orange-700 h-11 font-medium"
             disabled={loading}
           >
