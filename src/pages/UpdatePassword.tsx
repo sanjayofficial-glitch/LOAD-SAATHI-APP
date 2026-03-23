@@ -14,8 +14,7 @@ const UpdatePassword = () => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
-  const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  const [searchParams] = useSearchParams(); // Destructure to get URLSearchParams  const token = searchParams.get('token');
   const email = searchParams.get('email');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,9 +31,10 @@ const UpdatePassword = () => {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({
+      // Pass password in the correct options object
+      const { error } = await supabase.auth.updateUser(email, {
         password,
-        options: { email, token }
+        token,
       });
 
       if (error) {
