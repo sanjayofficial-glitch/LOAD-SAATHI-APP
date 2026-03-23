@@ -6,23 +6,38 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, ArrowLeft, User, Truck, Info } from 'lucide-react';
+import { Send, ArrowLeft, User, Truck, Info, Loader2 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
+
+interface Message {
+  id: string;
+  sender_id: string;
+  recipient_id: string;
+  content: string;
+  created_at: string;
+  is_read: boolean;
+  sender?: {
+    full_name: string;
+    user_type: 'trucker' | 'shipper';
+  };
+}
 
 const Chat = () => {
   const { requestId } = useParams();
   const { userProfile } = useAuth();
   const navigate = useNavigate();
-  const [messages, setMessages] = useState<any[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [request, setRequest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchRequestDetails();
     fetchMessages();
     
+    // Set up real-time subscription for new messages
     const channel = supabase
       .channel(`chat:${requestId}`)
       .on('postgres_changes', {
@@ -31,7 +46,7 @@ const Chat = () => {
         table: 'messages',
         filter: `request_id=eq.${requestId}`
       }, (payload) => {
-        setMessages(prev => [...prev, payload.new]);
+        setMessages(prev => [...prev, payload.new as Message]);
       })
       .subscribe();
 
@@ -61,29 +76,40 @@ const Chat = () => {
     const { data } = await supabase
       .from('messages')
       .select('*')
-      .eq('request_id', requestId)
       .order('created_at', { ascending: true });
     
-    if (data) setMessages(data);
+    if (data) setMessages(data as Message[]);
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !userProfile) return;
+    if (!newMessage.trim() || !userProfile || sending) return;
 
-    const { error } = await supabase.from('messages').insert({
-      request_id: requestId,
-      sender_id: userProfile.id,
-      content: newMessage.trim()
-    });
+    setSending(true);
+    try {
+      const { error } = await supabase.from('messages').insert({
+        sender_id: userProfile.id,
+        recipient_id: request.trip?.trucker_id || request.shipper_id,
+        content: newMessage.trim(),
+        request_id: requestId
+      });
 
-    if (error) showError('Failed to send message');
-    else setNewMessage('');
+      if (error) {
+        showError('Failed to send message');
+      } else {
+        setNewMessage('');
+        showSuccess('Message sent!');
+      }
+    } catch (err) {
+      showError('Failed to send message');
+    } finally {
+      setSending(false);
+    }
   };
 
   if (loading) return (
     <div className="flex items-center justify-center h-[calc(100vh-100px)]">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+      <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
     </div>
   );
   
@@ -157,8 +183,9 @@ const Chat = () => {
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               className="bg-white border-orange-100 focus-visible:ring-orange-500 h-11 rounded-xl"
+              disabled={sending}
             />
-            <Button type="submit" className="bg-orange-600 hover:bg-orange-700 h-11 w-11 rounded-xl p-0 shadow-md">
+            <Button type="submit" className="bg-orange-600 hover:bg-orange-700 h-11 w-11 rounded-xl p-0 shadow-md" disabled={sending}>
               <Send className="h-5 w-5" />
             </Button>
           </form>
