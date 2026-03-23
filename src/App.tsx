@@ -14,6 +14,8 @@ const Index = lazy(() => import("./pages/Index"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const UpdatePassword = lazy(() => import("./pages/UpdatePassword"));
 const TruckerDashboard = lazy(() => import("./pages/trucker/Dashboard"));
 const ShipperDashboard = lazy(() => import("./pages/shipper/Dashboard"));
 const PostTrip = lazy(() => import("./pages/trucker/PostTrip"));
@@ -74,6 +76,8 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/update-password" element={<UpdatePassword />} />
               <Route path="/test-auth" element={<TestAuth />} />
               
               {/* Trucker Routes */}
