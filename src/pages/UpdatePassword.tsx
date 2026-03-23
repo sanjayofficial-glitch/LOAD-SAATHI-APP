@@ -1,18 +1,28 @@
-{
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
+import { supabase } from '@/lib/supabaseClient';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { showSuccess, showError } from '@/utils/toast';
+import { Truck, Eye, EyeOff, Lock, AlertCircle, CheckCircle } from 'lucide-react';
+
+const UpdatePassword = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isValidSession, setIsValidSession] = useState(true); // Default to true, set false only on validation failure
+  const [isValidSession, setIsValidSession] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const email = searchParams.get('email');
 
-  // Validate token and email on mount  useEffect(() => {
+  useEffect(() => {
     const validateResetLink = async () => {
       try {
         if (!token || !email) {
@@ -21,7 +31,6 @@
           return;
         }
 
-        // Check if the current session matches the reset request
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
@@ -30,20 +39,16 @@
           return;
         }
 
-        // If we have a valid session and the email matches, keep isValidSession as true
         if (session && session.user?.email === email) {
-          // Token validation is implicitly handled by the fact that we got a session
           return;
         }
 
-        // If we reach here, the email doesn't match the current session
         setIsValidSession(false);
         setErrorMessage('Invalid reset link - token mismatch');
       } catch (err) {
         console.error('Error validating reset link:', err);
         setIsValidSession(false);
         setErrorMessage('An error occurred while verifying your reset link.');
-        setIsValidSession(false);
       }
     };
 
@@ -53,7 +58,6 @@
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Only perform basic client-side validation
     if (password !== confirmPassword) {
       showError('Passwords do not match');
       return;
@@ -67,7 +71,7 @@
     setLoading(true);
 
     try {
-      // Update password - no need for passwordRecoveryToken as we're already in a valid session      const { data, error } = await supabase.auth.updateUser({
+      const { data, error } = await supabase.auth.updateUser({
         password: password,
       });
 
@@ -81,10 +85,8 @@
       setSuccess(true);
       showSuccess('Password updated successfully!');
 
-      // Sign out the user
       await supabase.auth.signOut();
 
-      // Redirect to login after 2 seconds
       setTimeout(() => {
         navigate('/login', { replace: true });
       }, 2000);
@@ -96,14 +98,12 @@
     }
   };
 
-  // If we don't have a token/email, go to forgot password
   useEffect(() => {
     if (!token && !email) {
       navigate('/forgot-password', { replace: true });
     }
   }, [token, email, navigate]);
 
-  // If token is invalid, show error page
   if (!isValidSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -129,14 +129,14 @@
               variant="outline"
               className="w-full"
             >
-              Back to Login            </Button>
+              Back to Login
+            </Button>
           </div>
         </div>
       </div>
     );
   }
 
-  // Success state - show confirmation
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -164,7 +164,7 @@
     );
   }
 
-  // Main form - always render when isValidSession is true and not success  return (
+  return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
         <div className="text-center">
@@ -173,13 +173,15 @@
           </Link>
           <h2 className="text-2xl font-bold text-gray-900 mt-4">Set New Password</h2>
           <p className="text-gray-600 mt-2">
-            Enter your new password below          </p>
+            Enter your new password below
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="password" className="text-gray-700 font-medium">
-              New Password            </Label>
+              New Password
+            </Label>
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -242,7 +244,7 @@
           >
             {loading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                 Updating Password...
               </>
             ) : (
