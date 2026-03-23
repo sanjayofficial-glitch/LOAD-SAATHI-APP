@@ -26,7 +26,7 @@ const Index = () => {
             <span className="text-2xl font-bold text-gray-900">LoadSaathi</span>
           </div>
           <div className="flex space-x-4">
-            <Link to="/login" className="text-gray-600 hover:text-gray-900 font-medium">Login</Link>
+            <Link to="/login" className="text-gray-600 hover:text-gray-900 font-medium px-6 py-2 rounded-lg hover:bg-gray-50 transition-colors">Login</Link>
             <Link to="/register" className="bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700 transition-colors font-medium">Get Started</Link>
           </div>
         </nav>
