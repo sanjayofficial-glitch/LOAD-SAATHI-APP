@@ -57,8 +57,7 @@ const ForgotPassword = () => {
               Didn't receive the email? Check your spam folder or try again.
             </p>
           </div>
-          
-          <div className="space-y-4">
+                    <div className="space-y-4">
             <Button 
               onClick={() => setSubmitted(false)}
               variant="outline"
@@ -139,7 +138,7 @@ const ForgotPassword = () => {
           </Link>
         </div>
       </div>
-    </div>
+    );
   );
 };
 

@@ -10,16 +10,14 @@ import { Truck } from "lucide-react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
 // Lazy load pages
-const Index = lazy(() => import("./pages/Index"));
-const NotFound = lazy(() => import("./pages/NotFound"));
+const Index = lazy(() => import("./pages/Index"));const NotFound = lazy(() => import("./pages/NotFound"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const UpdatePassword = lazy(() => import("./pages/UpdatePassword"));
 const TruckerDashboard = lazy(() => import("./pages/trucker/Dashboard"));
 const ShipperDashboard = lazy(() => import("./pages/shipper/Dashboard"));
-const PostTrip = lazy(() => import("./pages/trucker/PostTrip"));
-const EditTrip = lazy(() => import("./pages/trucker/EditTrip"));
+const PostTrip = lazy(() => import("./pages/trucker/PostTrip"));const EditTrip = lazy(() => import("./pages/trucker/EditTrip"));
 const BrowseTrips = lazy(() => import("./pages/shipper/BrowseTrips")); // Fixed by ensuring default export
 const TripDetail = lazy(() => import("./pages/TripDetail"));
 const MyTrips = lazy(() => import("./pages/trucker/MyTrips"));
@@ -52,8 +50,7 @@ const ProtectedRoute = ({ children, allowedTypes }: { children: React.ReactNode,
 
   if (loading) return <LoadingFallback />;
 
-  if (!userProfile) {
-    return <Navigate to="/login" />;
+  if (!userProfile) {    return <Navigate to="/login" />;
   }
 
   if (allowedTypes && !allowedTypes.includes(userProfile.user_type)) {
@@ -62,10 +59,8 @@ const ProtectedRoute = ({ children, allowedTypes }: { children: React.ReactNode,
 
   return <Layout>{children}</Layout>;
 };
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
+const App = () => (
+  <QueryClientProvider client={queryClient}>    <TooltipProvider>
       <Toaster />
       <Sonner />
       <SpeedInsights />
@@ -107,24 +102,21 @@ const App = () => (
                 <ProtectedRoute allowedTypes={['shipper']}>
                   <ShipperDashboard />
                 </ProtectedRoute>
-              } />
-              <Route path="/browse-trucks" element={
+              } />              <Route path="/browse-trucks" element={
                 <ProtectedRoute allowedTypes={['shipper']}>
                   <BrowseTrips />
                 </ProtectedRoute>
               } />
               <Route path="/shipper/my-shipments" element={
                 <ProtectedRoute allowedTypes={['shipper']}>
-                  <MyShipments />
-                </ProtectedRoute>
+                  <MyShipments />                </ProtectedRoute>
               } />
               
               {/* Shared Routes */}
               <Route path="/trips/:id" element={
                 <ProtectedRoute>
                   <TripDetail />
-                </ProtectedRoute>
-              } />
+                </ProtectedRoute>              } />
               <Route path="/chat/:requestId" element={
                 <ProtectedRoute>
                   <Chat />
@@ -136,18 +128,15 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/admin" element={
-                <ProtectedRoute allowedTypes={['trucker']}>
-                  <AdminDashboard />
+                <ProtectedRoute allowedTypes={['trucker']}>                  <AdminDashboard />
                 </ProtectedRoute>
-              } />
-              
+              } />              
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
         </BrowserRouter>
       </AuthProvider>
     </TooltipProvider>
-  </QueryClientProvider>
-);
+  </QueryClientProvider>);
 
 export default App;
