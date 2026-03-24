@@ -62,46 +62,104 @@ const Chat = () => {
   }, [messages]);
 
   const fetchRequestDetails = async () => {
-    const { data } = await supabase
+    if (!requestId) {
+      showError('Invalid request ID');
+      navigate(-1);
+      return;
+    }
+    
+    const { data, error } = await supabase
       .from('requests')
       .select('*, trip:trips(*, trucker:users(*)), shipper:users(*)')
       .eq('id', requestId)
       .single();
     
-    if (data) setRequest(data);
+    if (error) {
+      showError('Failed to load request details');
+      console.error('Request fetch error:', error);
+      navigate(-1);
+      return;
+    }
+    
+    if (!data) {
+      showError('Request not found');
+      navigate(-1);
+      return;
+    }
+    
+    setRequest(data);
     setLoading(false);
   };
 
   const fetchMessages = async () => {
-    const { data } = await supabase
+    if (!requestId) return;
+    
+    const { data, error } = await supabase
       .from('messages')
       .select('*')
+      .eq('request_id', requestId)
       .order('created_at', { ascending: true });
     
-    if (data) setMessages(data as Message[]);
+    if (error) {
+      showError('Failed to load messages');
+      console.error('Messages fetch error:', error);
+      return;
+    }
+    
+    setMessages(data as Message[]);
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !userProfile || sending) return;
-
+    
+    // Validate inputs
+    if (!newMessage.trim()) {
+      showError('Please enter a message');
+      return;
+    }
+    
+    if (!userProfile) {
+      showError('You must be logged in to send messages');
+      return;
+    }
+    
+    if (!request) {
+      showError('Request details not loaded');
+      return;
+    }
+    
+    // Determine recipient ID with proper fallback
+    const recipientId = request.trip?.trucker_id || request.shipper_id;
+    if (!recipientId) {
+      showError('Unable to determine recipient. Please try again later.');
+      return;
+    }
+    
+    // Prevent sending to self
+    if (recipientId === userProfile.id) {
+      showError('You cannot send a message to yourself');
+      return;
+    }
+    
     setSending(true);
     try {
       const { error } = await supabase.from('messages').insert({
         sender_id: userProfile.id,
-        recipient_id: request.trip?.trucker_id || request.shipper_id,
+        recipient_id: recipientId,
         content: newMessage.trim(),
         request_id: requestId
       });
 
       if (error) {
-        showError('Failed to send message');
+        console.error('Message send error:', error);
+        showError('Failed to send message: ' + error.message);
       } else {
         setNewMessage('');
         showSuccess('Message sent!');
       }
     } catch (err) {
-      showError('Failed to send message');
+      console.error('Unexpected error sending message:', err);
+      showError('Failed to send message. Please try again.');
     } finally {
       setSending(false);
     }
@@ -112,8 +170,7 @@ const Chat = () => {
       <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
     </div>
   );
-  
-  if (!request) return <div className="p-8 text-center">Chat not found</div>;
+    if (!request) return <div className="p-8 text-center">Loading chat...</div>;
 
   const otherUser = userProfile?.user_type === 'trucker' ? request.shipper : request.trip.trucker;
 
