@@ -16,26 +16,58 @@ const UpdatePassword = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isVerifying, setIsVerifying] = useState(true);
   const [isValidSession, setIsValidSession] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
     const checkSession = async () => {
       try {
-        // Supabase automatically handles the recovery token from the URL hash/query
-        // and sets a session. We just need to check if a session exists.
+        // Get the current session - Supabase automatically processes the recovery token
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (error || !session) {
-          console.error('No active session for password reset:', error);
+        if (error) {
+          console.error('Session check error:', error);
+          setErrorMsg('Unable to verify reset link. Please try again.');
           setIsValidSession(false);
-        } else {
+        } else if (session) {
+          // Valid session exists (user is authenticated via recovery token)
+          console.log('Valid session found for password reset');
           setIsValidSession(true);
+        } else {
+          // No session - check if we have a recovery code in the URL
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const queryParams = new URLSearchParams(window.location.search);
+          const hasRecoveryCode = hashParams.has('access_token') || queryParams.has('code');
+          
+          if (hasRecoveryCode) {
+            // There's a recovery code but no session yet - wait a bit for Supabase to process it
+            console.log('Recovery code detected, waiting for session...');
+            setTimeout(async () => {
+              const { data: { session: retrySession } } = await supabase.auth.getSession();
+              if (retrySession) {
+                setIsValidSession(true);
+              } else {
+                setErrorMsg('Invalid or expired reset link. Please request a new one.');
+                setIsValidSession(false);
+              }
+              setIsVerifying(false);
+            }, 1000);
+            return;
+          } else {
+            console.log('No recovery code or session found');
+            setErrorMsg('Invalid or expired reset link. Please request a new one.');
+            setIsValidSession(false);
+          }
         }
       } catch (err) {
         console.error('Error checking session:', err);
+        setErrorMsg('An error occurred. Please try again.');
         setIsValidSession(false);
       } finally {
-        setIsVerifying(false);
+        // Only set verifying to false if we haven't already set a timeout
+        if (!errorMsg && !isValidSession) {
+          setIsVerifying(false);
+        }
       }
     };
 
@@ -74,6 +106,7 @@ const UpdatePassword = () => {
       // Sign out to force a fresh login with the new password
       await supabase.auth.signOut();
 
+      // Redirect to login after a short delay
       setTimeout(() => {
         navigate('/login', { replace: true });
       }, 3000);
@@ -86,12 +119,15 @@ const UpdatePassword = () => {
   if (isVerifying) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-orange-600 mx-auto mb-4" />
+          <p className="text-gray-600 font-medium">Verifying reset link...</p>
+        </div>
       </div>
     );
   }
 
-  if (!isValidSession && !success) {
+  if (errorMsg && !isValidSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
@@ -101,7 +137,7 @@ const UpdatePassword = () => {
             </div>
             <h2 className="text-2xl font-bold text-gray-900">Invalid or Expired Link</h2>
             <p className="text-gray-600 mt-4">
-              This password reset link is invalid or has expired. Please request a new one.
+              {errorMsg}
             </p>
           </div>
           <div className="space-y-4">
@@ -137,7 +173,7 @@ const UpdatePassword = () => {
               Your password has been successfully updated.
             </p>
             <p className="text-sm text-gray-500 mt-2">
-              Redirecting to login...
+              Redirecting to login in 3 seconds...
             </p>
           </div>
           <Button 
