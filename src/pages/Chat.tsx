@@ -1,194 +1,118 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
-import { MessageSquare, Phone, ChevronLeft, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { showSuccess, showError } from '@/utils/toast';
+import { useEffect, useState, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { Message } from "@/types/chat";
+import { sendMessage, fetchMessages, subscribeToNewMessages, markMessagesAsRead } from "@/utils/chat";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { showSuccess, showError } from "@/utils/toast";
+import { ChevronLeft, X } from "lucide-react";
 
 const Chat = () => {
   const { requestId } = useParams<{ requestId: string }>();
   const navigate = useNavigate();
-  const { userProfile, refreshProfile } = useAuth();
-  const [messages, setMessages] = useState<Array<any>>([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [request, setRequest] = useState<any>(null);
-  const [userProfileData, setUserProfileData] = useState<any>(null);
-  const [recipientProfile, setRecipientProfile] = useState<any>(null);
+  const { userProfile } = useAuth();
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [isSending, setIsSending] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const messagesEndRef = useRef(null);
-  const [isTyping, setIsTyping] = useState(false);
+  const [showTyping, setShowTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Scroll to bottom when messages update
+  // Load initial messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (!requestId) return;
 
-  // Fetch request details and user profiles
-  useEffect(() => {
-    const loadChatData = async () => {
-      if (!requestId) return;
-      
+    const loadMessages = async () => {
       try {
-        // Get request details
-        const { data: requestData, error: requestError } = await supabase
-          .from('requests')
-          .select(`
-            *,
-            trip:trips(*),
-            shipper:users(*),
-            trucker:trips!requests_trip_id_fkey(trucker:users(*))
-          `)
-          .eq('id', requestId)
-          .single();
-
-        if (requestError) throw requestError;
-        
-        setRequest(requestData);
-        
-        // Determine recipient based on user type
-        let recipientId: string | null = null;
-        if (userProfile?.user_type === 'trucker') {
-          recipientId = requestData.shipper_id;
-        } else if (userProfile?.user_type === 'shipper') {
-          recipientId = requestData.trip?.trucker_id;
-        }
-        
-        // Fetch recipient profile
-        if (recipientId) {
-          const { data: recipientData, error: recipientError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', recipientId)
-            .single();
-            
-          if (!recipientError && recipientData) {
-            setRecipientProfile(recipientData);
-          }
-        }
-        
-        // Fetch current user profile
-        if (userProfile?.id) {
-          const { data: profileData, error: profileError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', userProfile.id)
-            .single();
-            
-          if (!profileError && profileData) {
-            setUserProfileData(profileData);
-          }
-        }
-        
-        // Load initial messages
-        const { data: messagesData, error: messagesError } = await supabase
-          .from('messages')
-          .select('*')
-          .eq('request_id', requestId)
-          .order('created_at', { ascending: true });
-          
-        if (!messagesError) {
-          setMessages(messagesData || []);
-        }
+        const msgs = await fetchMessages(requestId);
+        setMessages(msgs);
       } catch (error) {
-        console.error('Error loading chat data:', error);
-        showError('Failed to load chat');
+        console.error("Error loading messages:", error);
+        showError("Failed to load messages");
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadChatData();
-  }, [requestId, userProfile]);
+    loadMessages();
+  }, [requestId]);
 
-  // Real-time subscription for new messages
+  // Set up real-time subscription
   useEffect(() => {
     if (!requestId || !userProfile?.id) return;
 
-    const channel = supabase
-      .channel(`messages:${requestId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `request_id=eq.${requestId}`
-      }, (payload) => {
-        const newMessage = payload.new;
-        // Avoid adding duplicate messages
-        if (!messages.some(msg => msg.id === newMessage.id)) {
-          setMessages(prev => [...prev, newMessage]);
-        }
-      })
-      .subscribe();
+    const cleanup = subscribeToNewMessages(requestId, (newMessage) => {
+      setMessages((prev) => [...prev, newMessage]);
+      // Mark as unread when new message arrives      setShowTyping(true);
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => setShowTyping(false), 3000);
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      cleanup();
+      supabase.removeChannel(supabase.channel(`messages:${requestId}`));
     };
-  }, [requestId, userProfile?.id, messages.length]);
+  }, [requestId, userProfile?.id]);
 
-  // Handle sending message
+  // Mark messages as read when component mounts (optional)
+  useEffect(() => {
+    if (userProfile?.id && requestId) {
+      const markAllAsRead = async () => {
+        const messageIds = messages.map((msg) => msg.id);
+        if (messageIds.length > 0) {
+          await markMessagesAsRead(messageIds);
+        }
+      };
+      markAllAsRead();
+    }
+  }, [messages, userProfile?.id, requestId]);
+
+  // Handle sending a new message
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !requestId || !userProfile?.id) return;
 
+    setIsSending(true);
     try {
-      // Determine recipient
-      let recipientId: string | null = null;
-      if (userProfile?.user_type === 'trucker') {
-        recipientId = request?.shipper_id;
-      } else if (userProfile?.user_type === 'shipper') {
-        recipientId = request?.trip?.trucker_id;
-      }
+      const payload = {
+        recipientId: userProfile.user_type === "trucker" ? request?.shipper_id : request?.trucker_id,
+        content: newMessage.trim(),
+        requestId,
+      };
 
-      if (!recipientId) {
-        showError('Unable to determine recipient');
-        return;
-      }
-
-      // Insert message
-      const { error: insertError } = await supabase
-        .from('messages')
-        .insert({
-          request_id: requestId,
-          sender_id: userProfile.id,
-          recipient_id: recipientId,
-          content: newMessage.trim()
-        });
-
-      if (insertError) throw insertError;
-
-      // Clear input
-      setNewMessage('');
-      
-      // Notify recipient they have a new message (optional)
-      // This could trigger a notification, but we'll keep it simple for now
+      const sentMessage = await sendMessage(payload);
+      setMessages((prev) => [...prev, sentMessage]);
+      setNewMessage("");
+      showSuccess("Message sent!");
     } catch (error) {
-      console.error('Error sending message:', error);
-      showError('Failed to send message');
+      console.error("Error sending message:", error);
+      showError("Failed to send message");
+    } finally {
+      setIsSending(false);
     }
   };
 
-  // Handle Enter key in textarea
+  // Handle Enter key press
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage(e);
     }
   };
 
-  // Handle typing indicator (optional, can be removed for simplicity)
-  const handleTyping = () => {
-    setIsTyping(true);
-    clearTimeout(typingTimeoutRef.current);
-    typingTimeoutRef.current = setTimeout(() => {
-      setIsTyping(false);
-    }, 3000);
+  // Determine recipient profile for display
+  const recipient = request?.shipper_id ? "Shipper" : "Trucker";
+  const recipientName = request?.shipper?.full_name || request?.trucker?.full_name || "Unknown";
+
+  // Back button handler
+  const handleBack = () => {
+    navigate(-1);
   };
 
   if (isLoading) {
@@ -207,11 +131,7 @@ const Chat = () => {
       <div className="min-h-[60vh] flex items-center justify-center">
         <div className="text-center">
           <p className="text-gray-500">Chat not found</p>
-          <Button 
-            variant="outline" 
-            onClick={() => navigate(-1)}
-            className="mt-4"
-          >
+          <Button variant="outline" onClick={handleBack} className="mt-4">
             Go Back
           </Button>
         </div>
@@ -223,33 +143,30 @@ const Chat = () => {
     <div className="flex h-[calc(100vh-4.5rem)] flex-col bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm">
-        <div className="flex items-center space-x-3 cursor-pointer" onClick={() => navigate(-1)}>
+        <div className="flex items-center space-x-3 cursor-pointer" onClick={handleBack}>
           <ChevronLeft className="h-5 w-5 text-gray-500" />
           <div>
-            <p className="font-medium text-gray-900">{recipientProfile?.full_name || 'Chat'}</p>
-            <p className="text-xs text-gray-500">
-              {recipientProfile?.user_type === 'trucker' ? 'Trucker' : 'Shipper'}
-            </p>
+            <p className="font-medium text-gray-900">{recipientName}</p>
+            <p className="text-xs text-gray-500">{recipient}</p>
           </div>
         </div>
         <div className="flex items-center space-x-3">
-          {isTyping && (
+          {showTyping && (
             <div className="flex space-x-1 text-sm text-gray-500">
               <div className="h-1.5 w-1.5 bg-gray-400 rounded-full animate-bounce" />
               <div className="h-1.5 w-1.5 bg-gray-400 rounded-full animate-bounce" />
               <div className="h-1.5 w-1.5 bg-gray-400 rounded-full animate-bounce" />
             </div>
           )}
-          <Button 
-            variant="ghost" 
+          <Button            variant="ghost"
             size="icon"
             onClick={() => {
-              if (recipientProfile?.phone) {
-                navigate(`/tel:${recipientProfile.phone}`);
+              if (request?.shipper?.phone) {
+                navigate(`/tel:${request.shipper.phone}`);
               }
             }}
           >
-            <Phone className="h-4 w-4 text-gray-600 hover:text-gray-900" />
+            <X className="h-4 w-4 text-gray-600 hover:text-gray-900" />
           </Button>
         </div>
       </div>
@@ -264,25 +181,30 @@ const Chat = () => {
           <>
             {messages.map((msg) => {
               const isOwnMessage = msg.sender_id === userProfile?.id;
-              const senderProfile = isOwnMessage ? userProfileData : recipientProfile;
-              
+              const senderProfile = isOwnMessage
+                ? userProfile                : request?.shipper?.id === msg.sender_id
+                ? request?.shipper                : request?.trucker;
+
               return (
-                <div key={msg.id} className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[70%] px-4 py-2 rounded-lg ${isOwnMessage ? 'bg-orange-600 text-white' : 'bg-white border border-gray-200'}`}>
+                <div key={msg.id} className="flex">
+                  <div className={`max-w-[70%] px-4 py-2 rounded-lg ${isOwnMessage ? "bg-orange-600 text-white" : "bg-white border border-gray-200"}`}>
                     <div className="flex items-center space-x-2 mb-1">
                       {senderProfile && (
                         <>
                           <Avatar className="h-8 w-8">
-                            <AvatarImage 
-                              src={senderProfile.avatar_url || '/placeholder.svg'} 
-                              alt={senderProfile.full_name} 
+                            <AvatarImage
+                              src={senderProfile.avatar_url || "/placeholder.svg"}
+                              alt={senderProfile.full_name}
                             />
-                            <AvatarFallback>{senderProfile.full_name?.charAt(0) || 'U'}</AvatarFallback>
+                            <AvatarFallback>{senderProfile.full_name?.charAt(0) || "U"}</AvatarFallback>
                           </Avatar>
                           <div>
                             <p className="text-sm font-medium">{senderProfile.full_name}</p>
                             <p className="text-xs text-gray-500">
-                              {new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                              {new Date(msg.created_at).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
                             </p>
                           </div>
                         </>
@@ -305,17 +227,39 @@ const Chat = () => {
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            onInput={handleTyping}
             placeholder="Type a message..."
             rows={2}
             className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
           />
-          <Button 
-            type="submit" 
-            disabled={!newMessage.trim() || !requestId}
+          <Button            type="submit"
+            disabled={isSending || !newMessage.trim() || !requestId}
             className="px-4 py-2"
           >
-            Send
+            {isSending ? (
+              <>
+                <svg
+                  className="animate-spin h-4 w-4 mr-2 text-orange-600"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8H3z"
+                  />
+                </svg>
+                Sending...
+              </>
+            ) : (
+              "Send"
+            )}
           </Button>
         </form>
       </div>
