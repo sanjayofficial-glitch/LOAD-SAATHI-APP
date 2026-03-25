@@ -7,15 +7,5 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-  },
-  global: {
-    data: {
-      schema: 'public',
-      table: 'trips'
-    }
-  },
-  functions: {
-    schema: 'public',
-    table: 'functions'
   }
 });

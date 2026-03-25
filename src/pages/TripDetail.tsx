@@ -54,41 +54,38 @@ const TripDetail = () => {
 
     setSubmitting(true);
     try {
-      // Use a transaction to ensure atomic operation
-      const { error } = await supabase.transaction(async (tx) => {
-        // Insert the request
-        const { error: insertError } = await tx.from('requests').insert({
+      // Insert the request
+      const { data: requestData, error: insertError } = await supabase
+        .from('requests')
+        .insert({
           trip_id: id,
           shipper_id: userProfile.id,
           goods_description: description.trim(),
           weight_tonnes: requestedWeight,
           status: 'pending'
-        });
+        })
+        .select()
+        .single();
 
-        if (insertError) {
-          throw insertError;
-        }
-        
-        // Update trip capacity if needed
-        const newCapacity = trip.available_capacity_tonnes - requestedWeight;
-        if (newCapacity >= 0) {
-          const { error: updateError } = await tx
-            .from('trips')
-            .update({ available_capacity_tonnes: newCapacity })
-            .eq('id', id);
-            
-          if (updateError) {
-            throw updateError;
-          }
-        }
-      });
-
-      if (error) {
-        showError(error.message);
-      } else {
-        showSuccess('Booking request sent successfully!');
-        navigate('/shipper/my-shipments');
+      if (insertError) {
+        throw insertError;
       }
+
+      // Update the trip capacity (we know requestedWeight <= trip.available_capacity_tonnes, so newCapacity >=0)
+      const newCapacity = trip.available_capacity_tonnes - requestedWeight;
+      const { error: updateError } = await supabase
+        .from('trips')
+        .update({ available_capacity_tonnes: newCapacity })
+        .eq('id', id);
+
+      if (updateError) {
+        // Rollback: delete the request we just inserted
+        await supabase.from('requests').delete().eq('id', requestData.id);
+        throw updateError;
+      }
+
+      showSuccess('Booking request sent successfully!');
+      navigate('/shipper/my-shipments');
     } catch (err: any) {
       console.error('[TripDetail] Error sending request:', err);
       showError(err.message || 'An unexpected error occurred');
@@ -146,8 +143,7 @@ const TripDetail = () => {
 
             <div className="bg-blue-50 p-4 rounded-lg flex items-center justify-between">
               <div className="flex items-center">
-                <CheckCircle className="mr-2 h-5 w-5" /> Available Capacity
-              </div>
+                <CheckCircle className="mr-2 h-5 w-5" /> Available Capacity              </div>
               <Badge className="bg-blue-600 text-white text-lg px-3 py-1">
                 {trip.available_capacity_tonnes} Tonnes
               </Badge>
@@ -185,8 +181,7 @@ const TripDetail = () => {
                   <Input 
                     id="weight"
                     type="number" 
-                    step="0.1" 
-                    placeholder="e.g. 2.5"
+                    step="0.1"                     placeholder="e.g. 2.5"
                     className="pr-16"
                     value={weight}
                     onChange={(e) => setWeight(e.target.value)}
@@ -224,8 +219,7 @@ const TripDetail = () => {
                 </p>
               </div>
 
-              <Button 
-                onClick={handleRequest} 
+              <Button                 onClick={handleRequest} 
                 className="w-full bg-orange-600 hover:bg-orange-700 h-12 text-lg font-bold"
                 disabled={submitting || !weight || parseFloat(weight) > trip.available_capacity_tonnes}
               >
