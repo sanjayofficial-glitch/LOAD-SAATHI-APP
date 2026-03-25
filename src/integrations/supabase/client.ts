@@ -8,9 +8,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     persistSession: true,
     autoRefreshToken: true,
   },
-  realtime: {
-    params: {
-      eventsPerSecond: 10,
-    },
+  global: {
+    data: {
+      schema: 'public',
+      table: 'trips'
+    }
   },
+  functions: {
+    schema: 'public',
+    table: 'functions'
+  }
 });
