@@ -1,3 +1,5 @@
+"use client";
+
 import { supabase } from '@/lib/supabaseClient';
 import { Message } from '@/types/chat';
 
@@ -8,17 +10,16 @@ export interface MessagePayload {
 }
 
 export const sendMessage = async (payload: MessagePayload): Promise<Message> => {
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-  const senderId = userData?.user?.id;
-
-  if (userError || !senderId) {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
     throw new Error('User not authenticated');
   }
 
-  const { data: messageData, error } = await supabase
+  const { data, error } = await supabase
     .from('messages')
     .insert({
-      sender_id: senderId,
+      sender_id: user.id,
       recipient_id: payload.recipientId,
       content: payload.content,
       request_id: payload.requestId,
@@ -28,10 +29,11 @@ export const sendMessage = async (payload: MessagePayload): Promise<Message> => 
     .single();
 
   if (error) {
-    throw new Error('Failed to send message');
+    console.error('[ChatUtil] Error sending message:', error);
+    throw new Error(error.message || 'Failed to send message');
   }
 
-  return messageData as Message;
+  return data as Message;
 };
 
 export const fetchMessages = async (requestId: string): Promise<Message[]> => {
@@ -42,45 +44,48 @@ export const fetchMessages = async (requestId: string): Promise<Message[]> => {
     .order('created_at', { ascending: true });
 
   if (error) {
+    console.error('[ChatUtil] Error fetching messages:', error);
     throw new Error('Failed to fetch messages');
   }
 
   return data || [];
 };
 
-export const markMessagesAsRead = async (messageIds: string[]): Promise<void> => {
+export const markMessagesAsRead = async (requestId: string, userId: string): Promise<void> => {
   const { error } = await supabase
     .from('messages')
     .update({ is_read: true })
-    .in('id', messageIds);
+    .eq('request_id', requestId)
+    .eq('recipient_id', userId)
+    .eq('is_read', false);
 
   if (error) {
-    throw new Error('Failed to mark messages as read');
+    console.error('[ChatUtil] Error marking messages as read:', error);
   }
 };
 
-export const subscribeToNewMessages = (
+export const subscribeToMessages = (
   requestId: string,
   onNewMessage: (message: Message) => void
 ) => {
   const channel = supabase
-    .channel(`messages:${requestId}`)
-    .on('postgres_changes', {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'messages',
-      filter: `request_id=eq.${requestId}`,
-    }, (payload) => {
-      const newMessage = payload.new as Message;
-      onNewMessage(newMessage);
-    })
-    .subscribe();
+    .channel(`chat:${requestId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `request_id=eq.${requestId}`,
+      },
+      (payload) => {
+        console.log('[ChatUtil] New message received via Realtime:', payload.new);
+        onNewMessage(payload.new as Message);
+      }
+    )
+    .subscribe((status) => {
+      console.log(`[ChatUtil] Subscription status for ${requestId}:`, status);
+    });
 
-  return () => {
-    supabase.removeChannel(channel);
-  };
-};
-
-export const unsubscribeFromMessages = (requestId: string): void => {
-  supabase.removeChannel(supabase.channel(`messages:${requestId}`));
+  return channel;
 };
