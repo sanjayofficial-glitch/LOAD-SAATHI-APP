@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { showSuccess, showError } from '@/utils/toast';
-import { Truck, Mail, ArrowLeft, Loader2 } from 'lucide-react';
+import { Truck, Mail, ArrowLeft, Loader2, CheckCircle } from 'lucide-react';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -46,25 +46,23 @@ const ForgotPassword = () => {
         <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
           <div className="text-center">
             <div className="bg-green-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Mail className="h-8 w-8 text-green-600" />
+              <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
-            <h2 className="text-3xl font-bold text-gray-900">Check Your Email</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Check Your Email</h2>
             <p className="text-gray-600 mt-4">
               We've sent a password reset link to <strong>{email}</strong>. 
-              Please check your inbox and follow the instructions to reset your password.
+              Please check your inbox and follow the instructions.
             </p>
             <p className="text-sm text-gray-500 mt-4">
               Didn't receive the email? Check your spam folder or try again.
             </p>
           </div>
           <div className="space-y-4">
-            <Button 
-              onClick={() => setSubmitted(false)}
+            <Button               onClick={() => setSubmitted(false)}
               variant="outline"
               className="w-full"
             >
-              Try a different email
-            </Button>
+              Try a different email            </Button>
             <Button 
               onClick={() => navigate('/login')}
               className="w-full bg-orange-600 hover:bg-orange-700"
@@ -85,7 +83,7 @@ const ForgotPassword = () => {
           <Link to="/" className="flex items-center justify-center space-x-2 group">
             <Truck className="h-12 w-12 text-orange-600" />
           </Link>
-          <h2 className="text-3xl font-bold text-gray-900 mt-4">Forgot Password?</h2>
+          <h2 className="text-3xl font-bold text-gray-900">Forgot Password?</h2>
           <p className="text-gray-600 mt-2">
             No worries! Enter your email and we'll send you a reset link.
           </p>
@@ -103,7 +101,8 @@ const ForgotPassword = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-10"
-                required                disabled={loading}
+                required
+                disabled={loading}
               />
             </div>
             <p className="text-xs text-gray-500">
@@ -137,7 +136,7 @@ const ForgotPassword = () => {
           </Link>
         </div>
       </div>
-    );
+    </div>
   );
 };
 
