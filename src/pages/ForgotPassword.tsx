@@ -57,7 +57,7 @@ const ForgotPassword = () => {
               Didn't receive the email? Check your spam folder or try again.
             </p>
           </div>
-                    <div className="space-y-4">
+          <div className="space-y-4">
             <Button 
               onClick={() => setSubmitted(false)}
               variant="outline"
@@ -103,8 +103,7 @@ const ForgotPassword = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-10"
-                required
-                disabled={loading}
+                required                disabled={loading}
               />
             </div>
             <p className="text-xs text-gray-500">
