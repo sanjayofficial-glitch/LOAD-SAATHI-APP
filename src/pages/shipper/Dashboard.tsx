@@ -17,9 +17,9 @@ import {
   Truck,
   Phone,
   Loader2,
-  Search,
-  Star
+  Search
 } from 'lucide-react';
+import Star from '@/components/Star';
 
 const ShipperDashboard = () => {
   const { userProfile } = useAuth();
@@ -85,8 +85,7 @@ const ShipperDashboard = () => {
       }, () => {
         queryClient.invalidateQueries({ queryKey: ['shipper-requests'] });
       })
-      .on('postgres_changes', { 
-        event: '*', 
+      .on('postgres_changes', {         event: '*', 
         schema: 'public', 
         table: 'reviews',
         filter: `shipper_id=eq.${userProfile.id}`
