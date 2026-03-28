@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { showSuccess, showError } from '@/utils/toast';
 import { MapPin, Calendar, Truck, IndianRupee, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
+import Star from '@/components/Star';
 
 const TripDetail = () => {
   const { id } = useParams();
@@ -174,7 +175,7 @@ const TripDetail = () => {
                 <div>
                   <p className="font-bold text-gray-900">{trip.trucker?.full_name}</p>
                   <div className="flex items-center text-sm text-gray-500">
-                    <Star className="h-3 w-3 text-yellow-500 mr-1 fill-current" />
+                    <Star filled className="h-3 w-3 text-yellow-500 mr-1" />
                     {trip.trucker?.rating?.toFixed(1) || '0.0'} Rating • {trip.trucker?.total_trips || 0} Trips
                   </div>
                 </div>
@@ -195,7 +196,8 @@ const TripDetail = () => {
                   <Input 
                     id="weight"
                     type="number" 
-                    step="0.1"                     placeholder="e.g. 2.5"
+                    step="0.1" 
+                    placeholder="e.g. 2.5"
                     className="pr-16"
                     value={weight}
                     onChange={(e) => setWeight(e.target.value)}
@@ -233,7 +235,8 @@ const TripDetail = () => {
                 </p>
               </div>
 
-              <Button                 onClick={handleRequest} 
+              <Button 
+                onClick={handleRequest} 
                 className="w-full bg-orange-600 hover:bg-orange-700 h-12 text-lg font-bold"
                 disabled={submitting || !weight || parseFloat(weight) > trip.available_capacity_tonnes}
               >
@@ -246,11 +249,5 @@ const TripDetail = () => {
     </div>
   );
 };
-
-const Star = ({ className }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-  </svg>
-);
 
 export default TripDetail;

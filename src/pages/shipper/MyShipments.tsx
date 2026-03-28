@@ -16,7 +16,8 @@ import {
   DialogTrigger 
 } from "@/components/ui/dialog";
 import { showSuccess, showError } from '@/utils/toast';
-import { Package, Star, Phone, MapPin, MessageSquare } from 'lucide-react';
+import { Package, Phone, MapPin, MessageSquare, Loader2 } from 'lucide-react';
+import Star from '@/components/Star';
 
 const MyShipments = () => {
   const { userProfile } = useAuth();
@@ -25,6 +26,7 @@ const MyShipments = () => {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [reviewedTrips, setReviewedTrips] = useState<Set<string>>(new Set());
 
   const fetchRequests = async () => {
     const { data, error } = await supabase
@@ -52,27 +54,54 @@ const MyShipments = () => {
     setLoading(false);
   };
 
+  const fetchReviewedTrips = async () => {
+    if (!userProfile) return;
+    
+    const { data, error } = await supabase
+      .from('reviews')
+      .select('trip_id')
+      .eq('shipper_id', userProfile.id);
+    
+    if (data) {
+      setReviewedTrips(new Set(data.map(review => review.trip_id)));
+    }
+  };
+
   useEffect(() => {
-    if (userProfile) fetchRequests();
+    if (userProfile) {
+      fetchRequests();
+      fetchReviewedTrips();
+    }
   }, [userProfile]);
 
   const handleSubmitReview = async (tripId: string, truckerId: string) => {
     setSubmitting(true);
-    const { error } = await supabase.from('reviews').insert({
-      trip_id: tripId,
-      shipper_id: userProfile?.id,
-      trucker_id: truckerId,
-      rating,
-      comment
-    });
+    
+    try {
+      const { error } = await supabase.from('reviews').insert({
+        trip_id: tripId,
+        shipper_id: userProfile?.id,
+        trucker_id: truckerId,
+        rating,
+        comment: comment.trim() || null
+      });
 
-    if (error) {
-      showError('You have already reviewed this trip or something went wrong.');
-    } else {
-      showSuccess('Thank you for your review!');
-      fetchRequests();
+      if (error) {
+        if (error.code === '23505') {
+          showError('You have already reviewed this trip.');
+        } else {
+          showError('Failed to submit review. Please try again.');
+        }
+      } else {
+        showSuccess('Thank you for your review!');
+        setReviewedTrips(prev => new Set([...prev, tripId]));
+        fetchRequests(); // Refresh to update the UI
+      }
+    } catch (err) {
+      showError('An unexpected error occurred.');
+    } finally {
+      setSubmitting(false);
     }
-    setSubmitting(false);
   };
 
   if (loading) return <div className="p-8 text-center">Loading...</div>;
@@ -118,11 +147,15 @@ const MyShipments = () => {
                       <div className="bg-orange-50 p-3 rounded-lg flex flex-wrap items-center justify-between gap-3">
                         <div className="flex items-center">
                           <div className="w-8 h-8 bg-orange-200 rounded-full flex items-center justify-center mr-3">
-                            <Star className="h-4 w-4 text-orange-700" />
+                            <Star filled className="h-4 w-4 text-orange-700" />
                           </div>
                           <div>
                             <p className="text-xs text-orange-800 font-medium">Trucker Contact</p>
                             <p className="text-sm font-bold text-orange-900">{req.trip.trucker.full_name}</p>
+                            <div className="flex items-center text-xs text-orange-600">
+                              <Star filled className="h-3 w-3 text-yellow-500 mr-1" />
+                              {req.trip.trucker.rating?.toFixed(1) || '0.0'} Rating
+                            </div>
                           </div>
                         </div>
                         <div className="flex gap-2">
@@ -144,7 +177,7 @@ const MyShipments = () => {
                   </div>
 
                   <div className="flex flex-col justify-center items-end gap-3">
-                    {req.trip?.status === 'completed' && req.status === 'accepted' && (
+                    {req.trip?.status === 'completed' && req.status === 'accepted' && !reviewedTrips.has(req.trip_id) && (
                       <Dialog>
                         <DialogTrigger asChild>
                           <Button className="bg-yellow-500 hover:bg-yellow-600 text-white">
@@ -168,7 +201,7 @@ const MyShipments = () => {
                                       rating >= s ? 'text-yellow-500' : 'text-gray-300'
                                     }`}
                                   >
-                                    <Star className="h-8 w-8 fill-current" />
+                                    <Star filled className="h-8 w-8" />
                                   </button>
                                 ))}
                               </div>
@@ -186,12 +219,27 @@ const MyShipments = () => {
                               onClick={() => handleSubmitReview(req.trip_id, req.trip.trucker_id)}
                               disabled={submitting}
                             >
-                              {submitting ? 'Submitting...' : 'Submit Review'}
+                              {submitting ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                  Submitting...
+                                </>
+                              ) : 'Submit Review'}
                             </Button>
                           </div>
                         </DialogContent>
                       </Dialog>
                     )}
+
+                    {req.trip?.status === 'completed' && req.status === 'accepted' && reviewedTrips.has(req.trip_id) && (
+                      <div className="text-center">
+                        <div className="flex items-center text-green-600 mb-2">
+                          <Star filled className="h-4 w-4 mr-1" />
+                          <span className="text-sm font-medium">Already Rated</span>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="text-right">
                       <p className="text-xs text-gray-400">Requested on</p>
                       <p className="text-sm font-medium">{new Date(req.created_at).toLocaleDateString()}</p>

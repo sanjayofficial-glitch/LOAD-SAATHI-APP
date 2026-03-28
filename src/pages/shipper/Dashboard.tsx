@@ -17,7 +17,8 @@ import {
   Truck,
   Phone,
   Loader2,
-  Search
+  Search,
+  Star
 } from 'lucide-react';
 
 const ShipperDashboard = () => {
@@ -56,6 +57,21 @@ const ShipperDashboard = () => {
     enabled: !!userProfile?.id,
   });
 
+  // Fetch reviews given by this shipper
+  const { data: reviews = [] } = useQuery({
+    queryKey: ['shipper-reviews', userProfile?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('shipper_id', userProfile?.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!userProfile?.id,
+  });
+
   useEffect(() => {
     if (!userProfile?.id) return;
 
@@ -68,6 +84,14 @@ const ShipperDashboard = () => {
         filter: `shipper_id=eq.${userProfile.id}`
       }, () => {
         queryClient.invalidateQueries({ queryKey: ['shipper-requests'] });
+      })
+      .on('postgres_changes', { 
+        event: '*', 
+        schema: 'public', 
+        table: 'reviews',
+        filter: `shipper_id=eq.${userProfile.id}`
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ['shipper-reviews'] });
       })
       .subscribe();
 
@@ -82,6 +106,12 @@ const ShipperDashboard = () => {
     requests.filter(r => r.status === 'accepted')
       .reduce((sum, r) => sum + (r.weight_tonnes * (r.trip?.price_per_tonne || 0)), 0), 
   [requests]);
+
+  const averageRatingGiven = useMemo(() => {
+    if (reviews.length === 0) return 0;
+    const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
+    return sum / reviews.length;
+  }, [reviews]);
 
   if (isLoading && requests.length === 0) {
     return (
@@ -105,7 +135,7 @@ const ShipperDashboard = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
         <Card className="shadow-sm border-orange-100">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Total Requests</CardTitle>
@@ -133,6 +163,13 @@ const ShipperDashboard = () => {
             <IndianRupee className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent><div className="text-2xl font-bold">₹{totalSpent.toLocaleString()}</div></CardContent>
+        </Card>
+        <Card className="shadow-sm border-purple-100">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-gray-500">Reviews Given</CardTitle>
+            <Star className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">{reviews.length}</div></CardContent>
         </Card>
       </div>
 
@@ -189,6 +226,27 @@ const ShipperDashboard = () => {
             <CardContent className="space-y-3">
               <Link to="/browse-trucks"><Button className="w-full justify-start bg-orange-600 hover:bg-orange-700"><Search className="h-4 w-4 mr-2" /> Find Available Trucks</Button></Link>
               <Link to="/shipper/my-shipments"><Button className="w-full justify-start" variant="outline"><Package className="h-4 w-4 mr-2" /> View All Shipments</Button></Link>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardHeader><CardTitle>Your Activity</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Reviews Given</span>
+                <span className="font-bold">{reviews.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Avg Rating Given</span>
+                <div className="flex items-center">
+                  <Star className="h-4 w-4 text-yellow-500 mr-1 fill-current" />
+                  <span className="font-bold">{averageRatingGiven.toFixed(1)}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Successful Shipments</span>
+                <span className="font-bold">{acceptedCount}</span>
+              </div>
             </CardContent>
           </Card>
         </div>

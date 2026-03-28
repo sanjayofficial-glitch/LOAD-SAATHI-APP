@@ -15,7 +15,6 @@ import {
   Truck, 
   CheckCircle, 
   Clock,
-  Star,
   MessageSquare,
   Phone,
   Plus,
@@ -23,6 +22,7 @@ import {
   Users,
   Loader2
 } from 'lucide-react';
+import Star from '@/components/Star';
 
 const TruckerDashboard = () => {
   const { userProfile, refreshProfile } = useAuth();
@@ -72,6 +72,21 @@ const TruckerDashboard = () => {
     enabled: !!userProfile?.id && trips.length > 0,
   });
 
+  // Fetch Reviews
+  const { data: reviews = [] } = useQuery({
+    queryKey: ['trucker-reviews', userProfile?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('trucker_id', userProfile?.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!userProfile?.id,
+  });
+
   useEffect(() => {
     if (!userProfile?.id) return;
 
@@ -82,6 +97,9 @@ const TruckerDashboard = () => {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'trips', filter: `trucker_id=eq.${userProfile.id}` }, () => {
         queryClient.invalidateQueries({ queryKey: ['trucker-trips'] });
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews', filter: `trucker_id=eq.${userProfile.id}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ['trucker-reviews'] });
       })
       .subscribe();
 
@@ -142,6 +160,12 @@ const TruckerDashboard = () => {
   const activeTrips = useMemo(() => trips.filter(t => t.status === 'active'), [trips]);
   const completedTrips = useMemo(() => trips.filter(t => t.status === 'completed'), [trips]);
 
+  const averageRating = useMemo(() => {
+    if (reviews.length === 0) return 0;
+    const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
+    return sum / reviews.length;
+  }, [reviews]);
+
   if ((tripsLoading || requestsLoading) && trips.length === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -164,7 +188,7 @@ const TruckerDashboard = () => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
         <Card className="border-orange-100 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Active Trips</CardTitle>
@@ -189,9 +213,16 @@ const TruckerDashboard = () => {
         <Card className="border-yellow-100 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Rating</CardTitle>
-            <Star className="h-4 w-4 text-yellow-600" />
+            <Star filled className="h-4 w-4 text-yellow-600" />
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{userProfile?.rating?.toFixed(1) || '0.0'}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold">{averageRating.toFixed(1)}</div></CardContent>
+        </Card>
+        <Card className="border-purple-100 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-gray-500">Reviews</CardTitle>
+            <Users className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent><div className="text-2xl font-bold">{reviews.length}</div></CardContent>
         </Card>
       </div>
 
@@ -286,6 +317,27 @@ const TruckerDashboard = () => {
               <Link to="/trucker/post-trip"><Button className="w-full justify-start bg-orange-600 hover:bg-orange-700"><Plus className="h-4 w-4 mr-2" /> Post New Trip</Button></Link>
               <Link to="/trucker/my-trips"><Button className="w-full justify-start" variant="outline"><Eye className="h-4 w-4 mr-2" /> View All Trips</Button></Link>
               <Link to="/profile"><Button className="w-full justify-start" variant="outline"><Users className="h-4 w-4 mr-2" /> Edit Profile</Button></Link>
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm">
+            <CardHeader><CardTitle>Your Performance</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Average Rating</span>
+                <div className="flex items-center">
+                  <Star filled className="h-4 w-4 text-yellow-500 mr-1" />
+                  <span className="font-bold">{averageRating.toFixed(1)}</span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Total Reviews</span>
+                <span className="font-bold">{reviews.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Completed Trips</span>
+                <span className="font-bold">{completedTrips.length}</span>
+              </div>
             </CardContent>
           </Card>
         </div>
