@@ -20,20 +20,35 @@ import { Package, Star, Phone, MapPin, MessageSquare } from 'lucide-react';
 
 const MyShipments = () => {
   const { userProfile } = useAuth();
-  const [requests, setRequests] = useState<any[]>([]);
+  const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const fetchRequests = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('requests')
       .select('*, trip:trips(*, trucker:users(*))')
       .eq('shipper_id', userProfile?.id)
       .order('created_at', { ascending: false });
     
-    if (data) setRequests(data);
+    if (error) {
+      showError('Failed to fetch shipments');
+    } else if (data) {
+      // Map data to handle potential array returns from Supabase joins
+      const mappedData = (data as any[]).map(req => ({
+        ...req,
+        trip: Array.isArray(req.trip) ? {
+          ...req.trip[0],
+          trucker: Array.isArray(req.trip[0]?.trucker) ? req.trip[0].trucker[0] : req.trip[0]?.trucker
+        } : {
+          ...req.trip,
+          trucker: Array.isArray(req.trip?.trucker) ? req.trip.trucker[0] : req.trip?.trucker
+        }
+      })) as Request[];
+      setRequests(mappedData);
+    }
     setLoading(false);
   };
 

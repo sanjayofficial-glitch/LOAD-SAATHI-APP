@@ -28,13 +28,13 @@ const TruckerDashboard = () => {
   const { userProfile, refreshProfile } = useAuth();
   const queryClient = useQueryClient();
 
-  // Fetch Trips - Optimized column selection
+  // Fetch Trips
   const { data: trips = [], isLoading: tripsLoading } = useQuery({
     queryKey: ['trucker-trips', userProfile?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('trips')
-        .select('id, origin_city, destination_city, status, available_capacity_tonnes, created_at')
+        .select('*')
         .eq('trucker_id', userProfile?.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -43,7 +43,7 @@ const TruckerDashboard = () => {
     enabled: !!userProfile?.id,
   });
 
-  // Fetch Requests - Optimized column selection
+  // Fetch Requests
   const { data: requests = [], isLoading: requestsLoading } = useQuery({
     queryKey: ['trucker-requests', userProfile?.id],
     queryFn: async () => {
@@ -53,16 +53,21 @@ const TruckerDashboard = () => {
       const { data, error } = await supabase
         .from('requests')
         .select(`
-          id, goods_description, weight_tonnes, status, trip_id, created_at,
-          trip:trips(id, origin_city, destination_city, available_capacity_tonnes),
-          shipper:users(id, full_name, phone)
+          *,
+          trip:trips(*),
+          shipper:users(*)
         `)
         .in('trip_id', tripIds)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      // Use unknown as intermediate step to fix TS2352
-      return data as unknown as Request[];
+      
+      // Map data to handle potential array returns from Supabase joins
+      return (data as any[]).map(req => ({
+        ...req,
+        trip: Array.isArray(req.trip) ? req.trip[0] : req.trip,
+        shipper: Array.isArray(req.shipper) ? req.shipper[0] : req.shipper
+      })) as Request[];
     },
     enabled: !!userProfile?.id && trips.length > 0,
   });

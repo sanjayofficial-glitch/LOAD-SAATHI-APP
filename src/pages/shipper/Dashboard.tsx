@@ -29,14 +29,29 @@ const ShipperDashboard = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('requests')
-        .select('id, goods_description, weight_tonnes, status, created_at, trip:trips(id, origin_city, destination_city, price_per_tonne, trucker:users(id, full_name, phone))')
+        .select(`
+          *,
+          trip:trips(
+            *,
+            trucker:users(*)
+          )
+        `)
         .eq('shipper_id', userProfile?.id)
         .order('created_at', { ascending: false })
         .limit(10);
       
       if (error) throw error;
-      // Use unknown as intermediate step to avoid overlap errors during build
-      return data as unknown as (Request & { trip: any })[];
+      
+      return (data as any[]).map(req => ({
+        ...req,
+        trip: Array.isArray(req.trip) ? {
+          ...req.trip[0],
+          trucker: Array.isArray(req.trip[0]?.trucker) ? req.trip[0].trucker[0] : req.trip[0]?.trucker
+        } : {
+          ...req.trip,
+          trucker: Array.isArray(req.trip?.trucker) ? req.trip.trucker[0] : req.trip?.trucker
+        }
+      })) as Request[];
     },
     enabled: !!userProfile?.id,
   });
