@@ -16,10 +16,12 @@ import {
   X,
   Sparkles,
   Loader2,
-  ArrowRight as ArrowRightIcon
+  ArrowRight as ArrowRightIcon,
+  AlertCircle
 } from 'lucide-react';
 import { parseNaturalLanguageSearch } from '@/lib/gemini';
 import { showSuccess, showError } from '@/utils/toast';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const INDIAN_CITIES = [
   'Delhi', 'Mumbai', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Ahmedabad', 'Pune', 'Surat', 'Kanpur',
@@ -43,6 +45,7 @@ const BrowseTrips = () => {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
+  const [apiKeyMissing, setApiKeyMissing] = useState(false);
 
   const fetchTrips = useCallback(async () => {
     if (!userProfile) return;
@@ -85,6 +88,8 @@ const BrowseTrips = () => {
     if (!aiQuery.trim()) return;
 
     setAiLoading(true);
+    setApiKeyMissing(false);
+    
     try {
       const parsedFilters = await parseNaturalLanguageSearch(aiQuery);
       
@@ -100,6 +105,13 @@ const BrowseTrips = () => {
         showSuccess('AI parsed your search filters!');
       } else {
         showError('AI could not understand the search. Try being more specific.');
+      }
+    } catch (err: any) {
+      if (err.message === 'GEMINI_API_KEY_MISSING') {
+        setApiKeyMissing(true);
+        showError('AI Search requires a Gemini API Key.');
+      } else {
+        showError('AI search failed. Please try manual filters.');
       }
     } finally {
       setAiLoading(false);
@@ -132,7 +144,11 @@ const BrowseTrips = () => {
     }
 
     if (filters.date) {
-      result = result.filter(t => t.departure_date >= filters.date);
+      // Compare only the date part
+      result = result.filter(t => {
+        const tripDate = new Date(t.departure_date).toISOString().split('T')[0];
+        return tripDate >= filters.date;
+      });
     }
 
     return result;
@@ -179,7 +195,7 @@ const BrowseTrips = () => {
                         <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-orange-600" />
                         <input
                           type="text"
-                          placeholder="e.g. '2 tonnes from Mumbai to Pune next Monday'"
+                          placeholder="e.g. '2 tonnes from Mumbai to Pune now'"
                           className="w-full pl-10 pr-4 py-3 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
                           value={aiQuery}
                           onChange={(e) => setAiQuery(e.target.value)}
@@ -202,6 +218,15 @@ const BrowseTrips = () => {
                         )}
                       </Button>
                     </form>
+                    
+                    {apiKeyMissing && (
+                      <Alert variant="destructive" className="mt-4 bg-red-50 border-red-100">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertDescription className="text-xs">
+                          AI Search is disabled. Please add <strong>VITE_GEMINI_API_KEY</strong> to your environment variables.
+                        </AlertDescription>
+                      </Alert>
+                    )}
                   </div>
 
                   <div className="border-t pt-6">
