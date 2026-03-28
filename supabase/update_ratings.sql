@@ -1,29 +1,35 @@
-CREATE OR REPLACE FUNCTION public.update_trucker_ratings()
-RETURNS TRIGGER
-LANGUAGE PLPGSQL
-SECURITY DEFINER
-AS $$
+-- Function to update the trucker's average rating
+CREATE OR REPLACE FUNCTION public.update_trucker_rating()
+RETURNS TRIGGER AS $$
 BEGIN
-  -- Calculate average rating for the trucker
-  DECLARE avg_rating NUMERIC;
-  DECLARE review_count INTEGER;
-  
-  SELECT AVG(rating), COUNT(*) INTO avg_rating, review_count
-  FROM public.reviews
-  WHERE trucker_id = NEW.trucker_id;
-  
-  -- Update the trucker's rating in users table
+  -- Calculate the new average rating for the trucker
   UPDATE public.users
-  SET rating = COALESCE(avg_rating, 0),
-      total_trips = review_count
+  SET rating = (
+    SELECT COALESCE(AVG(rating), 0)
+    FROM public.reviews
+    WHERE trucker_id = NEW.trucker_id
+  ),
+  total_trips = (
+    SELECT COUNT(DISTINCT trip_id)
+    FROM public.reviews
+    WHERE trucker_id = NEW.trucker_id
+  )
   WHERE id = NEW.trucker_id;
   
   RETURN NEW;
 END;
-$$;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Create trigger to update ratings when a new review is inserted
-DROP TRIGGER IF EXISTS on_review_inserted ON public.reviews;
-CREATE TRIGGER on_review_inserted
-  AFTER INSERT ON public.reviews
-  FOR EACH ROW EXECUTE FUNCTION public.update_trucker_ratings();
+-- Trigger to run the function after a review is inserted or updated
+DROP TRIGGER IF EXISTS on_review_upsert ON public.reviews;
+CREATE TRIGGER on_review_upsert
+  AFTER INSERT OR UPDATE ON public.reviews
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_trucker_rating();
+
+-- Trigger to run the function after a review is deleted
+DROP TRIGGER IF EXISTS on_review_delete ON public.reviews;
+CREATE TRIGGER on_review_delete
+  AFTER DELETE ON public.reviews
+  FOR EACH ROW
+  EXECUTE FUNCTION public.update_trucker_rating();
