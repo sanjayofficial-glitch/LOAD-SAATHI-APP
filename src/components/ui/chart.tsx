@@ -1,9 +1,5 @@
 "use client";
 
 import * as React from "react";
-
-function Chart({ } : { } ) {
-  return null;
-}
-
-export default Chart;
+import { Chart as ChartPrimitive } from "./chart";
+const Chart = ({ ...props })=> <ChartPrimitive {...props}/>;export default Chart;
