@@ -6,18 +6,20 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Layout from "@/components/Layout";
-import { Truck } from "lucide-react";
+import { Truck, Loader2 } from "lucide-react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
-// Lazy load pages
-const Index = lazy(() => import("./pages/Index"));
+// Eager load core pages for faster transitions
+import Index from "./pages/Index";
+import Login from "./pages/Login";
+import TruckerDashboard from "./pages/trucker/Dashboard";
+import ShipperDashboard from "./pages/shipper/Dashboard";
+
+// Lazy load secondary pages
 const NotFound = lazy(() => import("./pages/NotFound"));
-const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const UpdatePassword = lazy(() => import("./pages/UpdatePassword"));
-const TruckerDashboard = lazy(() => import("./pages/trucker/Dashboard"));
-const ShipperDashboard = lazy(() => import("./pages/shipper/Dashboard"));
 const PostTrip = lazy(() => import("./pages/trucker/PostTrip"));
 const EditTrip = lazy(() => import("./pages/trucker/EditTrip"));
 const BrowseTrips = lazy(() => import("./pages/shipper/BrowseTrips"));
@@ -41,10 +43,10 @@ const queryClient = new QueryClient({
 });
 
 const LoadingFallback = () => (
-  <div className="min-h-screen flex items-center justify-center bg-orange-50/30">
+  <div className="min-h-screen flex items-center justify-center bg-white">
     <div className="text-center">
-      <Truck className="h-10 w-10 text-orange-600 animate-bounce mx-auto mb-4" />
-      <p className="text-gray-500 font-medium animate-pulse">Loading LoadSaathi...</p>
+      <Loader2 className="h-10 w-10 text-orange-600 animate-spin mx-auto mb-4" />
+      <p className="text-gray-500 font-medium">Loading LoadSaathi...</p>
     </div>
   </div>
 );
@@ -55,11 +57,11 @@ const ProtectedRoute = ({ children, allowedTypes }: { children: React.ReactNode,
   if (loading) return <LoadingFallback />;
 
   if (!userProfile) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
   if (allowedTypes && !allowedTypes.includes(userProfile.user_type)) {
-    return <Navigate to={userProfile.user_type === 'trucker' ? '/trucker/dashboard' : '/shipper/dashboard'} />;
+    return <Navigate to={userProfile.user_type === 'trucker' ? '/trucker/dashboard' : '/shipper/dashboard'} replace />;
   }
 
   return <Layout>{children}</Layout>;

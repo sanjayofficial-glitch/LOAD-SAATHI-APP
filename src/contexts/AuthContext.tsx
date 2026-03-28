@@ -1,3 +1,5 @@
+"use client";
+
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
@@ -36,9 +38,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!supabase) return null;
     
     try {
+      // Use a faster query for the profile
       const { data, error } = await supabase
         .from('users')
-        .select('*')
+        .select('id, email, full_name, phone, user_type, is_verified, rating, total_trips, created_at, company_name')
         .eq('id', supabaseUser.id)
         .maybeSingle();
 
@@ -84,15 +87,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       initialized.current = true;
 
       try {
+        // Get session immediately
         const { data: { session: initialSession } } = await supabase.auth.getSession();
+        
         if (!mounted) return;
 
-        setSession(initialSession);
-        const currentUser = initialSession?.user ?? null;
-        setUser(currentUser);
-
-        if (currentUser) {
-          const profile = await fetchUserProfile(currentUser);
+        if (initialSession) {
+          setSession(initialSession);
+          setUser(initialSession.user);
+          const profile = await fetchUserProfile(initialSession.user);
           if (mounted) setUserProfile(profile);
         }
       } catch (error) {
@@ -110,39 +113,48 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         
         console.log("[AuthContext] Auth state changed:", event);
 
-        // Handle password recovery redirect
+        if (event === 'SIGNED_OUT') {
+          setSession(null);
+          setUser(null);
+          setUserProfile(null);
+          setLoading(false);
+          return;
+        }
+
         if (event === 'PASSWORD_RECOVERY') {
-          console.log("[AuthContext] Password recovery detected, redirecting...");
           window.location.href = '/update-password';
           return;
         }
         
-        setSession(currentSession);
-        const currentUser = currentSession?.user ?? null;
-        setUser(currentUser);
-        
-        if (currentUser) {
-          const profile = await fetchUserProfile(currentUser);
-          if (mounted) setUserProfile(profile);
-        } else {
-          if (mounted) setUserProfile(null);
+        if (currentSession) {
+          setSession(currentSession);
+          setUser(currentSession.user);
+          
+          // Only fetch profile if it's a new session or user changed
+          if (!userProfile || userProfile.id !== currentSession.user.id) {
+            const profile = await fetchUserProfile(currentSession.user);
+            if (mounted) setUserProfile(profile);
+          }
         }
         
         if (mounted) setLoading(false);
       }
     );
 
-    // Safety timeout to ensure loading state is cleared
+    // Reduced safety timeout to 2 seconds for better UX
     const timeout = setTimeout(() => {
-      if (mounted && loading) setLoading(false);
-    }, 5000);
+      if (mounted && loading) {
+        console.log("[AuthContext] Safety timeout reached, clearing loading state");
+        setLoading(false);
+      }
+    }, 2000);
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
       clearTimeout(timeout);
     };
-  }, [fetchUserProfile, loading]);
+  }, [fetchUserProfile, loading, userProfile]);
 
   const signUp = async (email: string, password: string, userType: 'trucker' | 'shipper', fullName: string, phone: string, companyName?: string) => {
     return await supabase.auth.signUp({
@@ -155,6 +167,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signIn = async (email: string, password: string) => {
+    setLoading(true); // Set loading true during sign in
     return await supabase.auth.signInWithPassword({ email, password });
   };
 
@@ -170,10 +183,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signOut = async () => {
+    setLoading(true);
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
     setUserProfile(null);
+    setLoading(false);
   };
 
   return (
