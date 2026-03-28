@@ -23,9 +23,12 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    logger.error(error.message, { info });
-    if (window.Sentry) {
-      window.Sentry.captureException(error, { extra: info });
+    logger.error(`[ErrorBoundary] ${error.message}`, { info });
+    
+    // Type-safe access to window.Sentry
+    const sentry = (window as any).Sentry;
+    if (sentry) {
+      sentry.captureException(error, { extra: info });
     }
   }
 
