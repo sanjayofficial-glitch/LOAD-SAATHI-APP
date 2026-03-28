@@ -61,7 +61,8 @@ const TruckerDashboard = () => {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as Request[];
+      // Use unknown as intermediate step to fix TS2352
+      return data as unknown as Request[];
     },
     enabled: !!userProfile?.id && trips.length > 0,
   });
