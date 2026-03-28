@@ -29,7 +29,7 @@ const ShipperDashboard = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('requests')
-        .select('*, trip:trips(*)')
+        .select('id, goods_description, weight_tonnes, status, created_at, trip:trips(id, origin_city, destination_city, price_per_tonne, trucker:users(id, full_name, phone))')
         .eq('shipper_id', userProfile?.id)
         .order('created_at', { ascending: false })
         .limit(10);

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
@@ -32,9 +32,7 @@ const INDIAN_CITIES = [
 const BrowseTrips = () => {
   const { userProfile } = useAuth();
   const [trips, setTrips] = useState<Trip[]>([]);
-  const [filteredTrips, setFilteredTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
   const [aiQuery, setAiQuery] = useState('');
   const [filters, setFilters] = useState({
     origin: '',
@@ -51,13 +49,12 @@ const BrowseTrips = () => {
 
     const { data } = await supabase
       .from('trips')
-      .select(`*`)
+      .select('id, origin_city, destination_city, departure_date, available_capacity_tonnes, price_per_tonne, vehicle_type, vehicle_number, status, created_at')
       .eq('status', 'active')
       .order('created_at', { ascending: false });
 
     if (data) {
       setTrips(data as Trip[]);
-      setFilteredTrips(data as Trip[]);
     }
     setLoading(false);
   }, [userProfile]);
@@ -107,7 +104,7 @@ const BrowseTrips = () => {
     }
   };
 
-  const applyFilters = useCallback(() => {
+  const filteredTrips = useMemo(() => {
     let result = [...trips];
 
     if (filters.origin) {
@@ -136,12 +133,8 @@ const BrowseTrips = () => {
       result = result.filter(t => t.departure_date >= filters.date);
     }
 
-    setFilteredTrips(result);
+    return result;
   }, [trips, filters]);
-
-  useEffect(() => {
-    applyFilters();
-  }, [applyFilters]);
 
   const clearFilters = () => {
     setFilters({
@@ -151,7 +144,6 @@ const BrowseTrips = () => {
       maxPrice: '',
       date: ''
     });
-    setFilteredTrips(trips);
   };
 
   if (loading) {
@@ -292,14 +284,6 @@ const BrowseTrips = () => {
                           >
                             <X className="h-3 w-3 mr-1" />
                             Clear
-                          </Button>
-                          <Button 
-                            onClick={applyFilters}
-                            className="flex-1 bg-orange-600 hover:bg-orange-700"
-                            size="sm"
-                          >
-                            <Filter className="h-3 w-3 mr-1" />
-                            Apply
                           </Button>
                         </div>
                       </div>
