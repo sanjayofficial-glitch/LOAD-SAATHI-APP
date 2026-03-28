@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import DashboardSkeleton from '@/components/DashboardSkeleton';
 import { 
   Package, 
   Clock, 
@@ -57,7 +58,6 @@ const ShipperDashboard = () => {
     enabled: !!userProfile?.id,
   });
 
-  // Fetch reviews given by this shipper
   const { data: reviews = [] } = useQuery({
     queryKey: ['shipper-reviews', userProfile?.id],
     queryFn: async () => {
@@ -85,13 +85,6 @@ const ShipperDashboard = () => {
       }, () => {
         queryClient.invalidateQueries({ queryKey: ['shipper-requests'] });
       })
-      .on('postgres_changes', {         event: '*', 
-        schema: 'public', 
-        table: 'reviews',
-        filter: `shipper_id=eq.${userProfile.id}`
-      }, () => {
-        queryClient.invalidateQueries({ queryKey: ['shipper-reviews'] });
-      })
       .subscribe();
 
     return () => {
@@ -113,15 +106,11 @@ const ShipperDashboard = () => {
   }, [reviews]);
 
   if (isLoading && requests.length === 0) {
-    return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-orange-600" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 animate-in fade-in duration-500">
       <div className="mb-8 flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Hello, {userProfile?.full_name}!</h1>
@@ -135,35 +124,35 @@ const ShipperDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-        <Card className="shadow-sm border-orange-100">
+        <Card className="shadow-sm border-orange-100 hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Total Requests</CardTitle>
             <Package className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent><div className="text-2xl font-bold">{requests.length}</div></CardContent>
         </Card>
-        <Card className="shadow-sm border-yellow-100">
+        <Card className="shadow-sm border-yellow-100 hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Pending</CardTitle>
             <Clock className="h-4 w-4 text-yellow-600" />
           </CardHeader>
           <CardContent><div className="text-2xl font-bold">{pendingCount}</div></CardContent>
         </Card>
-        <Card className="shadow-sm border-green-100">
+        <Card className="shadow-sm border-green-100 hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Accepted</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent><div className="text-2xl font-bold">{acceptedCount}</div></CardContent>
         </Card>
-        <Card className="shadow-sm border-blue-100">
+        <Card className="shadow-sm border-blue-100 hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Total Spent</CardTitle>
             <IndianRupee className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent><div className="text-2xl font-bold">₹{totalSpent.toLocaleString()}</div></CardContent>
         </Card>
-        <Card className="shadow-sm border-purple-100">
+        <Card className="shadow-sm border-purple-100 hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Reviews Given</CardTitle>
             <Star className="h-4 w-4 text-purple-600" />
@@ -181,7 +170,7 @@ const ShipperDashboard = () => {
                 <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed">
                   <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">No requests yet</h3>
-                  <Link to="/browse-trucks"><Button className="bg-orange-600 hover:bg-orange-700 mt-2">Find Trucks</Button></Link>
+                  <Link to="/browse-trucks"><Button className="bg-orange-600 hover:bg-orange-700 mt-2 shadow-sm">Find Trucks</Button></Link>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -207,7 +196,7 @@ const ShipperDashboard = () => {
                         {request.status === 'accepted' && request.trip?.trucker && (
                           <div className="flex items-center space-x-2">
                             <span className="text-sm font-medium text-green-600">{request.trip.trucker.full_name}</span>
-                            <a href={`tel:${request.trip.trucker.phone}`}><Button size="sm" className="bg-green-600 hover:bg-green-700"><Phone className="h-4 w-4 mr-1" /> Call</Button></a>
+                            <a href={`tel:${request.trip.trucker.phone}`}><Button size="sm" className="bg-green-600 hover:bg-green-700 shadow-sm"><Phone className="h-4 w-4 mr-1" /> Call</Button></a>
                           </div>
                         )}
                       </div>
@@ -223,7 +212,7 @@ const ShipperDashboard = () => {
           <Card className="shadow-sm">
             <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              <Link to="/browse-trucks"><Button className="w-full justify-start bg-orange-600 hover:bg-orange-700"><Search className="h-4 w-4 mr-2" /> Find Available Trucks</Button></Link>
+              <Link to="/browse-trucks"><Button className="w-full justify-start bg-orange-600 hover:bg-orange-700 shadow-sm hover:shadow-md transition-all"><Search className="h-4 w-4 mr-2" /> Find Available Trucks</Button></Link>
               <Link to="/shipper/my-shipments"><Button className="w-full justify-start" variant="outline"><Package className="h-4 w-4 mr-2" /> View All Shipments</Button></Link>
             </CardContent>
           </Card>

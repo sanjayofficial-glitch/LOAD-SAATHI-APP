@@ -1,9 +1,12 @@
+"use client";
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { Notification } from '@/types';
 import { Button } from '@/components/ui/button';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   Truck, 
   Bell, 
@@ -30,6 +33,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const { userProfile, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -95,6 +99,14 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     navigate('/');
   };
 
+  const prefetchData = (path: string) => {
+    if (path.includes('dashboard')) {
+      queryClient.prefetchQuery({ queryKey: [userProfile?.user_type === 'trucker' ? 'trucker-trips' : 'shipper-requests', userProfile?.id] });
+    } else if (path.includes('browse-trucks')) {
+      queryClient.prefetchQuery({ queryKey: ['trips'] });
+    }
+  };
+
   const navItems = userProfile?.user_type === 'trucker' ? [
     { label: 'Dashboard', path: '/trucker/dashboard', icon: LayoutDashboard },
     { label: 'Post Trip', path: '/trucker/post-trip', icon: PlusSquare },
@@ -121,6 +133,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                   <Link
                     key={item.path}
                     to={item.path}
+                    onMouseEnter={() => prefetchData(item.path)}
                     className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       location.pathname === item.path
                         ? 'bg-orange-50 text-orange-700 shadow-sm'
@@ -137,16 +150,16 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             <div className="flex items-center space-x-2 sm:space-x-4">
               <DropdownMenu onOpenChange={(open) => open && markAsRead()}>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative hover:bg-orange-50">
+                  <Button variant="ghost" size="icon" className="relative hover:bg-orange-50 transition-colors">
                     <Bell className="h-5 w-5 text-gray-600" />
                     {unreadCount > 0 && (
-                      <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white">
+                      <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white animate-in zoom-in">
                         {unreadCount}
                       </span>
                     )}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
+                <DropdownMenuContent align="end" className="w-80 animate-in fade-in slide-in-from-top-2">
                   <DropdownMenuLabel>Notifications</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <div className="max-h-80 overflow-y-auto">
@@ -174,8 +187,8 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2 px-2 hover:bg-orange-50">
-                    <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center">
+                  <Button variant="ghost" className="flex items-center space-x-2 px-2 hover:bg-orange-50 transition-colors">
+                    <div className="w-8 h-8 bg-orange-100 rounded-full flex items-center justify-center border border-orange-200">
                       <User className="h-4 w-4 text-orange-600" />
                     </div>
                     <span className="hidden sm:block text-sm font-medium text-gray-700">
@@ -183,21 +196,21 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                     </span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-48 animate-in fade-in slide-in-from-top-2">
                   <DropdownMenuLabel>My Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => navigate('/profile')}>
+                  <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
                     Profile
                   </DropdownMenuItem>
                   {userProfile?.user_type === 'trucker' && (
-                    <DropdownMenuItem onClick={() => navigate('/admin')}>
+                    <DropdownMenuItem onClick={() => navigate('/admin')} className="cursor-pointer">
                       <LayoutDashboard className="mr-2 h-4 w-4" />
                       Admin Panel
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleSignOut} className="text-red-600 focus:text-red-600">
+                  <DropdownMenuItem onClick={handleSignOut} className="text-red-600 focus:text-red-600 cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />
                     Sign Out
                   </DropdownMenuItem>
@@ -251,9 +264,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             Connecting India's truckers with small shippers directly.
           </p>
           <div className="flex justify-center space-x-6 text-sm text-gray-400">
-            <Link to="/about" className="hover:text-gray-600">About</Link>
-            <Link to="/contact" className="hover:text-gray-600">Contact</Link>
-            <Link to="/privacy" className="hover:text-gray-600">Privacy</Link>
+            <Link to="/about" className="hover:text-gray-600 transition-colors">About</Link>
+            <Link to="/contact" className="hover:text-gray-600 transition-colors">Contact</Link>
+            <Link to="/privacy" className="hover:text-gray-600 transition-colors">Privacy</Link>
           </div>
         </div>
       </footer>
