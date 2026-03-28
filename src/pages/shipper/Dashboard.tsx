@@ -33,8 +33,10 @@ const ShipperDashboard = () => {
         .eq('shipper_id', userProfile?.id)
         .order('created_at', { ascending: false })
         .limit(10);
+      
       if (error) throw error;
-      return data as (Request & { trip: any })[];
+      // Use unknown as intermediate step to avoid overlap errors during build
+      return data as unknown as (Request & { trip: any })[];
     },
     enabled: !!userProfile?.id,
   });
