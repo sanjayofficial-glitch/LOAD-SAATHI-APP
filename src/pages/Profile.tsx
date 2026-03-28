@@ -14,7 +14,7 @@ import {
   User, 
   Phone, 
   Building, 
-  Star, 
+  Star as StarIcon, 
   Shield, 
   Truck, 
   Package, 
@@ -22,8 +22,10 @@ import {
   Calendar,
   Lock,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  MessageSquare
 } from 'lucide-react';
+import Star from '@/components/Star';
 
 const Profile = () => {
   const { userProfile, refreshProfile, resetPassword } = useAuth();
@@ -33,6 +35,8 @@ const Profile = () => {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState({ count: 0, rating: 0 });
   const [statsLoading, setStatsLoading] = useState(true);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(false);
 
   useEffect(() => {
     if (userProfile) {
@@ -40,6 +44,9 @@ const Profile = () => {
       setPhone(userProfile.phone || '');
       setCompanyName(userProfile.company_name || '');
       fetchStats();
+      if (userProfile.user_type === 'trucker') {
+        fetchReviews();
+      }
     }
   }, [userProfile]);
 
@@ -59,12 +66,32 @@ const Profile = () => {
           .from('requests')
           .select('*', { count: 'exact', head: true })
           .eq('shipper_id', userProfile.id);
-        setStats({ count: count || 0, rating: 0 }); // Shippers don't usually have ratings in this schema
+        setStats({ count: count || 0, rating: 0 });
       }
     } catch (err) {
       console.error("Error fetching stats:", err);
     } finally {
       setStatsLoading(false);
+    }
+  };
+
+  const fetchReviews = async () => {
+    if (!userProfile) return;
+    setReviewsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('*, shipper:users(full_name)')
+        .eq('trucker_id', userProfile.id)
+        .order('created_at', { ascending: false });
+      
+      if (data) {
+        setReviews(data);
+      }
+    } catch (err) {
+      console.error("Error fetching reviews:", err);
+    } finally {
+      setReviewsLoading(false);
     }
   };
 
@@ -124,8 +151,9 @@ const Profile = () => {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-[400px]">
+        <TabsList className={`grid w-full ${userProfile?.user_type === 'trucker' ? 'grid-cols-4' : 'grid-cols-3'} lg:w-[500px]`}>
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          {userProfile?.user_type === 'trucker' && <TabsTrigger value="reviews">Reviews</TabsTrigger>}
           <TabsTrigger value="personal">Personal Info</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
         </TabsList>
@@ -161,9 +189,9 @@ const Profile = () => {
                   <div className="flex items-center justify-between">
                     <div className="text-3xl font-bold flex items-center">
                       {userProfile.rating?.toFixed(1) || '0.0'}
-                      <Star className="h-5 w-5 text-yellow-500 ml-2 fill-current" />
+                      <StarIcon className="h-5 w-5 text-yellow-500 ml-2 fill-current" />
                     </div>
-                    <Star className="h-8 w-8 text-yellow-100" />
+                    <StarIcon className="h-8 w-8 text-yellow-100" />
                   </div>
                 </CardContent>
               </Card>
@@ -211,6 +239,54 @@ const Profile = () => {
             </Card>
           </div>
         </TabsContent>
+
+        {userProfile?.user_type === 'trucker' && (
+          <TabsContent value="reviews">
+            <Card className="border-orange-100 shadow-sm">
+              <CardHeader>
+                <CardTitle>Customer Reviews</CardTitle>
+                <CardDescription>What shippers are saying about your service</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {reviewsLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+                  </div>
+                ) : reviews.length === 0 ? (
+                  <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed">
+                    <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500">No reviews yet. Complete trips to get feedback!</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {reviews.map((review) => (
+                      <div key={review.id} className="p-4 border rounded-lg bg-white">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="flex">
+                              {[1, 2, 3, 4, 5].map((s) => (
+                                <Star key={s} filled={review.rating >= s} className="h-4 w-4" />
+                              ))}
+                            </div>
+                            <span className="text-sm font-bold text-gray-900">
+                              {review.shipper?.full_name || 'Anonymous Shipper'}
+                            </span>
+                          </div>
+                          <span className="text-xs text-gray-400">
+                            {new Date(review.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {review.comment && (
+                          <p className="text-sm text-gray-600 italic">"{review.comment}"</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         <TabsContent value="personal">
           <Card className="border-orange-100 shadow-sm">
