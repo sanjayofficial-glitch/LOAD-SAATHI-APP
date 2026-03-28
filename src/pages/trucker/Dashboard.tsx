@@ -62,7 +62,6 @@ const TruckerDashboard = () => {
       
       if (error) throw error;
       
-      // Map data to handle potential array returns from Supabase joins
       return (data as any[]).map(req => ({
         ...req,
         trip: Array.isArray(req.trip) ? req.trip[0] : req.trip,
@@ -100,13 +99,17 @@ const TruckerDashboard = () => {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reviews', filter: `trucker_id=eq.${userProfile.id}` }, () => {
         queryClient.invalidateQueries({ queryKey: ['trucker-reviews'] });
+        refreshProfile(); // Refresh profile to get updated average rating
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'users', filter: `id=eq.${userProfile.id}` }, () => {
+        refreshProfile();
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userProfile?.id, queryClient]);
+  }, [userProfile?.id, queryClient, refreshProfile]);
 
   const handleAcceptRequest = useCallback(async (request: Request) => {
     if (!request.trip) return;
@@ -160,12 +163,6 @@ const TruckerDashboard = () => {
   const activeTrips = useMemo(() => trips.filter(t => t.status === 'active'), [trips]);
   const completedTrips = useMemo(() => trips.filter(t => t.status === 'completed'), [trips]);
 
-  const averageRating = useMemo(() => {
-    if (reviews.length === 0) return 0;
-    const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
-    return sum / reviews.length;
-  }, [reviews]);
-
   if ((tripsLoading || requestsLoading) && trips.length === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -215,7 +212,7 @@ const TruckerDashboard = () => {
             <CardTitle className="text-sm font-medium text-gray-500">Rating</CardTitle>
             <Star filled className="h-4 w-4 text-yellow-600" />
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{averageRating.toFixed(1)}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold">{userProfile?.rating?.toFixed(1) || '0.0'}</div></CardContent>
         </Card>
         <Card className="border-purple-100 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -327,7 +324,7 @@ const TruckerDashboard = () => {
                 <span className="text-sm text-gray-600">Average Rating</span>
                 <div className="flex items-center">
                   <Star filled className="h-4 w-4 text-yellow-500 mr-1" />
-                  <span className="font-bold">{averageRating.toFixed(1)}</span>
+                  <span className="font-bold">{userProfile?.rating?.toFixed(1) || '0.0'}</span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
