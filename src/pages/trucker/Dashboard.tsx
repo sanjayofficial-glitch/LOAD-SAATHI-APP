@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
@@ -14,7 +14,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   Truck, 
   CheckCircle, 
-  XCircle,
   Clock,
   Star,
   MessageSquare,
@@ -29,13 +28,13 @@ const TruckerDashboard = () => {
   const { userProfile, refreshProfile } = useAuth();
   const queryClient = useQueryClient();
 
-  // Fetch Trips
+  // Fetch Trips - Optimized column selection
   const { data: trips = [], isLoading: tripsLoading } = useQuery({
     queryKey: ['trucker-trips', userProfile?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('trips')
-        .select('*')
+        .select('id, origin_city, destination_city, status, available_capacity_tonnes, created_at')
         .eq('trucker_id', userProfile?.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -44,7 +43,7 @@ const TruckerDashboard = () => {
     enabled: !!userProfile?.id,
   });
 
-  // Fetch Requests
+  // Fetch Requests - Optimized column selection
   const { data: requests = [], isLoading: requestsLoading } = useQuery({
     queryKey: ['trucker-requests', userProfile?.id],
     queryFn: async () => {
@@ -54,9 +53,9 @@ const TruckerDashboard = () => {
       const { data, error } = await supabase
         .from('requests')
         .select(`
-          *,
-          trip:trips(*),
-          shipper:users(*)
+          id, goods_description, weight_tonnes, status, trip_id, created_at,
+          trip:trips(id, origin_city, destination_city, available_capacity_tonnes),
+          shipper:users(id, full_name, phone)
         `)
         .in('trip_id', tripIds)
         .order('created_at', { ascending: false });
@@ -67,7 +66,6 @@ const TruckerDashboard = () => {
     enabled: !!userProfile?.id && trips.length > 0,
   });
 
-  // Real-time updates
   useEffect(() => {
     if (!userProfile?.id) return;
 
@@ -86,7 +84,7 @@ const TruckerDashboard = () => {
     };
   }, [userProfile?.id, queryClient]);
 
-  const handleAcceptRequest = async (request: Request) => {
+  const handleAcceptRequest = useCallback(async (request: Request) => {
     if (!request.trip) return;
 
     const newCapacity = request.trip.available_capacity_tonnes - request.weight_tonnes;
@@ -118,9 +116,9 @@ const TruckerDashboard = () => {
       queryClient.invalidateQueries({ queryKey: ['trucker-trips'] });
       refreshProfile();
     }
-  };
+  }, [queryClient, refreshProfile]);
 
-  const handleDeclineRequest = async (requestId: string) => {
+  const handleDeclineRequest = useCallback(async (requestId: string) => {
     const { error } = await supabase
       .from('requests')
       .update({ status: 'declined' })
@@ -131,14 +129,13 @@ const TruckerDashboard = () => {
       showSuccess('Request declined');
       queryClient.invalidateQueries({ queryKey: ['trucker-requests'] });
     }
-  };
+  }, [queryClient]);
 
   const pendingRequests = useMemo(() => requests.filter(r => r.status === 'pending'), [requests]);
   const acceptedRequests = useMemo(() => requests.filter(r => r.status === 'accepted'), [requests]);
   const activeTrips = useMemo(() => trips.filter(t => t.status === 'active'), [trips]);
   const completedTrips = useMemo(() => trips.filter(t => t.status === 'completed'), [trips]);
 
-  // Only show full loader on initial mount if no data exists
   if ((tripsLoading || requestsLoading) && trips.length === 0) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
