@@ -2,11 +2,11 @@
 
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
-import { Sentry } from "@sentry/react";
+import * as Sentry from "@sentry/sdk";
 import { Integrations } from "@sentry/tracing";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import React from "react";
 
-// Initialize Sentry with a placeholder DSN (replace with actual DSN)
 Sentry.init({
   dsn: "https://examplePublicKey@o0.ingest.sentry.io/0",
   integrations: [new Integrations.BrowserTracing()],
