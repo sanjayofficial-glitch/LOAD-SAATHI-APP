@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { Trip } from '@/types';
@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { showSuccess, showError } from '@/utils/toast';
-import { MapPin, Calendar, Truck, IndianRupee, Phone, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
+import { MapPin, Calendar, Truck, IndianRupee, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 
 const TripDetail = () => {
   const { id } = useParams();
@@ -25,8 +25,22 @@ const TripDetail = () => {
 
   useEffect(() => {
     const fetchTrip = async () => {
-      const { data } = await supabase.from('trips').select('*, trucker:users(*)').eq('id', id).single();
-      if (data) setTrip(data as Trip);
+      const { data, error } = await supabase
+        .from('trips')
+        .select('*, trucker:users(*)')
+        .eq('id', id)
+        .single();
+      
+      if (error) {
+        showError('Trip not found');
+      } else if (data) {
+        // Handle potential array return for trucker join
+        const mappedTrip = {
+          ...data,
+          trucker: Array.isArray(data.trucker) ? data.trucker[0] : data.trucker
+        };
+        setTrip(mappedTrip as unknown as Trip);
+      }
       setLoading(false);
     };
     fetchTrip();
@@ -71,7 +85,7 @@ const TripDetail = () => {
         throw insertError;
       }
 
-      // Update the trip capacity (we know requestedWeight <= trip.available_capacity_tonnes, so newCapacity >=0)
+      // Update the trip capacity
       const newCapacity = trip.available_capacity_tonnes - requestedWeight;
       const { error: updateError } = await supabase
         .from('trips')
@@ -233,7 +247,6 @@ const TripDetail = () => {
   );
 };
 
-// Helper for Star icon
 const Star = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />

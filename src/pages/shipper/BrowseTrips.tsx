@@ -47,14 +47,16 @@ const BrowseTrips = () => {
   const fetchTrips = useCallback(async () => {
     if (!userProfile) return;
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('trips')
-      .select('id, origin_city, destination_city, departure_date, available_capacity_tonnes, price_per_tonne, vehicle_type, vehicle_number, status, created_at')
+      .select('*')
       .eq('status', 'active')
       .order('created_at', { ascending: false });
 
-    if (data) {
-      setTrips(data as Trip[]);
+    if (error) {
+      showError('Failed to fetch trips');
+    } else if (data) {
+      setTrips(data as unknown as Trip[]);
     }
     setLoading(false);
   }, [userProfile]);
