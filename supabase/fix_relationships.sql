@@ -1,7 +1,19 @@
--- Ensure foreign key relationship between shipment_requests and users exists
--- This allows Supabase to perform joins between these tables
+-- Ensure foreign key relationship between shipments and users exists
+-- This allows Supabase to perform joins like shipper:users(*)
 DO $$ 
 BEGIN 
+  IF NOT EXISTS (
+    SELECT 1 
+    FROM information_schema.table_constraints 
+    WHERE constraint_name = 'fk_shipments_shipper'
+  ) THEN
+    ALTER TABLE public.shipments
+    ADD CONSTRAINT fk_shipments_shipper
+    FOREIGN KEY (shipper_id) REFERENCES public.users(id)
+    ON DELETE CASCADE;
+  END IF;
+
+  -- Also ensure shipment_requests has the correct relationships
   IF NOT EXISTS (
     SELECT 1 
     FROM information_schema.table_constraints 
