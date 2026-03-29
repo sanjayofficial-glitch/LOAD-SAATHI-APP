@@ -18,9 +18,9 @@ const UpdatePassword = () => {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  const checkAndSetupPasswordReset = useCallback(async () => {
+  const verifyResetToken = useCallback(async () => {
     try {
-      // Check URL for reset token
+      // Check for token in URL (hash or query params)
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const queryParams = new URLSearchParams(window.location.search);
       
@@ -33,54 +33,56 @@ const UpdatePassword = () => {
         return;
       }
 
-      // Wait for Supabase to process the token (it does this automatically)
-      // Poll for session with increasing delays
-      let attempts = 0;
-      const maxAttempts = 20; // Try for up to 20 seconds
+      // Try to get session directly first
+      const { data: { session } } = await supabase.auth.getSession();
       
-      const pollForSession = async (): Promise<boolean> => {
-        while (attempts < maxAttempts) {
-          const { data: { session } } = await supabase.auth.getSession();
-          
-          if (session) {
-            console.log('Password reset session established');
-            setStatus('ready');
-            return true;
-          }
-          
-          // Also check if we have a user (recovery mode)
-          const { data: { user } } = await supabase.auth.getUser();
-          if (user) {
-            console.log('User authenticated for password reset');
-            setStatus('ready');
-            return true;
-          }
-          
-          attempts++;
-          // Exponential backoff: start with 500ms, max 2000ms
-          const delay = Math.min(500 * Math.pow(1.5, attempts), 2000);
-          await new Promise(resolve => setTimeout(resolve, delay));
+      if (session) {
+        console.log('Session already established');
+        setStatus('ready');
+        return;
+      }
+
+      // If no session, try to recover from the token in URL
+      // Supabase should handle this automatically, but we need to wait
+      const maxAttempts = 15;
+      let attempts = 0;
+      
+      while (attempts < maxAttempts) {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        
+        if (currentSession) {
+          console.log('Session established after waiting');
+          setStatus('ready');
+          return;
         }
         
-        return false;
-      };
-
-      const sessionEstablished = await pollForSession();
-      
-      if (!sessionEstablished) {
-        setErrorMsg('Unable to verify reset link. The link may have expired or you took too long to respond.');
-        setStatus('error');
+        // Also check for user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          console.log('User authenticated');
+          setStatus('ready');
+          return;
+        }
+        
+        attempts++;
+        // Wait 1 second between attempts
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
+      
+      // If we get here, we couldn't establish a session
+      setErrorMsg('Unable to verify reset link. The link may have expired or you took too long to respond.');
+      setStatus('error');
+      
     } catch (err) {
-      console.error('Error in password reset flow:', err);
+      console.error('Error in password reset verification:', err);
       setErrorMsg('An error occurred while verifying your reset link. Please try again.');
       setStatus('error');
     }
   }, []);
 
   useEffect(() => {
-    checkAndSetupPasswordReset();
-  }, [checkAndSetupPasswordReset]);
+    verifyResetToken();
+  }, [verifyResetToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,13 +113,12 @@ const UpdatePassword = () => {
       setSuccess(true);
       showSuccess('Password updated successfully!');
 
-      // Clear any URL parameters/hashes
+      // Clear URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);
 
-      // Sign out to force a fresh login with the new password
+      // Sign out and redirect
       await supabase.auth.signOut();
-
-      // Redirect to login after a short delay
+      
       setTimeout(() => {
         navigate('/login', { replace: true });
       }, 2000);
@@ -127,7 +128,7 @@ const UpdatePassword = () => {
     }
   };
 
-  // Loading state while checking for session
+  // Loading state
   if (status === 'checking') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-blue-50">
@@ -214,7 +215,7 @@ const UpdatePassword = () => {
     );
   }
 
-  // Main form (ready state)
+  // Main form
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-blue-50">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-lg">
