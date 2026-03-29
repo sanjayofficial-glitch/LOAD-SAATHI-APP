@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
@@ -30,30 +30,49 @@ const ShipperDashboard = () => {
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ['shipper-requests', userProfile?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // 1. Fetch requests
+      const { data: requestData, error: requestError } = await supabase
         .from('requests')
-        .select(`
-          *,
-          trip:trips(
-            *,
-            trucker:users(*)
-          )
-        `)
+        .select('*')
         .eq('shipper_id', userProfile?.id)
         .order('created_at', { ascending: false })
         .limit(10);
       
-      if (error) throw error;
-      
-      return (data as any[]).map(req => ({
+      if (requestError) throw requestError;
+      if (!requestData || requestData.length === 0) return [];
+
+      // 2. Fetch related trips
+      const tripIds = [...new Set(requestData.map(r => r.trip_id))];
+      const { data: tripData, error: tripError } = await supabase
+        .from('trips')
+        .select('*')
+        .in('id', tripIds);
+
+      if (tripError) throw tripError;
+
+      // 3. Fetch truckers for those trips
+      const truckerIds = [...new Set(tripData?.map(t => t.trucker_id) || [])];
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .in('id', truckerIds);
+
+      const userMap = (userData || []).reduce((acc: any, user: any) => {
+        acc[user.id] = user;
+        return acc;
+      }, {});
+
+      const tripMap = (tripData || []).reduce((acc: any, trip: any) => {
+        acc[trip.id] = {
+          ...trip,
+          trucker: userMap[trip.trucker_id]
+        };
+        return acc;
+      }, {});
+
+      return requestData.map(req => ({
         ...req,
-        trip: Array.isArray(req.trip) ? {
-          ...req.trip[0],
-          trucker: Array.isArray(req.trip[0]?.trucker) ? req.trip[0].trucker[0] : req.trip[0]?.trucker
-        } : {
-          ...req.trip,
-          trucker: Array.isArray(req.trip?.trucker) ? req.trip.trucker[0] : req.trip?.trucker
-        }
+        trip: tripMap[req.trip_id]
       })) as Request[];
     },
     enabled: !!userProfile?.id,

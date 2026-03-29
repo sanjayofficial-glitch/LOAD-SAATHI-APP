@@ -49,22 +49,37 @@ const TruckerDashboard = () => {
       const tripIds = trips.map(t => t.id);
       if (tripIds.length === 0) return [];
       
-      const { data, error } = await supabase
+      // 1. Fetch requests
+      const { data: requestData, error: requestError } = await supabase
         .from('requests')
-        .select(`
-          *,
-          trip:trips(*),
-          shipper:users(*)
-        `)
+        .select('*')
         .in('trip_id', tripIds)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
-      
-      return (data as any[]).map(req => ({
+      if (requestError) throw requestError;
+      if (!requestData || requestData.length === 0) return [];
+
+      // 2. Fetch related shippers
+      const shipperIds = [...new Set(requestData.map(r => r.shipper_id))];
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .in('id', shipperIds);
+
+      const userMap = (userData || []).reduce((acc: any, user: any) => {
+        acc[user.id] = user;
+        return acc;
+      }, {});
+
+      const tripMap = trips.reduce((acc: any, trip: any) => {
+        acc[trip.id] = trip;
+        return acc;
+      }, {});
+
+      return requestData.map(req => ({
         ...req,
-        trip: Array.isArray(req.trip) ? req.trip[0] : req.trip,
-        shipper: Array.isArray(req.shipper) ? req.shipper[0] : req.shipper
+        trip: tripMap[req.trip_id],
+        shipper: userMap[req.shipper_id]
       })) as Request[];
     },
     enabled: !!userProfile?.id && trips.length > 0,
