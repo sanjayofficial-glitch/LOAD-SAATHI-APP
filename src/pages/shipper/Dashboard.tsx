@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import DashboardSkeleton from '@/components/DashboardSkeleton';
+import ReviewDialog from '@/components/ReviewDialog';
 import { 
   Package, 
   Clock, 
@@ -19,18 +20,25 @@ import {
   Phone,
   Loader2,
   Search,
-  PlusSquare
+  PlusSquare,
+  Star as StarIcon
 } from 'lucide-react';
 import Star from '@/components/Star';
 
 const ShipperDashboard = () => {
   const { userProfile } = useAuth();
   const queryClient = useQueryClient();
+  
+  const [reviewTarget, setReviewTarget] = useState<{
+    tripId: string;
+    truckerId: string;
+    truckerName: string;
+    requestId: string;
+  } | null>(null);
 
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ['shipper-requests', userProfile?.id],
     queryFn: async () => {
-      // 1. Fetch requests
       const { data: requestData, error: requestError } = await supabase
         .from('requests')
         .select('*')
@@ -41,7 +49,6 @@ const ShipperDashboard = () => {
       if (requestError) throw requestError;
       if (!requestData || requestData.length === 0) return [];
 
-      // 2. Fetch related trips
       const tripIds = [...new Set(requestData.map(r => r.trip_id))];
       const { data: tripData, error: tripError } = await supabase
         .from('trips')
@@ -50,7 +57,6 @@ const ShipperDashboard = () => {
 
       if (tripError) throw tripError;
 
-      // 3. Fetch truckers for those trips
       const truckerIds = [...new Set(tripData?.map(t => t.trucker_id) || [])];
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -84,8 +90,7 @@ const ShipperDashboard = () => {
       const { data, error } = await supabase
         .from('reviews')
         .select('*')
-        .eq('shipper_id', userProfile?.id)
-        .order('created_at', { ascending: false });
+        .eq('shipper_id', userProfile?.id);
       if (error) throw error;
       return data || [];
     },
@@ -119,11 +124,7 @@ const ShipperDashboard = () => {
       .reduce((sum, r) => sum + (r.weight_tonnes * (r.trip?.price_per_tonne || 0)), 0), 
   [requests]);
 
-  const averageRatingGiven = useMemo(() => {
-    if (reviews.length === 0) return 0;
-    const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
-    return sum / reviews.length;
-  }, [reviews]);
+  const reviewedTripIds = useMemo(() => new Set(reviews.map(r => r.trip_id)), [reviews]);
 
   if (isLoading && requests.length === 0) {
     return <DashboardSkeleton />;
@@ -175,7 +176,7 @@ const ShipperDashboard = () => {
         <Card className="shadow-sm border-purple-100 hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Reviews Given</CardTitle>
-            <Star className="h-4 w-4 text-purple-600" />
+            <StarIcon className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent><div className="text-2xl font-bold">{reviews.length}</div></CardContent>
         </Card>
@@ -198,34 +199,73 @@ const ShipperDashboard = () => {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {requests.map((request) => (
-                    <div key={request.id} className="border rounded-xl p-4 bg-white hover:shadow-md transition-all">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <p className="font-bold text-gray-900">{request.goods_description}</p>
-                          <p className="text-sm text-gray-500">
-                            {request.weight_tonnes}t • {request.trip?.origin_city} → {request.trip?.destination_city}
-                          </p>
-                        </div>
-                        <Badge variant="outline" className={
-                          request.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                          request.status === 'accepted' ? 'bg-green-50 text-green-700 border-green-200' :
-                          'bg-red-50 text-red-700 border-red-200'
-                        }>
-                          {request.status.toUpperCase()}
-                        </Badge>
-                      </div>
-                      <div className="flex justify-between items-center pt-3 border-t">
-                        <div className="text-xs text-gray-400">Requested: {new Date(request.created_at).toLocaleDateString('en-IN')}</div>
-                        {request.status === 'accepted' && request.trip?.trucker && (
-                          <div className="flex items-center space-x-2">
-                            <span className="text-sm font-medium text-green-600">{request.trip.trucker.full_name}</span>
-                            <a href={`tel:${request.trip.trucker.phone}`}><Button size="sm" className="bg-green-600 hover:bg-green-700 shadow-sm"><Phone className="h-4 w-4 mr-1" /> Call</Button></a>
+                  {requests.map((request) => {
+                    const isCompleted = request.trip?.status === 'completed';
+                    const isAccepted = request.status === 'accepted';
+                    const canReview = isAccepted && isCompleted && !reviewedTripIds.has(request.trip_id);
+                    const alreadyReviewed = isAccepted && isCompleted && reviewedTripIds.has(request.trip_id);
+
+                    return (
+                      <div key={request.id} className="border rounded-xl p-4 bg-white hover:shadow-md transition-all">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <p className="font-bold text-gray-900">{request.goods_description}</p>
+                            <p className="text-sm text-gray-500">
+                              {request.weight_tonnes}t • {request.trip?.origin_city} → {request.trip?.destination_city}
+                            </p>
                           </div>
-                        )}
+                          <div className="flex flex-col items-end gap-2">
+                            <Badge variant="outline" className={
+                              request.status === 'pending' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                              request.status === 'accepted' ? 'bg-green-50 text-green-700 border-green-200' :
+                              'bg-red-50 text-red-700 border-red-200'
+                            }>
+                              {request.status.toUpperCase()}
+                            </Badge>
+                            {isCompleted && (
+                              <Badge className="bg-blue-100 text-blue-700 border-blue-200">COMPLETED</Badge>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex justify-between items-center pt-3 border-t">
+                          <div className="text-xs text-gray-400">Requested: {new Date(request.created_at).toLocaleDateString('en-IN')}</div>
+                          <div className="flex items-center space-x-2">
+                            {canReview && (
+                              <Button 
+                                size="sm" 
+                                className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                                onClick={() => setReviewTarget({
+                                  tripId: request.trip_id,
+                                  truckerId: request.trip.trucker_id,
+                                  truckerName: request.trip.trucker.full_name,
+                                  requestId: request.id
+                                })}
+                              >
+                                <StarIcon className="h-4 w-4 mr-1 fill-current" /> Rate Trucker
+                              </Button>
+                            )}
+                            {alreadyReviewed && (
+                              <Badge variant="outline" className="text-gray-400 border-gray-200">Reviewed</Badge>
+                            )}
+                            {isAccepted && request.trip?.trucker && (
+                              <>
+                                <Link to={`/chat/${request.id}`}>
+                                  <Button size="sm" variant="outline" className="border-orange-200 text-orange-700 hover:bg-orange-50">
+                                    Chat
+                                  </Button>
+                                </Link>
+                                <a href={`tel:${request.trip.trucker.phone}`}>
+                                  <Button size="sm" className="bg-green-600 hover:bg-green-700 shadow-sm">
+                                    <Phone className="h-4 w-4 mr-1" /> Call
+                                  </Button>
+                                </a>
+                              </>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
@@ -250,13 +290,6 @@ const ShipperDashboard = () => {
                 <span className="font-bold">{reviews.length}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Avg Rating Given</span>
-                <div className="flex items-center">
-                  <Star className="h-4 w-4 text-yellow-500 mr-1 fill-current" />
-                  <span className="font-bold">{averageRatingGiven.toFixed(1)}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Successful Shipments</span>
                 <span className="font-bold">{acceptedCount}</span>
               </div>
@@ -264,6 +297,18 @@ const ShipperDashboard = () => {
           </Card>
         </div>
       </div>
+
+      {reviewTarget && userProfile && (
+        <ReviewDialog
+          isOpen={!!reviewTarget}
+          onClose={() => setReviewTarget(null)}
+          tripId={reviewTarget.tripId}
+          truckerId={reviewTarget.truckerId}
+          shipperId={userProfile.id}
+          truckerName={reviewTarget.truckerName}
+          onSuccess={() => queryClient.invalidateQueries({ queryKey: ['shipper-reviews'] })}
+        />
+      )}
     </div>
   );
 };

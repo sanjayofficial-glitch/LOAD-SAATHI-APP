@@ -29,6 +29,7 @@ const MyShipments = lazy(() => import("./pages/shipper/MyShipments"));
 const Profile = lazy(() => import("./pages/Profile"));
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
 const Chat = lazy(() => import("./pages/Chat"));
+const ChatList = lazy(() => import("./pages/ChatList"));
 const TestAuth = lazy(() => import("./pages/TestAuth"));
 const PostShipments = lazy(() => import("./pages/shipper/PostShipments"));
 const EditShipment = lazy(() => import("./pages/shipper/EditShipment"));
@@ -162,6 +163,11 @@ const App = () => (
               <Route path="/chat/:requestId" element={
                 <ProtectedRoute>
                   <Chat />
+                </ProtectedRoute>
+              } />
+              <Route path="/messages" element={
+                <ProtectedRoute>
+                  <ChatList />
                 </ProtectedRoute>
               } />
               <Route path="/profile" element={
