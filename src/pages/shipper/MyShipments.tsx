@@ -2,248 +2,216 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
-import { Request } from '@/types';
-import { Card, CardContent } from '@/components/ui/card';
+import { showSuccess, showError } from '@/utils/toast';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { 
-  Dialog, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from "@/components/ui/dialog";
-import { showSuccess, showError } from '@/utils/toast';
-import { Package, Phone, MapPin, MessageSquare, Loader2 } from 'lucide-react';
-import Star from '@/components/Star';
+  Package, 
+  MapPin, 
+  Calendar, 
+  IndianRupee, 
+  Edit, 
+  Trash2,
+  Eye,
+  CheckCircle2,
+  AlertCircle,
+  Loader2
+} from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const MyShipments = () => {
   const { userProfile } = useAuth();
-  const [requests, setRequests] = useState<Request[]>([]);
+  const [shipments, setShipments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [rating, setRating] = useState(5);
-  const [comment, setComment] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [reviewedTrips, setReviewedTrips] = useState<Set<string>>(new Set());
 
-  const fetchRequests = async () => {
+  const fetchShipments = async () => {
     const { data, error } = await supabase
-      .from('requests')
-      .select('*, trip:trips(*, trucker:users(*))')
+      .from('shipments')
+      .select('*')
       .eq('shipper_id', userProfile?.id)
       .order('created_at', { ascending: false });
     
     if (error) {
       showError('Failed to fetch shipments');
     } else if (data) {
-      // Map data to handle potential array returns from Supabase joins
-      const mappedData = (data as any[]).map(req => ({
-        ...req,
-        trip: Array.isArray(req.trip) ? {
-          ...req.trip[0],
-          trucker: Array.isArray(req.trip[0]?.trucker) ? req.trip[0].trucker[0] : req.trip[0]?.trucker
-        } : {
-          ...req.trip,
-          trucker: Array.isArray(req.trip?.trucker) ? req.trip.trucker[0] : req.trip?.trucker
-        }
-      })) as Request[];
-      setRequests(mappedData);
+      setShipments(data);
     }
     setLoading(false);
   };
 
-  const fetchReviewedTrips = async () => {
-    if (!userProfile) return;
-    
-    const { data, error } = await supabase
-      .from('reviews')
-      .select('trip_id')
-      .eq('shipper_id', userProfile.id);
-    
-    if (data) {
-      setReviewedTrips(new Set(data.map(review => review.trip_id)));
-    }
-  };
-
   useEffect(() => {
-    if (userProfile) {
-      fetchRequests();
-      fetchReviewedTrips();
-    }
+    if (userProfile) fetchShipments();
   }, [userProfile]);
 
-  const handleSubmitReview = async (tripId: string, truckerId: string) => {
-    setSubmitting(true);
-    
-    try {
-      const { error } = await supabase.from('reviews').insert({
-        trip_id: tripId,
-        shipper_id: userProfile?.id,
-        trucker_id: truckerId,
-        rating,
-        comment: comment.trim() || null
-      });
+  const handleDeleteShipment = async (shipmentId: string) => {
+    const { error } = await supabase
+      .from('shipments')
+      .delete()
+      .eq('id', shipmentId);
 
-      if (error) {
-        if (error.code === '23505') {
-          showError('You have already reviewed this trip.');
-        } else {
-          showError('Failed to submit review. Please try again.');
-        }
-      } else {
-        showSuccess('Thank you for your review!');
-        setReviewedTrips(prev => new Set([...prev, tripId]));
-        fetchRequests(); // Refresh to update the UI
-      }
-    } catch (err) {
-      showError('An unexpected error occurred.');
-    } finally {
-      setSubmitting(false);
+    if (error) {
+      showError('Failed to delete shipment. It might have active requests.');
+    } else {
+      showSuccess('Shipment deleted successfully');
+      fetchShipments();
     }
   };
 
-  if (loading) return <div className="p-8 text-center">Loading...</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>
+  );
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">My Shipments</h1>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">My Shipments</h1>
+          <p className="text-gray-500">Manage your posted shipments and track their status</p>
+        </div>
+        <Link to="/shipper/post-shipment">
+          <Button className="bg-blue-600 hover:bg-blue-700 shadow-md">
+            Post New Shipment
+          </Button>
+        </Link>
+      </div>
 
-      {requests.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-xl border border-dashed">
-          <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">No shipments found.</p>
+      {shipments.length === 0 ? (
+        <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+          <div className="bg-blue-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Package className="h-8 w-8 text-blue-600" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-900">No shipments posted yet</h3>
+          <p className="text-gray-500 mb-6">Start by posting your first shipment</p>
+          <Link to="/shipper/post-shipment">
+            <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-50">
+              Post Your First Shipment
+            </Button>
+          </Link>
         </div>
       ) : (
         <div className="grid gap-6">
-          {requests.map(req => (
-            <Card key={req.id} className="overflow-hidden">
-              <CardContent className="p-6">
-                <div className="flex flex-col md:flex-row justify-between gap-6">
-                  <div className="space-y-3 flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-bold text-gray-900">{req.goods_description}</h3>
-                      <Badge variant={
-                        req.status === 'accepted' ? 'default' : 
-                        req.status === 'pending' ? 'outline' : 'destructive'
-                      } className={req.status === 'accepted' ? 'bg-green-100 text-green-700 hover:bg-green-100' : ''}>
-                        {req.status.toUpperCase()}
+          {shipments.map(shipment => (
+            <Card key={shipment.id} className="overflow-hidden border-blue-100 hover:shadow-md transition-shadow">
+              <CardContent className="p-0">
+                <div className="flex flex-col md:flex-row md:items-center justify-between p-6 gap-6">
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center text-xl font-bold text-gray-900">
+                        {shipment.origin_city} → {shipment.destination_city}
+                      </div>
+                      <Badge variant={shipment.status === 'pending' ? 'default' : 'secondary'} className={
+                        shipment.status === 'pending' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100' : 
+                        shipment.status === 'matched' ? 'bg-green-100 text-green-700 hover:bg-green-100' :
+                        shipment.status === 'completed' ? 'bg-blue-100 text-blue-700 hover:bg-blue-100' :
+                        'bg-gray-100 text-gray-600'
+                      }>
+                        {shipment.status.toUpperCase()}
                       </Badge>
                     </div>
                     
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-600">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm text-gray-500">
                       <div className="flex items-center">
-                        <MapPin className="h-4 w-4 mr-2 text-orange-600" />
-                        {req.trip?.origin_city} → {req.trip?.destination_city}
+                        <Calendar className="h-4 w-4 mr-2 text-blue-600" />
+                        {new Date(shipment.departure_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                       </div>
                       <div className="flex items-center">
-                        <Package className="h-4 w-4 mr-2 text-blue-600" />
-                        {req.weight_tonnes} Tonnes
+                        <Package className="h-4 w-4 mr-2 text-purple-600" />
+                        {shipment.weight_tonnes} Tonnes
+                      </div>
+                      <div className="flex items-center font-semibold text-gray-900">
+                        <IndianRupee className="h-4 w-4 mr-1 text-green-600" />
+                        {shipment.budget_per_tonne.toLocaleString()} /t
                       </div>
                     </div>
 
-                    {req.status === 'accepted' && req.trip?.trucker && (
-                      <div className="bg-orange-50 p-3 rounded-lg flex flex-wrap items-center justify-between gap-3">
-                        <div className="flex items-center">
-                          <div className="w-8 h-8 bg-orange-200 rounded-full flex items-center justify-center mr-3">
-                            <Star filled className="h-4 w-4 text-orange-700" />
-                          </div>
-                          <div>
-                            <p className="text-xs text-orange-800 font-medium">Trucker Contact</p>
-                            <p className="text-sm font-bold text-orange-900">{req.trip.trucker.full_name}</p>
-                            <div className="flex items-center text-xs text-orange-600">
-                              <Star filled className="h-3 w-3 text-yellow-500 mr-1" />
-                              {req.trip.trucker.rating?.toFixed(1) || '0.0'} Rating
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Link to={`/chat/${req.id}`}>
-                            <Button size="sm" variant="outline" className="border-orange-200 text-orange-700 hover:bg-orange-100">
-                              <MessageSquare className="h-4 w-4 mr-2" />
-                              Chat
-                            </Button>
-                          </Link>
-                          <a href={`tel:${req.trip.trucker.phone}`}>
-                            <Button size="sm" className="bg-orange-600 hover:bg-orange-700">
-                              <Phone className="h-4 w-4 mr-2" />
-                              Call
-                            </Button>
-                          </a>
-                        </div>
+                    <div className="bg-gray-50 p-3 rounded-lg">
+                      <p className="text-sm font-medium text-gray-700 mb-1">Goods:</p>
+                      <p className="text-sm text-gray-600">{shipment.goods_description}</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Pickup</p>
+                        <p className="text-gray-700">{shipment.pickup_address}</p>
                       </div>
-                    )}
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Delivery</p>
+                        <p className="text-gray-700">{shipment.delivery_address}</p>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex flex-col justify-center items-end gap-3">
-                    {req.trip?.status === 'completed' && req.status === 'accepted' && !reviewedTrips.has(req.trip_id) && (
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button className="bg-yellow-500 hover:bg-yellow-600 text-white">
-                            <Star className="h-4 w-4 mr-2" />
-                            Rate Trucker
+                  <div className="flex flex-wrap items-center gap-2 border-t md:border-t-0 pt-4 md:pt-0">
+                    <Link to={`/shipments/${shipment.id}`}>
+                      <Button variant="ghost" size="sm" className="hover:bg-blue-50">
+                        <Eye className="h-4 w-4 mr-2" />
+                        View
+                      </Button>
+                    </Link>
+                    
+                    {shipment.status === 'pending' && (
+                      <>
+                        <Link to={`/shipper/edit-shipment/${shipment.id}`}>
+                          <Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50">
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
                           </Button>
-                        </DialogTrigger>
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>Rate your experience with {req.trip.trucker?.full_name}</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                              <Label>Rating (1-5 Stars)</Label>
-                              <div className="flex gap-2">
-                                {[1, 2, 3, 4, 5].map((s) => (
-                                  <button
-                                    key={s}
-                                    onClick={() => setRating(s)}
-                                    className={`p-2 rounded-md transition-colors ${
-                                      rating >= s ? 'text-yellow-500' : 'text-gray-300'
-                                    }`}
-                                  >
-                                    <Star filled className="h-8 w-8" />
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Comment (Optional)</Label>
-                              <Input 
-                                placeholder="How was the service?" 
-                                value={comment}
-                                onChange={(e) => setComment(e.target.value)}
-                              />
-                            </div>
-                            <Button 
-                              className="w-full bg-orange-600" 
-                              onClick={() => handleSubmitReview(req.trip_id, req.trip.trucker_id)}
-                              disabled={submitting}
-                            >
-                              {submitting ? (
-                                <>
-                                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                                  Submitting...
-                                </>
-                              ) : 'Submit Review'}
+                        </Link>
+                        
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50">
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
                             </Button>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete your shipment listing. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleDeleteShipment(shipment.id)}
+                                className="bg-red-600 hover:bg-red-700"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </>
                     )}
 
-                    {req.trip?.status === 'completed' && req.status === 'accepted' && reviewedTrips.has(req.trip_id) && (
-                      <div className="text-center">
-                        <div className="flex items-center text-green-600 mb-2">
-                          <Star filled className="h-4 w-4 mr-1" />
-                          <span className="text-sm font-medium">Already Rated</span>
-                        </div>
+                    {shipment.status === 'matched' && (
+                      <div className="flex items-center text-green-600 text-sm">
+                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                        Matched with trucker
                       </div>
                     )}
 
-                    <div className="text-right">
-                      <p className="text-xs text-gray-400">Requested on</p>
-                      <p className="text-sm font-medium">{new Date(req.created_at).toLocaleDateString()}</p>
-                    </div>
+                    {shipment.status === 'completed' && (
+                      <div className="flex items-center text-blue-600 text-sm">
+                        <CheckCircle2 className="h-4 w-4 mr-1" />
+                        Completed
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>

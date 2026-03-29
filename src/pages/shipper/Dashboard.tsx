@@ -18,7 +18,8 @@ import {
   Truck,
   Phone,
   Loader2,
-  Search
+  Search,
+  PlusSquare
 } from 'lucide-react';
 import Star from '@/components/Star';
 
@@ -170,7 +171,11 @@ const ShipperDashboard = () => {
                 <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed">
                   <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">No requests yet</h3>
-                  <Link to="/browse-trucks"><Button className="bg-orange-600 hover:bg-orange-700 mt-2 shadow-sm">Find Trucks</Button></Link>
+                  <div className="space-y-3">
+                    <Link to="/shipper/post-shipment"><Button className="bg-blue-600 hover:bg-blue-700 shadow-sm">Post Your Shipment</Button></Link>
+                    <p className="text-sm text-gray-500">or</p>
+                    <Link to="/browse-trucks"><Button variant="outline" className="border-orange-200 text-orange-700 hover:bg-orange-50">Find Available Trucks</Button></Link>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -212,7 +217,8 @@ const ShipperDashboard = () => {
           <Card className="shadow-sm">
             <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
             <CardContent className="space-y-3">
-              <Link to="/browse-trucks"><Button className="w-full justify-start bg-orange-600 hover:bg-orange-700 shadow-sm hover:shadow-md transition-all"><Search className="h-4 w-4 mr-2" /> Find Available Trucks</Button></Link>
+              <Link to="/shipper/post-shipment"><Button className="w-full justify-start bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow-md transition-all"><PlusSquare className="h-4 w-4 mr-2" /> Post Your Shipment</Button></Link>
+              <Link to="/browse-trucks"><Button className="w-full justify-start" variant="outline"><Search className="h-4 w-4 mr-2" /> Find Available Trucks</Button></Link>
               <Link to="/shipper/my-shipments"><Button className="w-full justify-start" variant="outline"><Package className="h-4 w-4 mr-2" /> View All Shipments</Button></Link>
             </CardContent>
           </Card>
