@@ -1,11 +1,19 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Truck, Package, CheckCircle, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import IndexSkeleton from '@/components/IndexSkeleton';
 
 const Index = () => {
   const { userProfile, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate a brief loading for skeleton display
+    const timer = setTimeout(() => setIsLoading(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     // Check if we are in a recovery flow before redirecting to dashboard
@@ -23,6 +31,10 @@ const Index = () => {
       navigate(userProfile.user_type === 'trucker' ? '/trucker/dashboard' : '/shipper/dashboard');
     }
   }, [userProfile, authLoading, navigate]);
+
+  if (isLoading) {
+    return <IndexSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50">
