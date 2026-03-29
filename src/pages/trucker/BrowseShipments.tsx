@@ -17,8 +17,8 @@ import {
   Search, 
   ArrowRight,
   Loader2,
-  Filter,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
 
@@ -33,36 +33,47 @@ const BrowseShipments = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      // Fetch shipments
+      console.log('[BrowseShipments] Fetching pending shipments...');
+      
+      // Fetch shipments with explicit join
       const { data: shipmentData, error: shipmentError } = await supabase
         .from('shipments')
         .select('*, shipper:users(*)')
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
-      if (shipmentError) throw shipmentError;
+      if (shipmentError) {
+        console.error('[BrowseShipments] Shipment fetch error:', shipmentError);
+        throw shipmentError;
+      }
+      
       setShipments(shipmentData as unknown as Shipment[]);
 
-      // Fetch my existing requests to prevent duplicates
+      // Fetch my existing requests
       if (userProfile?.id) {
-        const { data: requestData } = await supabase
+        const { data: requestData, error: requestError } = await supabase
           .from('shipment_requests')
           .select('shipment_id')
           .eq('trucker_id', userProfile.id);
         
-        if (requestData) {
+        if (requestError) {
+          console.error('[BrowseShipments] Request fetch error:', requestError);
+        } else if (requestData) {
           setMyRequests(requestData.map(r => r.shipment_id.toString()));
         }
       }
-    } catch (error) {
-      showError('Failed to load shipments');
+    } catch (error: any) {
+      console.error('[BrowseShipments] Fatal error:', error);
+      showError(`Failed to load shipments: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData();
+    if (userProfile) {
+      fetchData();
+    }
   }, [userProfile?.id]);
 
   const handleContactShipper = async (shipmentId: string) => {
@@ -73,7 +84,7 @@ const BrowseShipments = () => {
       const { error } = await supabase
         .from('shipment_requests')
         .insert({
-          shipment_id: shipmentId,
+          shipment_id: parseInt(shipmentId),
           trucker_id: userProfile.id,
           status: 'pending'
         });

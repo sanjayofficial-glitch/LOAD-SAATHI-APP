@@ -11,33 +11,26 @@ BEGIN
     FOREIGN KEY (shipper_id) REFERENCES public.users(id)
     ON DELETE CASCADE;
   END IF;
+END $$;
 
-  -- Ensure shipment_requests has the correct relationships
-  IF NOT EXISTS (
-    SELECT 1 
-    FROM information_schema.table_constraints 
-    WHERE constraint_name = 'fk_shipment_requests_trucker'
-  ) THEN
-    ALTER TABLE public.shipment_requests
-    ADD CONSTRAINT fk_shipment_requests_trucker
-    FOREIGN KEY (trucker_id) REFERENCES public.users(id)
-    ON DELETE CASCADE;
-  END IF;
+-- Ensure RLS is enabled
+ALTER TABLE public.shipments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.shipment_requests ENABLE ROW LEVEL SECURITY;
 
+-- Policy: Allow truckers to view pending shipments
+DO $$
+BEGIN
   IF NOT EXISTS (
-    SELECT 1 
-    FROM information_schema.table_constraints 
-    WHERE constraint_name = 'fk_shipment_requests_shipment'
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'shipments' AND policyname = 'Truckers can view pending shipments'
   ) THEN
-    ALTER TABLE public.shipment_requests
-    ADD CONSTRAINT fk_shipment_requests_shipment
-    FOREIGN KEY (shipment_id) REFERENCES public.shipments(id)
-    ON DELETE CASCADE;
+    CREATE POLICY "Truckers can view pending shipments" ON public.shipments
+    FOR SELECT TO authenticated USING (status = 'pending');
   END IF;
 END $$;
 
--- Add SELECT policy for users table so authenticated users can see basic profile info
--- This is required for joins like shipper:users(*) to work
+-- Policy: Allow authenticated users to view basic profile info (needed for joins)
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -46,5 +39,17 @@ BEGIN
   ) THEN
     CREATE POLICY "Allow authenticated users to view profiles" ON public.users
     FOR SELECT TO authenticated USING (true);
+  END IF;
+END $$;
+
+-- Policy: Allow truckers to manage their own shipment requests
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'shipment_requests' AND policyname = 'Truckers can manage own requests'
+  ) THEN
+    CREATE POLICY "Truckers can manage own requests" ON public.shipment_requests
+    FOR ALL TO authenticated USING (auth.uid() = trucker_id) WITH CHECK (auth.uid() = trucker_id);
   END IF;
 END $$;
