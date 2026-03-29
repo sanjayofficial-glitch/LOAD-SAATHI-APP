@@ -21,20 +21,18 @@ const UpdatePassword = () => {
 
   useEffect(() => {
     let isMounted = true;
-    let timeoutId: ReturnType<typeof setTimeout>;
+    let attempts = 0;
+    const maxAttempts = 10; // Try for up to 10 seconds
 
-    const checkSession = async () => {
+    const verifySession = async () => {
       try {
+        // First try to get current session
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (!isMounted) return;
         
         if (error) {
           console.error('Session check error:', error);
-          setErrorMsg('Unable to verify reset link. Please try again.');
-          setIsValidSession(false);
-          setIsVerifying(false);
-          return;
         }
         
         if (session) {
@@ -44,46 +42,68 @@ const UpdatePassword = () => {
           return;
         }
         
-        // No session - check if we have a recovery code in the URL
+        // Check if we have a recovery code in the URL
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const queryParams = new URLSearchParams(window.location.search);
         const hasRecoveryCode = hashParams.has('access_token') || queryParams.has('code');
         
         if (hasRecoveryCode) {
-          console.log('Recovery code detected, waiting for session...');
-          // Wait for Supabase to process the token
-          timeoutId = setTimeout(async () => {
-            if (!isMounted) return;
+          console.log('Recovery code detected, waiting for session to be established...');
+          
+          // If no session yet, try to recover from URL params
+          if (!session) {
+            // Let Supabase handle the token from URL automatically
+            // Just wait a bit and check again
+            const pollSession = async () => {
+              if (attempts >= maxAttempts) {
+                if (isMounted) {
+                  setErrorMsg('Unable to verify reset link. The link may have expired.');
+                  setIsValidSession(false);
+                  setIsVerifying(false);
+                }
+                return;
+              }
+              
+              attempts++;
+              
+              // Try to get session again
+              const { data: { session: retrySession } } = await supabase.auth.getSession();
+              
+              if (retrySession) {
+                if (isMounted) {
+                  setIsValidSession(true);
+                  setIsVerifying(false);
+                }
+                return;
+              }
+              
+              // Wait and try again
+              setTimeout(pollSession, 1000);
+            };
             
-            const { data: { session: retrySession } } = await supabase.auth.getSession();
-            if (retrySession) {
-              setIsValidSession(true);
-            } else {
-              setErrorMsg('Invalid or expired reset link. Please request a new one.');
-              setIsValidSession(false);
-            }
-            setIsVerifying(false);
-          }, 2000);
-          return;
+            pollSession();
+            return;
+          }
+        } else {
+          console.log('No recovery code or session found');
+          setErrorMsg('Invalid or expired reset link. Please request a new one.');
+          setIsValidSession(false);
+          setIsVerifying(false);
         }
-        
-        console.log('No recovery code or session found');
-        setErrorMsg('Invalid or expired reset link. Please request a new one.');
-        setIsValidSession(false);
-        setIsVerifying(false);
       } catch (err) {
         console.error('Error checking session:', err);
-        setErrorMsg('An error occurred. Please try again.');
-        setIsValidSession(false);
-        setIsVerifying(false);
+        if (isMounted) {
+          setErrorMsg('An error occurred. Please try again.');
+          setIsValidSession(false);
+          setIsVerifying(false);
+        }
       }
     };
 
-    checkSession();
+    verifySession();
     
     return () => {
       isMounted = false;
-      if (timeoutId) clearTimeout(timeoutId);
     };
   }, []);
 
@@ -135,6 +155,7 @@ const UpdatePassword = () => {
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin text-orange-600 mx-auto mb-4" />
           <p className="text-gray-600 font-medium">Verifying reset link...</p>
+          <p className="text-sm text-gray-500 mt-2">This may take a few seconds</p>
         </div>
       </div>
     );
