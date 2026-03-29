@@ -15,96 +15,56 @@ const UpdatePassword = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isVerifying, setIsVerifying] = useState(true);
-  const [isValidSession, setIsValidSession] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    let isMounted = true;
-    let attempts = 0;
-    const maxAttempts = 10; // Try for up to 10 seconds
-
-    const verifySession = async () => {
+    const checkSession = async () => {
       try {
-        // First try to get current session
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (!isMounted) return;
-        
-        if (error) {
-          console.error('Session check error:', error);
-        }
-        
-        if (session) {
-          console.log('Valid session found for password reset');
-          setIsValidSession(true);
-          setIsVerifying(false);
-          return;
-        }
-        
-        // Check if we have a recovery code in the URL
+        // Check if we have a recovery token in the URL (hash or query params)
         const hashParams = new URLSearchParams(window.location.hash.substring(1));
         const queryParams = new URLSearchParams(window.location.search);
-        const hasRecoveryCode = hashParams.has('access_token') || queryParams.has('code');
         
-        if (hasRecoveryCode) {
-          console.log('Recovery code detected, waiting for session to be established...');
+        const hasAccessToken = hashParams.has('access_token') || queryParams.has('access_token');
+        const hasCode = hashParams.has('code') || queryParams.has('code');
+        
+        if (hasAccessToken || hasCode) {
+          console.log('Password reset token detected in URL');
+          // The token is in the URL, Supabase will handle it automatically
+          // Just wait a moment for the session to be established
+          await new Promise(resolve => setTimeout(resolve, 1500));
           
-          // If no session yet, try to recover from URL params
-          if (!session) {
-            // Let Supabase handle the token from URL automatically
-            // Just wait a bit and check again
-            const pollSession = async () => {
-              if (attempts >= maxAttempts) {
-                if (isMounted) {
-                  setErrorMsg('Unable to verify reset link. The link may have expired.');
-                  setIsValidSession(false);
-                  setIsVerifying(false);
-                }
-                return;
-              }
-              
-              attempts++;
-              
-              // Try to get session again
-              const { data: { session: retrySession } } = await supabase.auth.getSession();
-              
-              if (retrySession) {
-                if (isMounted) {
-                  setIsValidSession(true);
-                  setIsVerifying(false);
-                }
-                return;
-              }
-              
-              // Wait and try again
-              setTimeout(pollSession, 1000);
-            };
-            
-            pollSession();
-            return;
+          // Now check if we have a session
+          const { data: { session }, error } = await supabase.auth.getSession();
+          
+          if (session) {
+            console.log('Session established for password reset');
+            setIsVerifying(false);
+          } else {
+            // Try to get user directly
+            const { data: { user } } = await supabase.auth.getUser();
+            if (user) {
+              console.log('User authenticated for password reset');
+              setIsVerifying(false);
+            } else {
+              setErrorMsg('Unable to verify reset link. The link may have expired or is invalid.');
+              setIsVerifying(false);
+            }
           }
         } else {
-          console.log('No recovery code or session found');
+          // No token in URL - this is an invalid access
+          console.log('No password reset token found in URL');
           setErrorMsg('Invalid or expired reset link. Please request a new one.');
-          setIsValidSession(false);
           setIsVerifying(false);
         }
       } catch (err) {
         console.error('Error checking session:', err);
-        if (isMounted) {
-          setErrorMsg('An error occurred. Please try again.');
-          setIsValidSession(false);
-          setIsVerifying(false);
-        }
+        setErrorMsg('An error occurred. Please try again.');
+        setIsVerifying(false);
       }
     };
 
-    verifySession();
-    
-    return () => {
-      isMounted = false;
-    };
+    checkSession();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -161,7 +121,7 @@ const UpdatePassword = () => {
     );
   }
 
-  if (errorMsg && !isValidSession) {
+  if (errorMsg) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
