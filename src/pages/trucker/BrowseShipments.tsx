@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
 import { Shipment } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,43 +17,85 @@ import {
   Search, 
   ArrowRight,
   Loader2,
-  Filter
+  Filter,
+  CheckCircle2
 } from 'lucide-react';
-import { showError } from '@/utils/toast';
+import { showError, showSuccess } from '@/utils/toast';
 
 const BrowseShipments = () => {
+  const { userProfile } = useAuth();
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterOrigin, setFilterOrigin] = useState('');
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
+  const [myRequests, setMyRequests] = useState<string[]>([]);
 
-  useEffect(() => {
-    const fetchShipments = async () => {
-      const { data, error } = await supabase
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // Fetch shipments
+      const { data: shipmentData, error: shipmentError } = await supabase
         .from('shipments')
         .select('*, shipper:users(*)')
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        showError('Failed to load shipments');
-      } else if (data) {
-        setShipments(data as unknown as Shipment[]);
-      }
-      setLoading(false);
-    };
+      if (shipmentError) throw shipmentError;
+      setShipments(shipmentData as unknown as Shipment[]);
 
-    fetchShipments();
-  }, []);
+      // Fetch my existing requests to prevent duplicates
+      if (userProfile?.id) {
+        const { data: requestData } = await supabase
+          .from('shipment_requests')
+          .select('shipment_id')
+          .eq('trucker_id', userProfile.id);
+        
+        if (requestData) {
+          setMyRequests(requestData.map(r => r.shipment_id.toString()));
+        }
+      }
+    } catch (error) {
+      showError('Failed to load shipments');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [userProfile?.id]);
+
+  const handleContactShipper = async (shipmentId: string) => {
+    if (!userProfile?.id) return;
+    
+    setSubmittingId(shipmentId);
+    try {
+      const { error } = await supabase
+        .from('shipment_requests')
+        .insert({
+          shipment_id: shipmentId,
+          trucker_id: userProfile.id,
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      showSuccess('Interest expressed! The shipper will be notified.');
+      setMyRequests(prev => [...prev, shipmentId]);
+    } catch (error: any) {
+      showError(error.message || 'Failed to send request');
+    } finally {
+      setSubmittingId(null);
+    }
+  };
 
   const filteredShipments = useMemo(() => {
     return shipments.filter(s => 
-      (s.origin_city.toLowerCase().includes(searchTerm.toLowerCase()) || 
-       s.destination_city.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       s.goods_description.toLowerCase().includes(searchTerm.toLowerCase())) &&
-      (filterOrigin === '' || s.origin_city === filterOrigin)
+      s.origin_city.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      s.destination_city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      s.goods_description.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [shipments, searchTerm, filterOrigin]);
+  }, [shipments, searchTerm]);
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[400px]">
@@ -77,9 +120,6 @@ const BrowseShipments = () => {
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <Button variant="outline" className="md:w-auto">
-          <Filter className="mr-2 h-4 w-4" /> Filters
-        </Button>
       </div>
 
       {filteredShipments.length === 0 ? (
@@ -90,49 +130,66 @@ const BrowseShipments = () => {
         </div>
       ) : (
         <div className="grid gap-6">
-          {filteredShipments.map((shipment) => (
-            <Card key={shipment.id} className="overflow-hidden border-orange-100 hover:shadow-md transition-shadow">
-              <CardContent className="p-0">
-                <div className="flex flex-col md:flex-row md:items-center justify-between p-6 gap-6">
-                  <div className="flex-1 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center text-xl font-bold text-gray-900">
-                        {shipment.origin_city} <ArrowRight className="h-4 w-4 mx-2 text-gray-400" /> {shipment.destination_city}
+          {filteredShipments.map((shipment) => {
+            const hasRequested = myRequests.includes(shipment.id.toString());
+            
+            return (
+              <Card key={shipment.id} className="overflow-hidden border-orange-100 hover:shadow-md transition-shadow">
+                <CardContent className="p-0">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between p-6 gap-6">
+                    <div className="flex-1 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center text-xl font-bold text-gray-900">
+                          {shipment.origin_city} <ArrowRight className="h-4 w-4 mx-2 text-gray-400" /> {shipment.destination_city}
+                        </div>
+                        <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+                          {shipment.weight_tonnes} Tonnes
+                        </Badge>
                       </div>
-                      <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
-                        {shipment.weight_tonnes} Tonnes
-                      </Badge>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                        <div className="flex items-center text-gray-600">
+                          <Calendar className="h-4 w-4 mr-2 text-orange-600" />
+                          Ready by: {new Date(shipment.departure_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </div>
+                        <div className="flex items-center font-bold text-green-600">
+                          <IndianRupee className="h-4 w-4 mr-1" />
+                          Budget: {shipment.budget_per_tonne.toLocaleString()} /t
+                        </div>
+                      </div>
+
+                      <div className="bg-gray-50 p-3 rounded-lg">
+                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Goods Description</p>
+                        <p className="text-sm text-gray-700">{shipment.goods_description}</p>
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                      <div className="flex items-center text-gray-600">
-                        <Calendar className="h-4 w-4 mr-2 text-orange-600" />
-                        Ready by: {new Date(shipment.departure_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-                      </div>
-                      <div className="flex items-center font-bold text-green-600">
-                        <IndianRupee className="h-4 w-4 mr-1" />
-                        Budget: {shipment.budget_per_tonne.toLocaleString()} /t
-                      </div>
-                    </div>
-
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <p className="text-xs text-gray-500 uppercase font-bold mb-1">Goods Description</p>
-                      <p className="text-sm text-gray-700">{shipment.goods_description}</p>
+                    <div className="flex flex-col gap-2 min-w-[150px]">
+                      {hasRequested ? (
+                        <Button disabled className="bg-green-50 text-green-700 border-green-200">
+                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                          Interest Sent
+                        </Button>
+                      ) : (
+                        <Button 
+                          className="bg-orange-600 hover:bg-orange-700 w-full"
+                          onClick={() => handleContactShipper(shipment.id.toString())}
+                          disabled={submittingId === shipment.id.toString()}
+                        >
+                          {submittingId === shipment.id.toString() ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : 'Contact Shipper'}
+                        </Button>
+                      )}
+                      <p className="text-[10px] text-center text-gray-400">
+                        Posted by {shipment.shipper?.full_name || 'Verified Shipper'}
+                      </p>
                     </div>
                   </div>
-
-                  <div className="flex flex-col gap-2 min-w-[150px]">
-                    <Button className="bg-orange-600 hover:bg-orange-700 w-full">
-                      Contact Shipper
-                    </Button>
-                    <p className="text-[10px] text-center text-gray-400">
-                      Posted by {shipment.shipper?.full_name || 'Verified Shipper'}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
