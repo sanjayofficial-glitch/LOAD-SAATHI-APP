@@ -44,7 +44,8 @@ const Login = () => {
         }
         setErrorMsg(message);
         showError(message);
-        setLoading(false); // Only stop loading on error      } else {
+        setLoading(false);
+      } else {
         console.log("[Login] Sign in successful, waiting for profile...");
         showSuccess('Logged in successfully!');
         // We keep loading=true until the useEffect redirects us
@@ -90,7 +91,8 @@ const Login = () => {
               id="password" 
               type="password" 
               placeholder="••••••••"
-              value={password}               onChange={(e) => setPassword(e.target.value)} 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
               required 
               disabled={loading}
             />
