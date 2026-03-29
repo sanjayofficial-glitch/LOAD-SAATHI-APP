@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
-import { Shipment } from '@/types';
+import { Shipment, User } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,14 +17,13 @@ import {
   Search, 
   ArrowRight,
   Loader2,
-  CheckCircle2,
-  AlertCircle
+  CheckCircle2
 } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
 
 const BrowseShipments = () => {
   const { userProfile } = useAuth();
-  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [shipments, setShipments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [submittingId, setSubmittingId] = useState<string | null>(null);
@@ -33,38 +32,55 @@ const BrowseShipments = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      console.log('[BrowseShipments] Fetching pending shipments...');
-      
-      // Fetch shipments with explicit join
+      // 1. Fetch pending shipments
       const { data: shipmentData, error: shipmentError } = await supabase
         .from('shipments')
-        .select('*, shipper:users(*)')
+        .select('*')
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
 
-      if (shipmentError) {
-        console.error('[BrowseShipments] Shipment fetch error:', shipmentError);
-        throw shipmentError;
-      }
+      if (shipmentError) throw shipmentError;
       
-      setShipments(shipmentData as unknown as Shipment[]);
+      if (shipmentData && shipmentData.length > 0) {
+        // 2. Fetch shippers for these shipments manually to avoid join errors
+        const shipperIds = [...new Set(shipmentData.map(s => s.shipper_id))];
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .in('id', shipperIds);
 
-      // Fetch my existing requests
+        if (!userError && userData) {
+          const userMap = userData.reduce((acc: any, user: any) => {
+            acc[user.id] = user;
+            return acc;
+          }, {});
+
+          const shipmentsWithShippers = shipmentData.map(s => ({
+            ...s,
+            shipper: userMap[s.shipper_id]
+          }));
+          setShipments(shipmentsWithShippers);
+        } else {
+          setShipments(shipmentData);
+        }
+      } else {
+        setShipments([]);
+      }
+
+      // 3. Fetch my existing requests
       if (userProfile?.id) {
         const { data: requestData, error: requestError } = await supabase
           .from('shipment_requests')
           .select('shipment_id')
           .eq('trucker_id', userProfile.id);
         
-        if (requestError) {
-          console.error('[BrowseShipments] Request fetch error:', requestError);
-        } else if (requestData) {
+        if (!requestError && requestData) {
           setMyRequests(requestData.map(r => r.shipment_id.toString()));
         }
       }
     } catch (error: any) {
-      console.error('[BrowseShipments] Fatal error:', error);
-      showError(`Failed to load shipments: ${error.message || 'Unknown error'}`);
+      console.error('[BrowseShipments] Error:', error);
+      showError(`Failed to load shipments: ${error.message}`);
     } finally {
       setLoading(false);
     }

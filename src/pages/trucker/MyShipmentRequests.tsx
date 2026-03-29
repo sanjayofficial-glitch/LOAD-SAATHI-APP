@@ -9,13 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
   Package, 
-  MapPin, 
   Calendar, 
   IndianRupee, 
   ArrowRight,
   Loader2,
   Clock,
-  CheckCircle2,
   XCircle,
   MessageSquare,
   Phone
@@ -31,21 +29,56 @@ const MyShipmentRequests = () => {
     if (!userProfile?.id) return;
     
     try {
-      const { data, error } = await supabase
+      // 1. Fetch requests
+      const { data: requestData, error: requestError } = await supabase
         .from('shipment_requests')
-        .select(`
-          *,
-          shipment:shipments(
-            *,
-            shipper:users(*)
-          )
-        `)
+        .select('*')
         .eq('trucker_id', userProfile.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setRequests(data || []);
+      if (requestError) throw requestError;
+
+      if (requestData && requestData.length > 0) {
+        // 2. Fetch related shipments
+        const shipmentIds = [...new Set(requestData.map(r => r.shipment_id))];
+        const { data: shipmentData, error: shipmentError } = await supabase
+          .from('shipments')
+          .select('*')
+          .in('id', shipmentIds);
+
+        if (shipmentError) throw shipmentError;
+
+        // 3. Fetch shippers for those shipments
+        const shipperIds = [...new Set(shipmentData?.map(s => s.shipper_id) || [])];
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .in('id', shipperIds);
+
+        const userMap = (userData || []).reduce((acc: any, user: any) => {
+          acc[user.id] = user;
+          return acc;
+        }, {});
+
+        const shipmentMap = (shipmentData || []).reduce((acc: any, shipment: any) => {
+          acc[shipment.id] = {
+            ...shipment,
+            shipper: userMap[shipment.shipper_id]
+          };
+          return acc;
+        }, {});
+
+        const requestsWithData = requestData.map(r => ({
+          ...r,
+          shipment: shipmentMap[r.shipment_id]
+        }));
+
+        setRequests(requestsWithData);
+      } else {
+        setRequests([]);
+      }
     } catch (error: any) {
+      console.error('[MyShipmentRequests] Error:', error);
       showError('Failed to load your requests');
     } finally {
       setLoading(false);
