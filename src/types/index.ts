@@ -27,6 +27,22 @@ export interface Trip {
   requests?: Request[];
 }
 
+export interface Shipment {
+  id: string;
+  shipper_id: string;
+  origin_city: string;
+  destination_city: string;
+  departure_date: string;
+  goods_description: string;
+  weight_tonnes: number;
+  pickup_address: string;
+  delivery_address: string;
+  budget_per_tonne: number;
+  status: 'pending' | 'matched' | 'completed' | 'cancelled';
+  created_at: string;
+  shipper?: User;
+}
+
 export interface Request {
   id: string;
   trip_id: string;

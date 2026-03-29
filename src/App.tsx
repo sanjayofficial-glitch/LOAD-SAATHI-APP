@@ -32,6 +32,7 @@ const Chat = lazy(() => import("./pages/Chat"));
 const TestAuth = lazy(() => import("./pages/TestAuth"));
 const PostShipments = lazy(() => import("./pages/shipper/PostShipments"));
 const EditShipment = lazy(() => import("./pages/shipper/EditShipment"));
+const BrowseShipments = lazy(() => import("./pages/trucker/BrowseShipments"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -105,6 +106,11 @@ const App = () => (
               <Route path="/trucker/my-trips" element={
                 <ProtectedRoute allowedTypes={['trucker']}>
                   <MyTrips />
+                </ProtectedRoute>
+              } />
+              <Route path="/trucker/browse-shipments" element={
+                <ProtectedRoute allowedTypes={['trucker']}>
+                  <BrowseShipments />
                 </ProtectedRoute>
               } />
               

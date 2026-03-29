@@ -110,6 +110,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const navItems = userProfile?.user_type === 'trucker' ? [
     { label: 'Dashboard', path: '/trucker/dashboard', icon: LayoutDashboard },
     { label: 'Post Trip', path: '/trucker/post-trip', icon: PlusSquare },
+    { label: 'Find Goods', path: '/trucker/browse-shipments', icon: Search },
     { label: 'My Trips', path: '/trucker/my-trips', icon: Truck },
   ] : [
     { label: 'Dashboard', path: '/shipper/dashboard', icon: LayoutDashboard },
