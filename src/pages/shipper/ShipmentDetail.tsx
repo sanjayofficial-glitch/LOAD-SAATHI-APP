@@ -36,7 +36,7 @@ const ShipmentDetail = () => {
     if (!id) return;
     
     try {
-      // Fetch shipment details
+      // 1. Fetch shipment details
       const { data: shipmentData, error: shipmentError } = await supabase
         .from('shipments')
         .select('*')
@@ -46,16 +46,42 @@ const ShipmentDetail = () => {
       if (shipmentError) throw shipmentError;
       setShipment(shipmentData);
 
-      // Fetch requests for this shipment
+      // 2. Fetch requests for this shipment (without join)
       const { data: requestData, error: requestError } = await supabase
         .from('shipment_requests')
-        .select('*, trucker:users(*)')
+        .select('*')
         .eq('shipment_id', id)
         .order('created_at', { ascending: false });
 
       if (requestError) throw requestError;
-      setRequests(requestData);
+
+      if (requestData && requestData.length > 0) {
+        // 3. Fetch trucker profiles manually
+        const truckerIds = [...new Set(requestData.map(r => r.trucker_id))];
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .in('id', truckerIds);
+
+        if (!userError && userData) {
+          const userMap = userData.reduce((acc: any, user: any) => {
+            acc[user.id] = user;
+            return acc;
+          }, {});
+
+          const requestsWithTruckers = requestData.map(r => ({
+            ...r,
+            trucker: userMap[r.trucker_id]
+          }));
+          setRequests(requestsWithTruckers);
+        } else {
+          setRequests(requestData);
+        }
+      } else {
+        setRequests([]);
+      }
     } catch (error: any) {
+      console.error('[ShipmentDetail] Error:', error);
       showError(error.message || 'Failed to load shipment details');
       navigate('/shipper/my-shipments');
     } finally {
@@ -212,7 +238,7 @@ const ShipmentDetail = () => {
                             <User className="h-6 w-6 text-orange-600" />
                           </div>
                           <div>
-                            <h4 className="font-bold text-gray-900">{request.trucker?.full_name}</h4>
+                            <h4 className="font-bold text-gray-900">{request.trucker?.full_name || 'Trucker'}</h4>
                             <div className="flex items-center text-sm text-gray-500">
                               <Star className="h-3 w-3 text-yellow-500 fill-current mr-1" />
                               {request.trucker?.rating?.toFixed(1) || '0.0'} • {request.trucker?.total_trips || 0} Trips
