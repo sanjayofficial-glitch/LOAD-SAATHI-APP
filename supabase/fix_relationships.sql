@@ -1,5 +1,4 @@
 -- Ensure foreign key relationship between shipments and users exists
--- This allows Supabase to perform joins like shipper:users(*)
 DO $$ 
 BEGIN 
   IF NOT EXISTS (
@@ -13,7 +12,7 @@ BEGIN
     ON DELETE CASCADE;
   END IF;
 
-  -- Also ensure shipment_requests has the correct relationships
+  -- Ensure shipment_requests has the correct relationships
   IF NOT EXISTS (
     SELECT 1 
     FROM information_schema.table_constraints 
@@ -34,5 +33,18 @@ BEGIN
     ADD CONSTRAINT fk_shipment_requests_shipment
     FOREIGN KEY (shipment_id) REFERENCES public.shipments(id)
     ON DELETE CASCADE;
+  END IF;
+END $$;
+
+-- Add SELECT policy for users table so authenticated users can see basic profile info
+-- This is required for joins like shipper:users(*) to work
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'users' AND policyname = 'Allow authenticated users to view profiles'
+  ) THEN
+    CREATE POLICY "Allow authenticated users to view profiles" ON public.users
+    FOR SELECT TO authenticated USING (true);
   END IF;
 END $$;

@@ -34,6 +34,7 @@ const PostShipments = lazy(() => import("./pages/shipper/PostShipments"));
 const EditShipment = lazy(() => import("./pages/shipper/EditShipment"));
 const BrowseShipments = lazy(() => import("./pages/trucker/BrowseShipments"));
 const ShipmentDetail = lazy(() => import("./pages/shipper/ShipmentDetail"));
+const MyShipmentRequests = lazy(() => import("./pages/trucker/MyShipmentRequests"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -112,6 +113,11 @@ const App = () => (
               <Route path="/trucker/browse-shipments" element={
                 <ProtectedRoute allowedTypes={['trucker']}>
                   <BrowseShipments />
+                </ProtectedRoute>
+              } />
+              <Route path="/trucker/my-requests" element={
+                <ProtectedRoute allowedTypes={['trucker']}>
+                  <MyShipmentRequests />
                 </ProtectedRoute>
               } />
               

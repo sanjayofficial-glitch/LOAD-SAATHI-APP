@@ -17,7 +17,8 @@ import {
   LayoutDashboard,
   Search,
   Package,
-  PlusSquare
+  PlusSquare,
+  ClipboardList
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -111,6 +112,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { label: 'Dashboard', path: '/trucker/dashboard', icon: LayoutDashboard },
     { label: 'Post Trip', path: '/trucker/post-trip', icon: PlusSquare },
     { label: 'Find Goods', path: '/trucker/browse-shipments', icon: Search },
+    { label: 'My Requests', path: '/trucker/my-requests', icon: ClipboardList },
     { label: 'My Trips', path: '/trucker/my-trips', icon: Truck },
   ] : [
     { label: 'Dashboard', path: '/shipper/dashboard', icon: LayoutDashboard },
