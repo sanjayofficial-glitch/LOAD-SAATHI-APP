@@ -20,58 +20,71 @@ const UpdatePassword = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
+
     const checkSession = async () => {
       try {
-        // Get the current session - Supabase automatically processes the recovery token
         const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (!isMounted) return;
         
         if (error) {
           console.error('Session check error:', error);
           setErrorMsg('Unable to verify reset link. Please try again.');
           setIsValidSession(false);
-        } else if (session) {
-          // Valid session exists (user is authenticated via recovery token)
+          setIsVerifying(false);
+          return;
+        }
+        
+        if (session) {
           console.log('Valid session found for password reset');
           setIsValidSession(true);
-        } else {
-          // No session - check if we have a recovery code in the URL
-          const hashParams = new URLSearchParams(window.location.hash.substring(1));
-          const queryParams = new URLSearchParams(window.location.search);
-          const hasRecoveryCode = hashParams.has('access_token') || queryParams.has('code');
-          
-          if (hasRecoveryCode) {
-            // There's a recovery code but no session yet - wait a bit for Supabase to process it
-            console.log('Recovery code detected, waiting for session...');
-            setTimeout(async () => {
-              const { data: { session: retrySession } } = await supabase.auth.getSession();
-              if (retrySession) {
-                setIsValidSession(true);
-              } else {
-                setErrorMsg('Invalid or expired reset link. Please request a new one.');
-                setIsValidSession(false);
-              }
-              setIsVerifying(false);
-            }, 1000);
-            return;
-          } else {
-            console.log('No recovery code or session found');
-            setErrorMsg('Invalid or expired reset link. Please request a new one.');
-            setIsValidSession(false);
-          }
+          setIsVerifying(false);
+          return;
         }
+        
+        // No session - check if we have a recovery code in the URL
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const queryParams = new URLSearchParams(window.location.search);
+        const hasRecoveryCode = hashParams.has('access_token') || queryParams.has('code');
+        
+        if (hasRecoveryCode) {
+          console.log('Recovery code detected, waiting for session...');
+          // Wait for Supabase to process the token
+          timeoutId = setTimeout(async () => {
+            if (!isMounted) return;
+            
+            const { data: { session: retrySession } } = await supabase.auth.getSession();
+            if (retrySession) {
+              setIsValidSession(true);
+            } else {
+              setErrorMsg('Invalid or expired reset link. Please request a new one.');
+              setIsValidSession(false);
+            }
+            setIsVerifying(false);
+          }, 2000);
+          return;
+        }
+        
+        console.log('No recovery code or session found');
+        setErrorMsg('Invalid or expired reset link. Please request a new one.');
+        setIsValidSession(false);
+        setIsVerifying(false);
       } catch (err) {
         console.error('Error checking session:', err);
         setErrorMsg('An error occurred. Please try again.');
         setIsValidSession(false);
-      } finally {
-        // Only set verifying to false if we haven't already set a timeout
-        if (!errorMsg && !isValidSession) {
-          setIsVerifying(false);
-        }
+        setIsVerifying(false);
       }
     };
 
     checkSession();
+    
+    return () => {
+      isMounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
