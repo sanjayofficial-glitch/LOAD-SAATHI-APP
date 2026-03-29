@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { showSuccess, showError } from '@/utils/toast';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
@@ -15,7 +15,7 @@ import {
   Trash2,
   Eye,
   CheckCircle2,
-  AlertCircle,
+  Users,
   Loader2
 } from 'lucide-react';
 import {
@@ -36,10 +36,15 @@ const MyShipments = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchShipments = async () => {
+    if (!userProfile?.id) return;
+
     const { data, error } = await supabase
       .from('shipments')
-      .select('*')
-      .eq('shipper_id', userProfile?.id)
+      .select(`
+        *,
+        requests:shipment_requests(count)
+      `)
+      .eq('shipper_id', userProfile.id)
       .order('created_at', { ascending: false });
     
     if (error) {
@@ -103,120 +108,101 @@ const MyShipments = () => {
         </div>
       ) : (
         <div className="grid gap-6">
-          {shipments.map(shipment => (
-            <Card key={shipment.id} className="overflow-hidden border-blue-100 hover:shadow-md transition-shadow">
-              <CardContent className="p-0">
-                <div className="flex flex-col md:flex-row md:items-center justify-between p-6 gap-6">
-                  <div className="flex-1 space-y-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center text-xl font-bold text-gray-900">
-                        {shipment.origin_city} → {shipment.destination_city}
+          {shipments.map(shipment => {
+            const requestCount = shipment.requests?.[0]?.count || 0;
+            
+            return (
+              <Card key={shipment.id} className="overflow-hidden border-blue-100 hover:shadow-md transition-shadow">
+                <CardContent className="p-0">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between p-6 gap-6">
+                    <div className="flex-1 space-y-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center text-xl font-bold text-gray-900">
+                          {shipment.origin_city} → {shipment.destination_city}
+                        </div>
+                        <Badge variant={shipment.status === 'pending' ? 'default' : 'secondary'} className={
+                          shipment.status === 'pending' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100' : 
+                          shipment.status === 'matched' ? 'bg-green-100 text-green-700 hover:bg-green-100' :
+                          shipment.status === 'completed' ? 'bg-blue-100 text-blue-700 hover:bg-blue-100' :
+                          'bg-gray-100 text-gray-600'
+                        }>
+                          {shipment.status.toUpperCase()}
+                        </Badge>
                       </div>
-                      <Badge variant={shipment.status === 'pending' ? 'default' : 'secondary'} className={
-                        shipment.status === 'pending' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100' : 
-                        shipment.status === 'matched' ? 'bg-green-100 text-green-700 hover:bg-green-100' :
-                        shipment.status === 'completed' ? 'bg-blue-100 text-blue-700 hover:bg-blue-100' :
-                        'bg-gray-100 text-gray-600'
-                      }>
-                        {shipment.status.toUpperCase()}
-                      </Badge>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm text-gray-500">
-                      <div className="flex items-center">
-                        <Calendar className="h-4 w-4 mr-2 text-blue-600" />
-                        {new Date(shipment.departure_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                      
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm text-gray-500">
+                        <div className="flex items-center">
+                          <Calendar className="h-4 w-4 mr-2 text-blue-600" />
+                          {new Date(shipment.departure_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        </div>
+                        <div className="flex items-center">
+                          <Package className="h-4 w-4 mr-2 text-purple-600" />
+                          {shipment.weight_tonnes} Tonnes
+                        </div>
+                        <div className="flex items-center font-semibold text-gray-900">
+                          <IndianRupee className="h-4 w-4 mr-1 text-green-600" />
+                          {shipment.budget_per_tonne.toLocaleString()} /t
+                        </div>
                       </div>
-                      <div className="flex items-center">
-                        <Package className="h-4 w-4 mr-2 text-purple-600" />
-                        {shipment.weight_tonnes} Tonnes
-                      </div>
-                      <div className="flex items-center font-semibold text-gray-900">
-                        <IndianRupee className="h-4 w-4 mr-1 text-green-600" />
-                        {shipment.budget_per_tonne.toLocaleString()} /t
+
+                      <div className="flex items-center gap-4 pt-2">
+                        <div className="flex items-center text-sm text-blue-600 font-medium">
+                          <Users className="h-4 w-4 mr-1" />
+                          {requestCount} {requestCount === 1 ? 'Trucker' : 'Truckers'} interested
+                        </div>
                       </div>
                     </div>
 
-                    <div className="bg-gray-50 p-3 rounded-lg">
-                      <p className="text-sm font-medium text-gray-700 mb-1">Goods:</p>
-                      <p className="text-sm text-gray-600">{shipment.goods_description}</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Pickup</p>
-                        <p className="text-gray-700">{shipment.pickup_address}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500 uppercase font-bold mb-1">Delivery</p>
-                        <p className="text-gray-700">{shipment.delivery_address}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 border-t md:border-t-0 pt-4 md:pt-0">
-                    <Link to={`/shipments/${shipment.id}`}>
-                      <Button variant="ghost" size="sm" className="hover:bg-blue-50">
-                        <Eye className="h-4 w-4 mr-2" />
-                        View
-                      </Button>
-                    </Link>
-                    
-                    {shipment.status === 'pending' && (
-                      <>
-                        <Link to={`/shipper/edit-shipment/${shipment.id}`}>
-                          <Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50">
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </Button>
-                        </Link>
-                        
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50">
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
+                    <div className="flex flex-wrap items-center gap-2 border-t md:border-t-0 pt-4 md:pt-0">
+                      <Link to={`/shipments/${shipment.id}`}>
+                        <Button variant="outline" size="sm" className="border-blue-200 text-blue-700 hover:bg-blue-50">
+                          <Eye className="h-4 w-4 mr-2" />
+                          Manage Requests
+                        </Button>
+                      </Link>
+                      
+                      {shipment.status === 'pending' && (
+                        <>
+                          <Link to={`/shipper/edit-shipment/${shipment.id}`}>
+                            <Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50">
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit
                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently delete your shipment listing. This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction 
-                                onClick={() => handleDeleteShipment(shipment.id)}
-                                className="bg-red-600 hover:bg-red-700"
-                              >
+                          </Link>
+                          
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50">
+                                <Trash2 className="h-4 w-4 mr-2" />
                                 Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </>
-                    )}
-
-                    {shipment.status === 'matched' && (
-                      <div className="flex items-center text-green-600 text-sm">
-                        <CheckCircle2 className="h-4 w-4 mr-1" />
-                        Matched with trucker
-                      </div>
-                    )}
-
-                    {shipment.status === 'completed' && (
-                      <div className="flex items-center text-blue-600 text-sm">
-                        <CheckCircle2 className="h-4 w-4 mr-1" />
-                        Completed
-                      </div>
-                    )}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will permanently delete your shipment listing. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleDeleteShipment(shipment.id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

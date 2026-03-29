@@ -33,6 +33,7 @@ const TestAuth = lazy(() => import("./pages/TestAuth"));
 const PostShipments = lazy(() => import("./pages/shipper/PostShipments"));
 const EditShipment = lazy(() => import("./pages/shipper/EditShipment"));
 const BrowseShipments = lazy(() => import("./pages/trucker/BrowseShipments"));
+const ShipmentDetail = lazy(() => import("./pages/shipper/ShipmentDetail"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -138,6 +139,11 @@ const App = () => (
               <Route path="/shipper/my-shipments" element={
                 <ProtectedRoute allowedTypes={['shipper']}>
                   <MyShipments />
+                </ProtectedRoute>
+              } />
+              <Route path="/shipments/:id" element={
+                <ProtectedRoute allowedTypes={['shipper']}>
+                  <ShipmentDetail />
                 </ProtectedRoute>
               } />
               
