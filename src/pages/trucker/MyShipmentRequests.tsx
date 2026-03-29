@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,7 +25,7 @@ const MyShipmentRequests = () => {
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     if (!userProfile?.id) return;
     
     try {
@@ -83,11 +83,29 @@ const MyShipmentRequests = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [userProfile?.id]);
 
   useEffect(() => {
     fetchRequests();
-  }, [userProfile?.id]);
+
+    if (userProfile?.id) {
+      const channel = supabase
+        .channel(`my_shipment_requests_${userProfile.id}`)
+        .on('postgres_changes', { 
+          event: '*', 
+          schema: 'public', 
+          table: 'shipment_requests',
+          filter: `trucker_id=eq.${userProfile.id}`
+        }, () => {
+          fetchRequests();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [userProfile?.id, fetchRequests]);
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[400px]">

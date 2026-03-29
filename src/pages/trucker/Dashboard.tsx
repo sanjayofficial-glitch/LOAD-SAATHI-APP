@@ -43,8 +43,11 @@ const TruckerDashboard = () => {
     enabled: !!userProfile?.id,
   });
 
+  // We include trip IDs in the query key so it re-fetches when trips change
+  const tripIdsKey = useMemo(() => trips.map(t => t.id).sort().join(','), [trips]);
+
   const { data: requests = [], isLoading: requestsLoading } = useQuery({
-    queryKey: ['trucker-requests', userProfile?.id],
+    queryKey: ['trucker-requests', userProfile?.id, tripIdsKey],
     queryFn: async () => {
       const tripIds = trips.map(t => t.id);
       if (tripIds.length === 0) return [];
@@ -131,7 +134,7 @@ const TruckerDashboard = () => {
     }
 
     // Optimistic Update
-    queryClient.setQueryData(['trucker-requests', userProfile?.id], (old: Request[] | undefined) => {
+    queryClient.setQueryData(['trucker-requests', userProfile?.id, tripIdsKey], (old: Request[] | undefined) => {
       return old?.map(r => r.id === request.id ? { ...r, status: 'accepted' } : r);
     });
 
@@ -154,11 +157,11 @@ const TruckerDashboard = () => {
     showSuccess('Request accepted!');
     queryClient.invalidateQueries({ queryKey: ['trucker-requests'] });
     queryClient.invalidateQueries({ queryKey: ['trucker-trips'] });
-  }, [queryClient, userProfile?.id]);
+  }, [queryClient, userProfile?.id, tripIdsKey]);
 
   const handleDeclineRequest = useCallback(async (requestId: string) => {
     // Optimistic Update
-    queryClient.setQueryData(['trucker-requests', userProfile?.id], (old: Request[] | undefined) => {
+    queryClient.setQueryData(['trucker-requests', userProfile?.id, tripIdsKey], (old: Request[] | undefined) => {
       return old?.map(r => r.id === requestId ? { ...r, status: 'declined' } : r);
     });
 
@@ -173,7 +176,7 @@ const TruckerDashboard = () => {
     } else {
       showSuccess('Request declined');
     }
-  }, [queryClient, userProfile?.id]);
+  }, [queryClient, userProfile?.id, tripIdsKey]);
 
   const pendingRequests = useMemo(() => requests.filter(r => r.status === 'pending'), [requests]);
   const acceptedRequests = useMemo(() => requests.filter(r => r.status === 'accepted'), [requests]);
