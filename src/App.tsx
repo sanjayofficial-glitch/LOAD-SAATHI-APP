@@ -67,6 +67,7 @@ const ProtectedRoute = ({ children, allowedTypes }: { children: React.ReactNode,
   }
 
   if (allowedTypes && !allowedTypes.includes(userProfile.user_type)) {
+    // Redirect to their own dashboard if they try to access a page not meant for their role
     return <Navigate to={userProfile.user_type === 'trucker' ? '/trucker/dashboard' : '/shipper/dashboard'} replace />;
   }
 
