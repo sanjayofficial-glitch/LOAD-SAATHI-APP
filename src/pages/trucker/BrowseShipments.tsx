@@ -1,10 +1,8 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
-import { Shipment, User } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,19 +18,17 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const BrowseShipments = () => {
   const { userProfile } = useAuth();
-  const [shipments, setShipments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [submittingId, setSubmittingId] = useState<string | null>(null);
-  const [myRequests, setMyRequests] = useState<string[]>([]);
 
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      // 1. Fetch pending shipments
+  const { data: shipments = [], isLoading: loading } = useQuery({
+    queryKey: ['shipments', 'pending'],
+    queryFn: async () => {
       const { data: shipmentData, error: shipmentError } = await supabase
         .from('shipments')
         .select('*')
@@ -42,7 +38,6 @@ const BrowseShipments = () => {
       if (shipmentError) throw shipmentError;
       
       if (shipmentData && shipmentData.length > 0) {
-        // 2. Fetch shippers for these shipments manually to avoid join errors
         const shipperIds = [...new Set(shipmentData.map(s => s.shipper_id))];
         const { data: userData, error: userError } = await supabase
           .from('users')
@@ -55,42 +50,31 @@ const BrowseShipments = () => {
             return acc;
           }, {});
 
-          const shipmentsWithShippers = shipmentData.map(s => ({
+          return shipmentData.map(s => ({
             ...s,
             shipper: userMap[s.shipper_id]
           }));
-          setShipments(shipmentsWithShippers);
-        } else {
-          setShipments(shipmentData);
-        }
-      } else {
-        setShipments([]);
-      }
-
-      // 3. Fetch my existing requests
-      if (userProfile?.id) {
-        const { data: requestData, error: requestError } = await supabase
-          .from('shipment_requests')
-          .select('shipment_id')
-          .eq('trucker_id', userProfile.id);
-        
-        if (!requestError && requestData) {
-          setMyRequests(requestData.map(r => r.shipment_id.toString()));
         }
       }
-    } catch (error: any) {
-      console.error('[BrowseShipments] Error:', error);
-      showError(`Failed to load shipments: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return shipmentData || [];
+    },
+    enabled: !!userProfile,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
 
-  useEffect(() => {
-    if (userProfile) {
-      fetchData();
-    }
-  }, [userProfile?.id]);
+  const { data: myRequests = [] } = useQuery({
+    queryKey: ['my-shipment-requests', userProfile?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('shipment_requests')
+        .select('shipment_id')
+        .eq('trucker_id', userProfile?.id);
+      
+      if (error) throw error;
+      return data.map(r => r.shipment_id.toString());
+    },
+    enabled: !!userProfile?.id,
+  });
 
   const handleContactShipper = async (shipmentId: string) => {
     if (!userProfile?.id) return;
@@ -108,7 +92,7 @@ const BrowseShipments = () => {
       if (error) throw error;
 
       showSuccess('Interest expressed! The shipper will be notified.');
-      setMyRequests(prev => [...prev, shipmentId]);
+      queryClient.invalidateQueries({ queryKey: ['my-shipment-requests', userProfile.id] });
     } catch (error: any) {
       showError(error.message || 'Failed to send request');
     } finally {

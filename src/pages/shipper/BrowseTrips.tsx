@@ -1,5 +1,5 @@
 import React from 'react';
-import { useEffect, useState, useCallback, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
@@ -22,6 +22,7 @@ import {
 import { parseNaturalLanguageSearch } from '@/lib/gemini';
 import { showSuccess, showError } from '@/utils/toast';
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useQuery } from '@tanstack/react-query';
 
 const INDIAN_CITIES = [
   'Delhi', 'Mumbai', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Ahmedabad', 'Pune', 'Surat', 'Kanpur',
@@ -33,8 +34,6 @@ const INDIAN_CITIES = [
 
 const BrowseTrips = () => {
   const { userProfile } = useAuth();
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [loading, setLoading] = useState(true);
   const [aiQuery, setAiQuery] = useState('');
   const [filters, setFilters] = useState({
     origin: '',
@@ -47,41 +46,21 @@ const BrowseTrips = () => {
   const [aiLoading, setAiLoading] = useState(false);
   const [apiKeyMissing, setApiKeyMissing] = useState(false);
 
-  const fetchTrips = useCallback(async () => {
-    if (!userProfile) return;
+  const { data: trips = [], isLoading: loading } = useQuery({
+    queryKey: ['trips', 'active'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('trips')
+        .select('*')
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
 
-    const { data, error } = await supabase
-      .from('trips')
-      .select('*')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      showError('Failed to fetch trips');
-    } else if (data) {
-      setTrips(data as unknown as Trip[]);
-    }
-    setLoading(false);
-  }, [userProfile]);
-
-  useEffect(() => {
-    fetchTrips();
-
-    const channel = supabase
-      .channel('public:trips')
-      .on('postgres_changes', { 
-        event: '*', 
-        schema: 'public', 
-        table: 'trips' 
-      }, () => {
-        fetchTrips();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [fetchTrips]);
+      if (error) throw error;
+      return data as unknown as Trip[];
+    },
+    enabled: !!userProfile,
+    staleTime: 1000 * 60 * 2, // 2 minutes
+  });
 
   const handleAiSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,7 +123,6 @@ const BrowseTrips = () => {
     }
 
     if (filters.date) {
-      // Compare only the date part
       result = result.filter(t => {
         const tripDate = new Date(t.departure_date).toISOString().split('T')[0];
         return tripDate >= filters.date;
