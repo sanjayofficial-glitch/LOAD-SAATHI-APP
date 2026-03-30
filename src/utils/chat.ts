@@ -73,9 +73,10 @@ export const sendMessage = async (payload: {
   }
 };
 
-export const fetchMessages = async (requestId: string): Promise<Message[]> => { // 👈 Fixed return type  try {
-    console.debug('[fetchMessages] Fetching messages for request:', requestId);
-    
+export const fetchMessages = async (requestId: string): Promise<Message[]> => { // 👈 Fixed return type 
+  console.debug('[fetchMessages] Fetching messages for request:', requestId);
+  
+  try {
     const { data, error } = await supabase
       .from('messages')
       .select('*')
@@ -88,8 +89,7 @@ export const fetchMessages = async (requestId: string): Promise<Message[]> => { 
     }
 
     console.debug('[fetchMessages] Retrieved messages:', data?.length || 0, 'messages');
-    return data || []; // 👈 Return Message[] type
-  } catch (err: any) {
+    return data || [] as Message[]; // 👈 Return Message[] type  } catch (err: any) {
     console.error('[fetchMessages] Unexpected error:', err);
     throw err;
   }
@@ -115,7 +115,10 @@ export const markMessagesAsRead = async (requestId: string, userId: string): Pro
 
 export const subscribeToMessages = (
   requestId: string,
-  onNewMessage: (message: Message) => void // 👈 Fixed type) => {
+  onNewMessage: (message: Message) => void,
+  _channel: any = undefined,
+  _options?: any
+): any => {
   console.debug('[subscribeToMessages] Setting up subscription for request:', requestId);
   
   const channel = supabase
