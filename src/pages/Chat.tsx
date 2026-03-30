@@ -62,7 +62,7 @@ const Chat = () => {
         channel = subscribeToMessages(requestId, (msg) => {
           setMessages((prev) => {
             // Prevent duplicate messages
-            if (prev.some(m => m.id === msg.id)) return prev;
+            if (prev.some((m) => m.id === msg.id)) return prev;
             return [...prev, msg];
           });
           
@@ -95,25 +95,33 @@ const Chat = () => {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Guard clauses for a robust experience
+    if (!recipient || !requestId) {
+      showError('Chat session not ready yet. Please wait a moment.');
+      return;
+    }
+    
     const content = newMessage.trim();
-    if (!content || !recipient || !requestId || sending) return;
+    if (!content || sending) return;
 
     setSending(true);
     try {
       const sentMsg = await sendMessage({
         recipientId: recipient.id,
         content: content,
-        requestId: requestId
+        requestId: requestId,
       });
       
       // Optimistically add message if not already added by subscription
-      setMessages(prev => {
-        if (prev.some(m => m.id === sentMsg.id)) return prev;
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === sentMsg.id)) return prev;
         return [...prev, sentMsg];
       });
       
       setNewMessage('');
     } catch (err: any) {
+      console.error('[ChatPage] Error sending message:', err);
       showError(err.message || 'Failed to send message');
     } finally {
       setSending(false);
@@ -133,13 +141,12 @@ const Chat = () => {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-3xl h-[calc(100vh-140px)] flex flex-col">
-      <Card className="flex-grow flex flex-col overflow-hidden border-orange-100 shadow-xl rounded-2xl">
+      <Card className="border-orange-100 shadow-lg">
         <CardHeader className="border-b bg-white py-4 px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button 
-                variant="ghost" 
-                size="icon" 
+                variant="ghost"                 size="icon" 
                 onClick={() => navigate(-1)}
                 className="hover:bg-orange-50 text-gray-500"
               >
@@ -177,7 +184,7 @@ const Chat = () => {
                 messages.map((msg, index) => {
                   const isMe = msg.sender_id === userProfile?.id;
                   const showDate = index === 0 || 
-                    new Date(messages[index-1].created_at).toDateString() !== new Date(msg.created_at).toDateString();
+                    new Date(messages[index-1]?.created_at).toDateString() !== new Date(msg.created_at).toDateString();
 
                   return (
                     <React.Fragment key={msg.id}>
@@ -227,10 +234,16 @@ const Chat = () => {
               <Button 
                 type="submit" 
                 size="icon"
-                className="h-12 w-12 rounded-xl bg-orange-600 hover:bg-orange-700 shadow-lg shadow-orange-200 transition-all active:scale-95"
+                className="h-12 w-12 rounded-xl bg-orange-600 hover:bg-orange-700 shadow-md transition-all hover:shadow-lg active:scale-95"
                 disabled={sending || !newMessage.trim()}
               >
-                {sending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                {sending ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  </Loader2>
+                ) : (
+                  <Send className="h-5 w-5" />
+                )}
               </Button>
             </form>
           </div>
