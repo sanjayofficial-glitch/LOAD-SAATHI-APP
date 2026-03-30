@@ -16,73 +16,78 @@ const UpdatePassword = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [status, setStatus] = useState<'checking' | 'ready' | 'error'>('checking');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [tokenValid, setTokenValid] = useState(false);
   const navigate = useNavigate();
 
-  const verifyResetToken = useCallback(async () => {
+  // Check if reset token is valid in URL
+  const validateResetToken = useCallback(async () => {
     try {
+      setStatus('checking');
+      setErrorMsg(null);
+
       // Check for token in URL (hash or query params)
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const queryParams = new URLSearchParams(window.location.search);
       
-      const hasToken = hashParams.has('access_token') || hashParams.has('code') || 
-                      queryParams.has('access_token') || queryParams.has('code');
+      const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
+      const code = hashParams.get('code') || queryParams.get('code');
       
-      if (!hasToken) {
-        setErrorMsg('Invalid or expired reset link. Please request a new one.');
+      if (!accessToken && !code) {
+        setErrorMsg('Invalid or missing reset token. Please request a new password reset link.');
         setStatus('error');
         return;
       }
 
-      // Try to get session directly first
-      const { data: { session } } = await supabase.auth.getSession();
+      // Try to get session directly first (Supabase sets session when token is valid)
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
+      if (sessionError) {
+        throw sessionError;
+      }
+
       if (session) {
-        console.log('Session already established');
+        // Token is valid and session is established
+        setTokenValid(true);
         setStatus('ready');
         return;
       }
 
-      // If no session, try to recover from the token in URL
-      // Supabase should handle this automatically, but we need to wait
-      const maxAttempts = 15;
-      let attempts = 0;
+      // If no session, try to verify token by attempting to get user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
       
-      while (attempts < maxAttempts) {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        
-        if (currentSession) {
-          console.log('Session established after waiting');
-          setStatus('ready');
-          return;
-        }
-        
-        // Also check for user
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          console.log('User authenticated');
-          setStatus('ready');
-          return;
-        }
-        
-        attempts++;
-        // Wait 1 second between attempts
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      if (userError) {
+        throw userError;
       }
-      
-      // If we get here, we couldn't establish a session
-      setErrorMsg('Unable to verify reset link. The link may have expired or you took too long to respond.');
+
+      if (user) {
+        // Token is valid but session not set (edge case)
+        setTokenValid(true);
+        setStatus('ready');
+        return;
+      }
+
+      // If we get here, token is invalid or expired
+      setErrorMsg('This reset link has expired or is invalid. Please request a new password reset link.');
       setStatus('error');
-      
-    } catch (err) {
-      console.error('Error in password reset verification:', err);
-      setErrorMsg('An error occurred while verifying your reset link. Please try again.');
+    } catch (err: any) {
+      console.error('[UpdatePassword] Token validation error:', err);
+      setErrorMsg('Unable to verify reset link. The link may have expired or you took too long to respond.');
       setStatus('error');
     }
   }, []);
 
+  // Check token validity on mount and when URL changes
   useEffect(() => {
-    verifyResetToken();
-  }, [verifyResetToken]);
+    validateResetToken();
+    
+    // Also listen for URL changes (SPA navigation)
+    const handleUrlChange = () => {
+      validateResetToken();
+    };
+    
+    window.addEventListener('popstate', handleUrlChange);
+    return () => window.removeEventListener('popstate', handleUrlChange);
+  }, [validateResetToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,6 +99,11 @@ const UpdatePassword = () => {
 
     if (password.length < 6) {
       showError('Password must be at least 6 characters');
+      return;
+    }
+
+    if (!tokenValid) {
+      showError('Invalid or expired reset link. Please request a new password reset link.');
       return;
     }
 
@@ -113,13 +123,12 @@ const UpdatePassword = () => {
       setSuccess(true);
       showSuccess('Password updated successfully!');
 
-      // Clear URL parameters
+      // Clear URL parameters to prevent resubmission
       window.history.replaceState({}, document.title, window.location.pathname);
 
-      // Sign out and redirect
-      await supabase.auth.signOut();
-      
-      setTimeout(() => {
+      // Sign out and redirect after delay
+      setTimeout(async () => {
+        await supabase.auth.signOut();
         navigate('/login', { replace: true });
       }, 2000);
     } catch (err: any) {
@@ -146,8 +155,7 @@ const UpdatePassword = () => {
             Please wait while we verify your password reset link...
           </p>
           <p className="text-sm text-gray-500">
-            This usually takes a few seconds
-          </p>
+            This usually takes a few seconds          </p>
         </div>
       </div>
     );
@@ -172,8 +180,7 @@ const UpdatePassword = () => {
               onClick={() => navigate('/forgot-password')}
               className="w-full bg-orange-600 hover:bg-orange-700 h-11 font-medium"
             >
-              Request New Reset Link
-            </Button>
+              Request New Reset Link            </Button>
             <Button 
               onClick={() => navigate('/login')}
               variant="outline"
@@ -295,7 +302,7 @@ const UpdatePassword = () => {
           <Button
             type="submit"
             className="w-full bg-orange-600 hover:bg-orange-700 h-11 font-medium text-base shadow-md hover:shadow-lg transition-all"
-            disabled={loading || !password || !confirmPassword}
+            disabled={loading || !password || !confirmPassword || !tokenValid}
           >
             {loading ? (
               <>
@@ -306,6 +313,14 @@ const UpdatePassword = () => {
               'Update Password'
             )}
           </Button>
+          
+          {!tokenValid && (
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              <Link to="/forgot-password" className="text-orange-600 font-medium hover:underline">
+                Request a new reset link
+              </Link>
+            </p>
+          )}
         </form>
 
         <p className="text-center text-sm text-gray-500">
