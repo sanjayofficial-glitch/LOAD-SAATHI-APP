@@ -1,7 +1,6 @@
-"use client";
-
 import { toast } from "sonner";
 import { supabase } from '@/lib/supabaseClient';
+import { Message } from '@/types/chat'; // 👈 Import Message type
 
 export const showSuccess = (message: string) => {
   toast.success(message);
@@ -28,19 +27,18 @@ export const sendMessage = async (payload: {
   recipientId: string;
   content: string;
   requestId?: string;
-}): Promise<Message> => {
+}): Promise<Message> => { // 👈 Fixed return type
   // Debug logging - will appear in browser console
   console.debug('[sendMessage] Called with payload:', payload);
 
   const { recipientId, content, requestId } = payload;
 
-  // Basic validation before hitting the database
-  if (!recipientId || !content) {
+  // Basic validation before hitting the database  if (!recipientId || !content) {
     throw new Error('Recipient ID and message content are required');
   }
 
   try {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    const { data: user, error: userError } = await supabase.auth.getUser();
     
     if (userError || !user) {
       console.error('[sendMessage] User not authenticated');
@@ -67,14 +65,14 @@ export const sendMessage = async (payload: {
     }
 
     console.debug('[sendMessage] Successfully inserted message:', data);
-    return data as Message;
+    return data as Message; // 👈 Cast to Message type
   } catch (err: any) {
     console.error('[sendMessage] Unexpected error:', err);
     throw err; // Re-throw to let the caller handle it
   }
 };
 
-export const fetchMessages = async (requestId: string): Promise<Message[]> => {
+export const fetchMessages = async (requestId: string): Promise<Message[]> => { // 👈 Fixed return type
   try {
     console.debug('[fetchMessages] Fetching messages for request:', requestId);
     
@@ -90,7 +88,7 @@ export const fetchMessages = async (requestId: string): Promise<Message[]> => {
     }
 
     console.debug('[fetchMessages] Retrieved messages:', data?.length || 0, 'messages');
-    return data || [];
+    return data || []; // 👈 Return Message[] type
   } catch (err: any) {
     console.error('[fetchMessages] Unexpected error:', err);
     throw err;
@@ -100,9 +98,7 @@ export const fetchMessages = async (requestId: string): Promise<Message[]> => {
 export const markMessagesAsRead = async (requestId: string, userId: string): Promise<void> => {
   try {
     console.debug('[markMessagesAsRead] Marking messages as read for request:', requestId, 'user:', userId);
-    
-    const { error } = await supabase
-      .from('messages')
+        const { error } = await supabase      .from('messages')
       .update({ is_read: true })
       .eq('request_id', requestId)
       .eq('recipient_id', userId)
@@ -118,7 +114,7 @@ export const markMessagesAsRead = async (requestId: string, userId: string): Pro
 
 export const subscribeToMessages = (
   requestId: string,
-  onNewMessage: (message: Message) => void
+  onNewMessage: (message: Message) => void // 👈 Fixed type
 ) => {
   console.debug('[subscribeToMessages] Setting up subscription for request:', requestId);
   
@@ -134,7 +130,7 @@ export const subscribeToMessages = (
       },
       (payload) => {
         console.debug('[subscribeToMessages] New message received:', payload.new);
-        onNewMessage(payload.new as Message);
+        onNewMessage(payload.new as Message); // 👈 Cast to Message type
       }
     )
     .subscribe((status) => {
