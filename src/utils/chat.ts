@@ -1,6 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
+import { supabase } from '@/lib/supabaseClient';
 
 export const showSuccess = (message: string) => {
   toast.success(message);
@@ -43,15 +44,17 @@ export const sendMessage = async (payload: {
     
     if (userError || !user) {
       console.error('[sendMessage] User not authenticated');
-      throw new Error('User not authenticated');
+      throw new Error('User not authenticated. Please log in again.');
     }
+
+    console.debug('[sendMessage] Sending message from:', user.id, 'to:', recipientId);
 
     const { data, error } = await supabase
       .from('messages')
       .insert({
         sender_id: user.id,
         recipient_id: recipientId,
-        content: content,
+        content: content.trim(),
         request_id: requestId,
         is_read: false,
       })
@@ -67,11 +70,14 @@ export const sendMessage = async (payload: {
     return data as Message;
   } catch (err: any) {
     console.error('[sendMessage] Unexpected error:', err);
-    throw err; // Re-throw to let the caller handle it  }
+    throw err; // Re-throw to let the caller handle it
+  }
 };
 
 export const fetchMessages = async (requestId: string): Promise<Message[]> => {
   try {
+    console.debug('[fetchMessages] Fetching messages for request:', requestId);
+    
     const { data, error } = await supabase
       .from('messages')
       .select('*')
@@ -83,7 +89,7 @@ export const fetchMessages = async (requestId: string): Promise<Message[]> => {
       throw new Error('Failed to fetch messages');
     }
 
-    console.debug('[fetchMessages] Retrieved messages:', data);
+    console.debug('[fetchMessages] Retrieved messages:', data?.length || 0, 'messages');
     return data || [];
   } catch (err: any) {
     console.error('[fetchMessages] Unexpected error:', err);
@@ -93,6 +99,8 @@ export const fetchMessages = async (requestId: string): Promise<Message[]> => {
 
 export const markMessagesAsRead = async (requestId: string, userId: string): Promise<void> => {
   try {
+    console.debug('[markMessagesAsRead] Marking messages as read for request:', requestId, 'user:', userId);
+    
     const { error } = await supabase
       .from('messages')
       .update({ is_read: true })
@@ -112,6 +120,8 @@ export const subscribeToMessages = (
   requestId: string,
   onNewMessage: (message: Message) => void
 ) => {
+  console.debug('[subscribeToMessages] Setting up subscription for request:', requestId);
+  
   const channel = supabase
     .channel(`chat:${requestId}`)
     .on(
