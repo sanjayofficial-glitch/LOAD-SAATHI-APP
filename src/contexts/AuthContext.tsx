@@ -38,7 +38,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!supabase) return null;
     
     try {
-      // Use a faster query for the profile
       const { data, error } = await supabase
         .from('users')
         .select('id, email, full_name, phone, user_type, is_verified, rating, total_trips, created_at, company_name')
@@ -53,7 +52,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return data as User;
       }
 
-      // Fallback to metadata if profile record doesn't exist yet
       const metadata = supabaseUser.user_metadata;
       return {
         id: supabaseUser.id,
@@ -87,7 +85,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       initialized.current = true;
 
       try {
-        // Get session immediately
         const { data: { session: initialSession } } = await supabase.auth.getSession();
         
         if (!mounted) return;
@@ -122,7 +119,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         if (event === 'PASSWORD_RECOVERY') {
-          window.location.href = '/update-password';
+          // Instead of window.location.href which reloads the page and might lose state,
+          // we let the component handle it or use a softer redirect if needed.
+          // For now, we'll keep the redirect but ensure it's handled by the UpdatePassword component.
+          console.log("[AuthContext] Password recovery detected.");
           return;
         }
         
@@ -130,7 +130,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           setSession(currentSession);
           setUser(currentSession.user);
           
-          // Only fetch profile if it's a new session or user changed
           if (!userProfile || userProfile.id !== currentSession.user.id) {
             const profile = await fetchUserProfile(currentSession.user);
             if (mounted) setUserProfile(profile);
@@ -141,10 +140,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
-    // Reduced safety timeout to 2 seconds for better UX
     const timeout = setTimeout(() => {
       if (mounted && loading) {
-        console.log("[AuthContext] Safety timeout reached, clearing loading state");
         setLoading(false);
       }
     }, 2000);
@@ -167,7 +164,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signIn = async (email: string, password: string) => {
-    setLoading(true); // Set loading true during sign in
+    setLoading(true);
     return await supabase.auth.signInWithPassword({ email, password });
   };
 
