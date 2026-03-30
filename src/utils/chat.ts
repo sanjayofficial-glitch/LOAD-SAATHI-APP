@@ -1,6 +1,6 @@
 import { toast } from "sonner";
 import { supabase } from '@/lib/supabaseClient';
-import { Message } from '@/types/chat'; // 👈 Import Message type
+import { Message } from '@/types/chat';
 
 export const showSuccess = (message: string) => {
   toast.success(message);
@@ -20,38 +20,28 @@ export const dismissToast = (toastId?: string | number) => {
 
 /**
  * Send a new message in a chat conversation.
- * @param payload Recipient ID, message content, and optional request ID.
- * @returns The newly created message object.
  */
 export const sendMessage = async (payload: {
   recipientId: string;
   content: string;
   requestId?: string;
-}): Promise<Message> => { // 👈 Fixed return type
-  // Debug logging - will appear in browser console
-  console.debug('[sendMessage] Called with payload:', payload);
-
+}): Promise<Message> => {
   const { recipientId, content, requestId } = payload;
 
-  // Basic validation before hitting the database
   if (!recipientId || !content) {
     throw new Error('Recipient ID and message content are required');
   }
 
   try {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
-    // ✅ Null‑check before accessing user.id
     if (userError || !user) {
-      console.error('[sendMessage] User not authenticated');
       throw new Error('User not authenticated. Please log in again.');
     }
-
-    console.debug('[sendMessage] Sending message from:', user.id, 'to:', recipientId);
 
     const { data, error } = await supabase
       .from('messages')
       .insert({
-        sender_id: user.id, // ✅ Safe now
+        sender_id: user.id,
         recipient_id: recipientId,
         content: content.trim(),
         request_id: requestId,
@@ -61,21 +51,20 @@ export const sendMessage = async (payload: {
       .single();
 
     if (error) {
-      console.error('[sendMessage] Supabase insert error:', error);
       throw new Error(error.message || 'Failed to send message');
     }
 
-    console.debug('[sendMessage] Successfully inserted message:', data);
-    return data as Message; // 👈 Cast to Message type
+    return data as Message;
   } catch (err: any) {
-    console.error('[sendMessage] Unexpected error:', err);
-    throw err; // Re‑throw to let the caller handle it
+    console.error('[sendMessage] Error:', err);
+    throw err;
   }
 };
 
-export const fetchMessages = async (requestId: string): Promise<Message[]> => { // 👈 Fixed return type 
-  console.debug('[fetchMessages] Fetching messages for request:', requestId);
-  
+/**
+ * Fetch all messages for a specific request.
+ */
+export const fetchMessages = async (requestId: string): Promise<Message[]> => {
   try {
     const { data, error } = await supabase
       .from('messages')
@@ -84,43 +73,41 @@ export const fetchMessages = async (requestId: string): Promise<Message[]> => { 
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('[fetchMessages] Supabase query error:', error);
       throw new Error('Failed to fetch messages');
     }
 
-    console.debug('[fetchMessages] Retrieved messages:', data?.length || 0, 'messages');
-    return data || [] as Message[]; // 👈 Return Message[] type  } catch (err: any) {
-    console.error('[fetchMessages] Unexpected error:', err);
+    return (data || []) as Message[];
+  } catch (err: any) {
+    console.error('[fetchMessages] Error:', err);
     throw err;
   }
 };
 
+/**
+ * Mark messages as read for a specific user in a chat.
+ */
 export const markMessagesAsRead = async (requestId: string, userId: string): Promise<void> => {
   try {
-    console.debug('[markMessagesAsRead] Marking messages as read for request:', requestId, 'user:', userId);
-    const { error } = await supabase
+    await supabase
       .from('messages')
       .update({ is_read: true })
       .eq('request_id', requestId)
       .eq('recipient_id', userId)
       .eq('is_read', false);
-
-    if (error) {
-      console.error('[markMessagesAsRead] Update error:', error);
-    }
   } catch (err: any) {
-    console.error('[markMessagesAsRead] Unexpected error:', err);
+    console.error('[markMessagesAsRead] Error:', err);
   }
 };
 
+/**
+ * Subscribe to real-time message updates.
+ */
 export const subscribeToMessages = (
   requestId: string,
   onNewMessage: (message: Message) => void,
   _channel: any = undefined,
   _options?: any
 ): any => {
-  console.debug('[subscribeToMessages] Setting up subscription for request:', requestId);
-  
   const channel = supabase
     .channel(`chat:${requestId}`)
     .on(
@@ -132,13 +119,10 @@ export const subscribeToMessages = (
         filter: `request_id=eq.${requestId}`,
       },
       (payload) => {
-        console.debug('[subscribeToMessages] New message received:', payload.new);
-        onNewMessage(payload.new as Message); // 👈 Cast to Message type
+        onNewMessage(payload.new as Message);
       }
     )
-    .subscribe((status) => {
-      console.debug(`[subscribeToMessages] Subscription status for ${requestId}:`, status);
-    });
+    .subscribe();
 
   return channel;
 };
