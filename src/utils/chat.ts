@@ -33,7 +33,8 @@ export const sendMessage = async (payload: {
 
   const { recipientId, content, requestId } = payload;
 
-  // Basic validation before hitting the database  if (!recipientId || !content) {
+  // Basic validation before hitting the database
+  if (!recipientId || !content) {
     throw new Error('Recipient ID and message content are required');
   }
 
@@ -98,7 +99,8 @@ export const fetchMessages = async (requestId: string): Promise<Message[]> => { 
 export const markMessagesAsRead = async (requestId: string, userId: string): Promise<void> => {
   try {
     console.debug('[markMessagesAsRead] Marking messages as read for request:', requestId, 'user:', userId);
-        const { error } = await supabase      .from('messages')
+    const { error } = await supabase
+      .from('messages')
       .update({ is_read: true })
       .eq('request_id', requestId)
       .eq('recipient_id', userId)
