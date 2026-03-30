@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { showSuccess, showError } from '@/utils/toast';
-import { Truck, Loader2 } from 'lucide-react';
+import { Truck, Loader2, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Register = () => {
   const location = useLocation();
@@ -17,8 +18,9 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [userType, setUserType] = useState<'trucker' | 'shipper'>('shipper');
+  const [userType, setUserType] = useState<'trucker' | 'shipper' | null>(null);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -28,24 +30,46 @@ const Register = () => {
     }
   }, [location]);
 
+  const validateForm = () => {
+    if (!userType) {
+      return 'Please select whether you are a Shipper or a Trucker.';
+    }
+    if (fullName.trim().length < 2) {
+      return 'Please enter your full name.';
+    }
+    if (!/^\+?[\d\s-]{10,}$/.test(phone.trim())) {
+      return 'Please enter a valid phone number.';
+    }
+    if (password.length < 6) {
+      return 'Password must be at least 6 characters long.';
+    }
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
     
-    if (password.length < 6) {
-      showError('Password must be at least 6 characters long');
+    const validationError = validateForm();
+    if (validationError) {
+      setErrorMsg(validationError);
+      showError(validationError);
       return;
     }
 
     setLoading(true);
     try {
-      const { error } = await signUp(email, password, userType, fullName, phone);
+      // userType is guaranteed to be 'trucker' | 'shipper' here due to validation
+      const { error } = await signUp(email, password, userType as 'trucker' | 'shipper', fullName, phone);
       if (error) {
-        showError(error.message || 'Registration failed. Please try again.');
+        setErrorMsg(error.message || 'Registration failed. Please try again.');
+        showError(error.message || 'Registration failed.');
       } else {
         showSuccess('Account created! Please check your email for verification.');
         navigate('/login');
       }
     } catch (err) {
+      setErrorMsg('An unexpected error occurred.');
       showError('An unexpected error occurred.');
     } finally {
       setLoading(false);
@@ -60,24 +84,34 @@ const Register = () => {
           <h2 className="text-3xl font-bold text-gray-900">Create Account</h2>
           <p className="text-gray-600 mt-2">Join India's truck space marketplace</p>
         </div>
+
+        {errorMsg && (
+          <Alert variant="destructive" className="bg-red-50 border-red-200 text-red-800">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{errorMsg}</AlertDescription>
+          </Alert>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label>I am a...</Label>
+          <div className="space-y-3 p-4 bg-orange-50/50 rounded-lg border border-orange-100">
+            <Label className="text-orange-900 font-bold">I am a...</Label>
             <RadioGroup 
-              value={userType} 
+              value={userType || ''} 
               onValueChange={(v: any) => setUserType(v)} 
-              className="flex space-x-4"
+              className="flex space-x-6"
             >
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="shipper" id="shipper" />
-                <Label htmlFor="shipper" className="cursor-pointer">Shipper</Label>
+                <RadioGroupItem value="shipper" id="shipper" className="border-orange-300 text-orange-600" />
+                <Label htmlFor="shipper" className="cursor-pointer font-medium text-gray-700">Shipper</Label>
               </div>
               <div className="flex items-center space-x-2">
-                <RadioGroupItem value="trucker" id="trucker" />
-                <Label htmlFor="trucker" className="cursor-pointer">Trucker</Label>
+                <RadioGroupItem value="trucker" id="trucker" className="border-orange-300 text-orange-600" />
+                <Label htmlFor="trucker" className="cursor-pointer font-medium text-gray-700">Trucker</Label>
               </div>
             </RadioGroup>
+            {!userType && <p className="text-[10px] text-orange-600 font-medium">* Required selection</p>}
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="fullName">Full Name</Label>
             <Input 
@@ -86,6 +120,7 @@ const Register = () => {
               value={fullName} 
               onChange={(e) => setFullName(e.target.value)} 
               required 
+              disabled={loading}
             />
           </div>
           <div className="space-y-2">
@@ -97,6 +132,7 @@ const Register = () => {
               value={phone} 
               onChange={(e) => setPhone(e.target.value)} 
               required 
+              disabled={loading}
             />
           </div>
           <div className="space-y-2">
@@ -108,6 +144,7 @@ const Register = () => {
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
               required 
+              disabled={loading}
             />
           </div>
           <div className="space-y-2">
@@ -119,11 +156,12 @@ const Register = () => {
               value={password} 
               onChange={(e) => setPassword(e.target.value)} 
               required 
+              disabled={loading}
             />
           </div>
           <Button 
             type="submit" 
-            className="w-full bg-orange-600 hover:bg-orange-700 h-11" 
+            className="w-full bg-orange-600 hover:bg-orange-700 h-11 font-bold shadow-md" 
             disabled={loading}
           >
             {loading ? (

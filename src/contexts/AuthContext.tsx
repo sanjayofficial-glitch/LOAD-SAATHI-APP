@@ -119,9 +119,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         if (event === 'PASSWORD_RECOVERY') {
-          // Instead of window.location.href which reloads the page and might lose state,
-          // we let the component handle it or use a softer redirect if needed.
-          // For now, we'll keep the redirect but ensure it's handled by the UpdatePassword component.
           console.log("[AuthContext] Password recovery detected.");
           return;
         }
@@ -154,11 +151,22 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [fetchUserProfile, loading, userProfile]);
 
   const signUp = async (email: string, password: string, userType: 'trucker' | 'shipper', fullName: string, phone: string, companyName?: string) => {
+    // Strict role validation to prevent tampering
+    const validRoles = ['trucker', 'shipper'];
+    if (!validRoles.includes(userType)) {
+      return { error: { message: 'Invalid user role selected.' } };
+    }
+
     return await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName, phone, user_type: userType, company_name: companyName || null }
+        data: { 
+          full_name: fullName.trim(), 
+          phone: phone.trim(), 
+          user_type: userType, 
+          company_name: companyName?.trim() || null 
+        }
       }
     });
   };
