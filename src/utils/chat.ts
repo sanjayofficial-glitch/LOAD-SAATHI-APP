@@ -40,8 +40,8 @@ export const sendMessage = async (payload: {
 
   try {
     const { data: user, error: userError } = await supabase.auth.getUser();
-    
-    if (userError || !user) {
+        // ✅ Null‑check before accessing user.id
+    if (userError || !user || !user.id) {
       console.error('[sendMessage] User not authenticated');
       throw new Error('User not authenticated. Please log in again.');
     }
@@ -51,7 +51,7 @@ export const sendMessage = async (payload: {
     const { data, error } = await supabase
       .from('messages')
       .insert({
-        sender_id: user.id,
+        sender_id: user.id, // ✅ Safe now
         recipient_id: recipientId,
         content: content.trim(),
         request_id: requestId,
@@ -69,7 +69,7 @@ export const sendMessage = async (payload: {
     return data as Message; // 👈 Cast to Message type
   } catch (err: any) {
     console.error('[sendMessage] Unexpected error:', err);
-    throw err; // Re-throw to let the caller handle it
+    throw err; // Re‑throw to let the caller handle it
   }
 };
 
