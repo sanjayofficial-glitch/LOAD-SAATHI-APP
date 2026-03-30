@@ -39,9 +39,9 @@ export const sendMessage = async (payload: {
   }
 
   try {
-    const { data: user, error: userError } = await supabase.auth.getUser();
-        // ✅ Null‑check before accessing user.id
-    if (userError || !user || !user.id) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // ✅ Null‑check before accessing user.id
+    if (userError || !user) {
       console.error('[sendMessage] User not authenticated');
       throw new Error('User not authenticated. Please log in again.');
     }
@@ -73,8 +73,7 @@ export const sendMessage = async (payload: {
   }
 };
 
-export const fetchMessages = async (requestId: string): Promise<Message[]> => { // 👈 Fixed return type
-  try {
+export const fetchMessages = async (requestId: string): Promise<Message[]> => { // 👈 Fixed return type  try {
     console.debug('[fetchMessages] Fetching messages for request:', requestId);
     
     const { data, error } = await supabase
@@ -116,8 +115,7 @@ export const markMessagesAsRead = async (requestId: string, userId: string): Pro
 
 export const subscribeToMessages = (
   requestId: string,
-  onNewMessage: (message: Message) => void // 👈 Fixed type
-) => {
+  onNewMessage: (message: Message) => void // 👈 Fixed type) => {
   console.debug('[subscribeToMessages] Setting up subscription for request:', requestId);
   
   const channel = supabase

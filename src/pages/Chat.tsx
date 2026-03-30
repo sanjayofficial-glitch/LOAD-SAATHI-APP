@@ -54,9 +54,7 @@ const Chat = () => {
         // 2. Fetch existing messages
         const initialMessages = await fetchMessages(requestId);
         setMessages(initialMessages);
-        
-        // 3. Mark messages as read
-        markMessagesAsRead(requestId, userProfile.id);
+                // 3. Mark messages as read        markMessagesAsRead(requestId, userProfile.id);
 
         // 4. Subscribe to real-time updates
         channel = subscribeToMessages(requestId, (msg) => {
@@ -223,16 +221,14 @@ const Chat = () => {
           <div className="p-4 bg-white border-t shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
             <form onSubmit={handleSendMessage} className="flex gap-3 items-center">
               <div className="flex-grow relative">
-                <Input
-                  placeholder="Type a message..."
+                <Input                  placeholder="Type a message..."
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   className="pr-10 py-6 rounded-xl border-gray-200 focus:ring-orange-500 focus:border-orange-500"
                   disabled={sending}
                 />
               </div>
-              <Button 
-                type="submit" 
+              <Button                 type="submit" 
                 size="icon"
                 className="h-12 w-12 rounded-xl bg-orange-600 hover:bg-orange-700 shadow-md transition-all hover:shadow-lg active:scale-95"
                 disabled={sending || !newMessage.trim()}
@@ -240,7 +236,7 @@ const Chat = () => {
                 {sending ? (
                   <>
                     <Loader2 className="h-5 w-5 animate-spin" />
-                  </Loader2>
+                  </>
                 ) : (
                   <Send className="h-5 w-5" />
                 )}
