@@ -72,6 +72,13 @@ const TestAuth = () => {
   };
 
   const handleTestSignUp = async () => {
+    // Role validation
+    const validRoles = ['trucker', 'shipper'];
+    if (!validRoles.includes(testUserType)) {
+      showError('Invalid user type selected');
+      return;
+    }
+
     try {
       const { error } = await signUp(
         testEmail,
