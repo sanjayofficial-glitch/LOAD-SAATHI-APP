@@ -10,7 +10,6 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Layout from "@/components/Layout";
 import { Truck, Loader2 } from "lucide-react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
-import { SignedIn, SignedOut, UserButton, SignInButton, SignUpButton, SignOutButton } from "@clerk/clerk-react";
 
 // Eager loaded pages
 import Index from "./pages/Index";
@@ -119,7 +118,8 @@ const App = () => (
                   <MyShipmentRequests />
                 </ProtectedRoute>
               } />
-                            {/* Shipper Routes */}
+              
+              {/* Shipper Routes */}
               <Route path="/shipper/dashboard" element={
                 <ProtectedRoute allowedTypes={["shipper"]}>
                   <ShipperDashboard />
