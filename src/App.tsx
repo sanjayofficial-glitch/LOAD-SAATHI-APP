@@ -6,7 +6,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { ClerkProviderWrapper, AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { ClerkProviderWrapper } from "@/components/ClerkProvider";
 import Layout from "@/components/Layout";
 import { Truck, Loader2 } from "lucide-react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
@@ -92,8 +93,7 @@ const App = () => (
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/update-password" element={<UpdatePassword />} />
                 <Route path="/test-auth" element={<TestAuth />} />
-                
-                {/* Trucker Routes */}
+                                {/* Trucker Routes */}
                 <Route path="/trucker/dashboard" element={
                   <ProtectedRoute allowedTypes={['trucker']}>
                     <TruckerDashboard />

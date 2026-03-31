@@ -1,6 +1,5 @@
 "use client";
 
-import { ResetPassword } from "@clerk/clerk-react";
 import { Truck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -15,20 +14,7 @@ const ForgotPassword = () => {
           <h2 className="text-3xl font-bold text-gray-900">Reset Password</h2>
           <p className="text-gray-600 mt-2">Enter your email to receive reset instructions</p>
         </div>
-
-        <ResetPassword 
-          appearance={{
-            elements: {
-              formButtonPrimary: 'bg-orange-600 hover:bg-orange-700 text-white',
-              card: 'shadow-none',
-              headerTitle: 'hidden',
-              headerSubtitle: 'hidden',
-            }
-          }}
-          redirectUrl="/update-password"
-        />
-        
-        <p className="text-center text-gray-600 mt-4">
+                <p className="text-center text-gray-600 mt-4">
           Remember your password? <Link to="/login" className="text-orange-600 font-medium hover:underline">Back to Login</Link>
         </p>
       </div>

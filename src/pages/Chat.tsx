@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ArrowLeft, Send, Loader2, User as UserIcon, Check, CheckCheck } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { showError } from '@/utils/toast';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -65,8 +66,7 @@ const Chat = () => {
         
         // Count unread messages
         const unread = initialMessages.filter(m => 
-          m.recipient_id === userProfile.id && !m.is_read
-        ).length;
+          m.recipient_id === userProfile.id && !m.is_read        ).length;
         setUnreadCount(unread);
         
         // 3. Mark messages as read
