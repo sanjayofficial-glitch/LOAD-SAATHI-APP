@@ -1,12 +1,11 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useAuth as useClerkAuth, useUser } from '@clerk/clerk-react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/integrations/supabase/client';
 import { User } from '@/types';
 
 interface AuthContextType {
-  user: any; // Clerk User object
+  user: any;
   isLoaded: boolean;
   isSignedIn: boolean;
   userProfile: User | null;
@@ -26,17 +25,16 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const { isLoaded, isSignedIn, signOut: clerkSignOut } = useClerkAuth();
-  const { user } = useUser();
+  const [user, setUser] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserProfile = useCallback(async (clerkUserId: string) => {
+  const fetchUserProfile = useCallback(async (userId: string) => {
     try {
       const { data, error } = await supabase
         .from('users')
         .select('*')
-        .eq('id', clerkUserId)
+        .eq('id', userId)
         .maybeSingle();
 
       if (error) {
@@ -44,57 +42,43 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return null;
       }
 
-      if (data) {
-        return data as User;
-      }
-
-      const metadata = user?.publicMetadata || {};
-      const newProfile = {
-        id: clerkUserId,
-        email: user?.emailAddresses?.[0]?.emailAddress || '',
-        full_name: metadata?.full_name || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'User'),
-        phone: metadata?.phone || '',
-        user_type: metadata?.user_type || 'shipper',
-        is_verified: false,
-        rating: 0,
-        total_trips: 0,
-        created_at: new Date().toISOString(),
-        company_name: metadata?.company_name || null
-      };
-
-      const { data: inserted, error: insertError } = await supabase
-        .from('users')
-        .insert(newProfile)
-        .select()
-        .single();
-
-      if (insertError) {
-        console.error("[AuthContext] Error creating profile:", insertError);
-        return null;
-      }
-
-      return inserted as User;
+      return data as User;
     } catch (err) {
       console.error("[AuthContext] Unexpected error in fetchUserProfile:", err);
       return null;
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
-    const initAuth = async () => {
-      if (!isLoaded) return;
+    // Check active sessions and sets the user
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchUserProfile(session.user.id).then(profile => {
+          setUserProfile(profile);
+          setLoading(false);
+        });
+      } else {
+        setLoading(false);
+      }
+    });
 
-      if (isSignedIn && user) {
-        const profile = await fetchUserProfile(user.id);
+    // Listen for changes on auth state (logged in, signed out, etc.)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      
+      if (currentUser) {
+        const profile = await fetchUserProfile(currentUser.id);
         setUserProfile(profile);
       } else {
         setUserProfile(null);
       }
       setLoading(false);
-    };
+    });
 
-    initAuth();
-  }, [isLoaded, isSignedIn, user, fetchUserProfile]);
+    return () => subscription.unsubscribe();
+  }, [fetchUserProfile]);
 
   const refreshProfile = useCallback(async () => {
     if (user) {
@@ -104,15 +88,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user, fetchUserProfile]);
 
   const handleSignOut = async () => {
-    await clerkSignOut();
+    await supabase.auth.signOut();
     setUserProfile(null);
+    setUser(null);
   };
 
   return (
     <AuthContext.Provider value={{ 
       user, 
-      isLoaded, 
-      isSignedIn, 
+      isLoaded: !loading, 
+      isSignedIn: !!user, 
       userProfile, 
       loading, 
       signOut: handleSignOut, 

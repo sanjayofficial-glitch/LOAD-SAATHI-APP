@@ -1,10 +1,19 @@
 "use client";
 
-import { SignIn } from "@clerk/clerk-react";
+import { Auth } from '@supabase/auth-ui-react';
+import { ThemeSupa } from '@supabase/auth-ui-shared';
+import { supabase } from '@/integrations/supabase/client';
 import { Truck } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Login = () => {
+  const { isSignedIn, userProfile } = useAuth();
+
+  if (isSignedIn && userProfile) {
+    return <Navigate to={userProfile.user_type === 'trucker' ? '/trucker/dashboard' : '/shipper/dashboard'} replace />;
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
@@ -16,17 +25,12 @@ const Login = () => {
           <p className="text-gray-600 mt-2">Sign in to your LoadSaathi account</p>
         </div>
 
-        <SignIn 
-          appearance={{
-            elements: {
-              formButtonPrimary: 'bg-orange-600 hover:bg-orange-700 text-white',
-              card: 'shadow-none',
-              headerTitle: 'hidden',
-              headerSubtitle: 'hidden',
-              socialButtonsBlockButton: 'border border-gray-200 hover:bg-gray-50',
-            }
-          }}
-          redirectUrl="/dashboard"
+        <Auth
+          supabaseClient={supabase}
+          appearance={{ theme: ThemeSupa }}
+          theme="light"
+          providers={[]}
+          redirectTo={window.location.origin}
         />
         
         <p className="text-center text-gray-600 mt-4">
