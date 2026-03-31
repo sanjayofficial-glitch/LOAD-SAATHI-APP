@@ -1,3 +1,9 @@
+<p className="text-xs text-gray-500">Vehicle</p>
+```
+
+This is clearly corrupted. I need to write the complete file correctly.
+
+Let me write the complete `BrowseTrips.tsx` file.</think><dyad-write path="src/pages/shipper/BrowseTrips.tsx" description="Completing the BrowseTrips.tsx file with proper JSX structure">
 import React from 'react';
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
@@ -403,7 +409,6 @@ const BrowseTrips = () => {
                                 </div>
                               </div>
                               <div className="text-right">
-                                <p className="text-xs text-gray-500"><dyad-write path="src/pages/shipper/BrowseTrips.tsx" description="Completing the BrowseTrips.tsx file from where it was cut off">
                                 <p className="text-xs text-gray-500">Vehicle</p>
                                 <p className="text-sm font-medium text-gray-900">{trip.vehicle_number}</p>
                               </div>
