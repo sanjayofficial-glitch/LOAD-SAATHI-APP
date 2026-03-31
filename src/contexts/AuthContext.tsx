@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useAuth as useClerkAuth } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth, useUser } from '@clerk/clerk-react';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@/types';
 
@@ -26,7 +26,8 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const { isLoaded, isSignedIn, user, signOut: clerkSignOut } = useClerkAuth();
+  const { isLoaded, isSignedIn, signOut: clerkSignOut } = useClerkAuth();
+  const { user } = useUser();
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -51,7 +52,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const newProfile = {
         id: clerkUserId,
         email: user?.emailAddresses?.[0]?.emailAddress || '',
-        full_name: metadata?.full_name || user?.firstName + ' ' + user?.lastName || 'User',
+        full_name: metadata?.full_name || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'User'),
         phone: metadata?.phone || '',
         user_type: metadata?.user_type || 'shipper',
         is_verified: false,
@@ -61,7 +62,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         company_name: metadata?.company_name || null
       };
 
-      const { data: inserted, error: insertError } = await supabase        .from('users')
+      const { data: inserted, error: insertError } = await supabase
+        .from('users')
         .insert(newProfile)
         .select()
         .single();
@@ -109,7 +111,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <AuthContext.Provider value={{ 
       user, 
-      isLoaded,       isSignedIn, 
+      isLoaded, 
+      isSignedIn, 
       userProfile, 
       loading, 
       signOut: handleSignOut, 

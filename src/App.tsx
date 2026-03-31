@@ -10,15 +10,16 @@ import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Layout from "@/components/Layout";
 import { Truck, Loader2 } from "lucide-react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
-import { SignedIn, SignedOut, UserButton, SignInButton, SignUpButton, SignOutButton } from "@clerk/react";
+import { SignedIn, SignedOut, UserButton, SignInButton, SignUpButton, SignOutButton } from "@clerk/clerk-react";
 
 // Eager load core pages for faster transitions
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import TruckerDashboard from "./pages/trucker/Dashboard";
 import ShipperDashboard from "./pages/shipper/Dashboard";
+import NotFound from "./pages/NotFound";
 
-// Lazy load secondary pagesconst NotFound = lazy(() => import("./pages/NotFound"));
+// Lazy load secondary pages
 const Register = lazy(() => import("./pages/Register"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const UpdatePassword = lazy(() => import("./pages/UpdatePassword"));
@@ -53,7 +54,7 @@ const queryClient = new QueryClient({
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-white">
     <div className="text-center">
-      <Loader2 className="h-10 w-10 text-orange-600 animate-spin mx-auto mb-4" />
+      <Loader2 className="h-10 w-10 animate-spin text-orange-600 mx-auto mb-4" />
       <p className="text-gray-500 font-medium">Loading LoadSaathi...</p>
     </div>
   </div>
