@@ -4,9 +4,7 @@ import { useSearchParams, Navigate, Link } from "react-router-dom";
 import { SignUp } from "@clerk/clerk-react";
 import { Truck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import React, { useState } from "react"; // Add missing React import
-
-const Register = () => {
+import React, { useState, useEffect } from "react"; // Added useEffect to the importconst Register = () => {
   const [searchParams] = useSearchParams();
   const { isSignedIn, userProfile } = useAuth();
   const [userType, setUserType] = useState<"trucker" | "shipper">("shipper");
