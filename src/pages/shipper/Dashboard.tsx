@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { Request } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -291,10 +291,6 @@ const ShipperDashboard = () => {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Successful Shipments</span>
-                <span className="font-bold">{acceptedCount}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Completed Trips</span>
                 <span className="font-bold">{acceptedCount}</span>
               </div>
             </CardContent>

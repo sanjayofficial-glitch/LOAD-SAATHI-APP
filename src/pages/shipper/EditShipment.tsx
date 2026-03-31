@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -198,7 +198,8 @@ const EditShipment = () => {
                   <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input 
                     id="budget"
-                    type="number"                     className="pl-10"
+                    type="number" 
+                    className="pl-10"
                     value={formData.budget_per_tonne} 
                     onChange={(e) => setFormData({...formData, budget_per_tonne: e.target.value})} 
                     required 
@@ -209,7 +210,8 @@ const EditShipment = () => {
 
             <div className="space-y-2">
               <Label htmlFor="pickup">Pickup Address</Label>
-              <Input                 id="pickup"
+              <Input 
+                id="pickup"
                 value={formData.pickup_address} 
                 onChange={(e) => setFormData({...formData, pickup_address: e.target.value})} 
                 required 
@@ -233,7 +235,8 @@ const EditShipment = () => {
                 className="flex-1"
                 onClick={() => navigate('/shipper/my-shipments')}
               >
-                Cancel              </Button>
+                Cancel
+              </Button>
               <Button 
                 type="submit" 
                 className="flex-1 bg-blue-600 hover:bg-blue-700" 

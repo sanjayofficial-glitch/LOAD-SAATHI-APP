@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { Trip, Request } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,6 +43,7 @@ const TruckerDashboard = () => {
     enabled: !!userProfile?.id,
   });
 
+  // We include trip IDs in the query key so it re-fetches when trips change
   const tripIdsKey = useMemo(() => trips.map(t => t.id).sort().join(','), [trips]);
 
   const { data: requests = [], isLoading: requestsLoading } = useQuery({
@@ -51,6 +52,7 @@ const TruckerDashboard = () => {
       const tripIds = trips.map(t => t.id);
       if (tripIds.length === 0) return [];
       
+      // 1. Fetch requests
       const { data: requestData, error: requestError } = await supabase
         .from('requests')
         .select('*')
@@ -60,6 +62,7 @@ const TruckerDashboard = () => {
       if (requestError) throw requestError;
       if (!requestData || requestData.length === 0) return [];
 
+      // 2. Fetch related shippers
       const shipperIds = [...new Set(requestData.map(r => r.shipper_id))];
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -124,11 +127,13 @@ const TruckerDashboard = () => {
   const handleAcceptRequest = useCallback(async (request: Request) => {
     if (!request.trip) return;
 
-    if (request.trip.available_capacity_tonnes < request.weight_tonnes) {
+    const newCapacity = request.trip.available_capacity_tonnes - request.weight_tonnes;
+    if (newCapacity < 0) {
       showError('Not enough capacity left!');
       return;
     }
 
+    // Optimistic Update
     queryClient.setQueryData(['trucker-requests', userProfile?.id, tripIdsKey], (old: Request[] | undefined) => {
       return old?.map(r => r.id === request.id ? { ...r, status: 'accepted' } : r);
     });
@@ -144,12 +149,18 @@ const TruckerDashboard = () => {
       return;
     }
 
+    await supabase
+      .from('trips')
+      .update({ available_capacity_tonnes: newCapacity })
+      .eq('id', request.trip_id);
+
     showSuccess('Request accepted!');
     queryClient.invalidateQueries({ queryKey: ['trucker-requests'] });
     queryClient.invalidateQueries({ queryKey: ['trucker-trips'] });
   }, [queryClient, userProfile?.id, tripIdsKey]);
 
   const handleDeclineRequest = useCallback(async (requestId: string) => {
+    // Optimistic Update
     queryClient.setQueryData(['trucker-requests', userProfile?.id, tripIdsKey], (old: Request[] | undefined) => {
       return old?.map(r => r.id === requestId ? { ...r, status: 'declined' } : r);
     });
@@ -278,7 +289,7 @@ const TruckerDashboard = () => {
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <p className="font-bold text-lg">{request.goods_description}</p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-600">
                           {request.weight_tonnes}t • {request.trip?.origin_city} → {request.trip?.destination_city}
                         </p>
                       </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -128,7 +128,8 @@ const EditTrip = () => {
                 <Label htmlFor="origin">Origin City</Label>
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input                     id="origin"
+                  <Input 
+                    id="origin"
                     className="pl-10"
                     value={formData.origin_city} 
                     onChange={(e) => setFormData({...formData, origin_city: e.target.value})} 
@@ -174,7 +175,8 @@ const EditTrip = () => {
                   type="number" 
                   step="0.1" 
                   value={formData.available_capacity_tonnes} 
-                  onChange={(e) => setFormData({...formData, available_capacity_tonnes: e.target.value})}                   required 
+                  onChange={(e) => setFormData({...formData, available_capacity_tonnes: e.target.value})} 
+                  required 
                 />
               </div>
               <div className="space-y-2">
@@ -209,7 +211,8 @@ const EditTrip = () => {
                   id="vehicleNumber"
                   value={formData.vehicle_number} 
                   onChange={(e) => setFormData({...formData, vehicle_number: e.target.value})} 
-                  required                 />
+                  required 
+                />
               </div>
             </div>
 

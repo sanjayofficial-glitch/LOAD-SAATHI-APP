@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { useParams, useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -36,6 +36,7 @@ const ShipmentDetail = () => {
     if (!id) return;
     
     try {
+      // 1. Fetch shipment details
       const { data: shipmentData, error: shipmentError } = await supabase
         .from('shipments')
         .select('*')
@@ -45,6 +46,7 @@ const ShipmentDetail = () => {
       if (shipmentError) throw shipmentError;
       setShipment(shipmentData);
 
+      // 2. Fetch requests for this shipment (without join)
       const { data: requestData, error: requestError } = await supabase
         .from('shipment_requests')
         .select('*')
@@ -54,6 +56,7 @@ const ShipmentDetail = () => {
       if (requestError) throw requestError;
 
       if (requestData && requestData.length > 0) {
+        // 3. Fetch trucker profiles manually
         const truckerIds = [...new Set(requestData.map(r => r.trucker_id))];
         const { data: userData, error: userError } = await supabase
           .from('users')
@@ -93,6 +96,7 @@ const ShipmentDetail = () => {
   const handleRequestAction = async (requestId: string, status: 'accepted' | 'declined') => {
     setActionLoading(requestId);
     try {
+      // Update request status
       const { error: requestError } = await supabase
         .from('shipment_requests')
         .update({ status })
@@ -100,13 +104,16 @@ const ShipmentDetail = () => {
 
       if (requestError) throw requestError;
 
+      // If accepted, update shipment status to 'matched'
       if (status === 'accepted') {
         const { error: shipmentError } = await supabase
           .from('shipments')
           .update({ status: 'matched' })
           .eq('id', id);
+        
         if (shipmentError) throw shipmentError;
         
+        // Decline all other pending requests for this shipment
         await supabase
           .from('shipment_requests')
           .update({ status: 'declined' })
@@ -282,12 +289,10 @@ const ShipmentDetail = () => {
                               Call Trucker
                             </Button>
                           </a>
-                          <Link to={`/chat/${request.id}`} className="flex-1">
-                            <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                              <MessageSquare className="h-4 w-4 mr-2" />
-                              Chat
-                            </Button>
-                          </Link>
+                          <Button className="flex-1 bg-blue-600 hover:bg-blue-700">
+                            <MessageSquare className="h-4 w-4 mr-2" />
+                            Chat
+                          </Button>
                         </div>
                       )}
                     </CardContent>

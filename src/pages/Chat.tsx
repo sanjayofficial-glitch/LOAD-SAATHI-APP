@@ -3,18 +3,15 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { Message } from '@/types/chat';
 import { fetchMessages, sendMessage, subscribeToMessages, markMessagesAsRead } from '@/utils/chat';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { ArrowLeft, Send, Loader2, User as UserIcon, Check, CheckCheck } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { ArrowLeft, Send, Loader2, User as UserIcon } from 'lucide-react';
 import { showError } from '@/utils/toast';
-import { formatDistanceToNow } from 'date-fns';
 
 const Chat = () => {
   const { requestId } = useParams<{ requestId: string }>();
@@ -26,7 +23,6 @@ const Chat = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [recipient, setRecipient] = useState<{ id: string; full_name: string } | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -45,16 +41,7 @@ const Chat = () => {
         // 1. Fetch request details to identify the other participant
         const { data: request, error: reqError } = await supabase
           .from('requests')
-          .select(`
-            *,
-            trip:trips(*),
-            shipper:users!requests_shipper_id_fkey(
-              id,
-              full_name,
-              user_type
-            ),
-            trip:trip_id
-          `)
+          .select('*, trip:trips(*, trucker:users(*)), shipper:users(*)')
           .eq('id', requestId)
           .single();
 
@@ -67,14 +54,7 @@ const Chat = () => {
         // 2. Fetch existing messages
         const initialMessages = await fetchMessages(requestId);
         setMessages(initialMessages);
-        
-        // Count unread messages
-        const unread = initialMessages.filter(m => 
-          m.recipient_id === userProfile.id && !m.is_read        ).length;
-        setUnreadCount(unread);
-        
-        // 3. Mark messages as read
-        await markMessagesAsRead(requestId, userProfile.id);
+                // 3. Mark messages as read        markMessagesAsRead(requestId, userProfile.id);
 
         // 4. Subscribe to real-time updates
         channel = subscribeToMessages(requestId, (msg) => {
@@ -85,9 +65,8 @@ const Chat = () => {
           });
           
           // Mark incoming message as read if it's for us
-          if (msg.recipient_id === userProfile.id && !msg.is_read) {
+          if (msg.recipient_id === userProfile.id) {
             markMessagesAsRead(requestId, userProfile.id);
-            setUnreadCount(prev => Math.max(0, prev - 1));
           }
         });
 
@@ -115,6 +94,7 @@ const Chat = () => {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Guard clauses for a robust experience
     if (!recipient || !requestId) {
       showError('Chat session not ready yet. Please wait a moment.');
       return;
@@ -146,27 +126,6 @@ const Chat = () => {
     }
   };
 
-  const getMessageStatus = (message: Message) => {
-    if (message.sender_id !== userProfile?.id) return null;
-    return message.is_read ? <CheckCheck className="h-3 w-3 text-blue-500" /> : <Check className="h-3 w-3 text-gray-400" />;
-  };
-
-  const formatMessageTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
-    if (diffInHours < 24) {
-      return formatDistanceToNow(date, { addSuffix: true });
-    }
-    return date.toLocaleDateString('en-IN', { 
-      day: 'numeric', 
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -179,25 +138,22 @@ const Chat = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6 max-w-4xl h-[calc(100vh-140px] flex flex-col">
-      <Card className="border-orange-100 shadow-lg flex flex-col h-full">
-        <CardHeader className="border-b bg-white py-4 px-6 flex-shrink-0">
+    <div className="container mx-auto px-4 py-6 max-w-3xl h-[calc(100vh-140px)] flex flex-col">
+      <Card className="border-orange-100 shadow-lg">
+        <CardHeader className="border-b bg-white py-4 px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button 
-                variant="ghost"
-                size="icon"
+                variant="ghost"                 size="icon" 
                 onClick={() => navigate(-1)}
                 className="hover:bg-orange-50 text-gray-500"
               >
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div className="flex items-center gap-3">
-                <Avatar className="h-10 w-10 border-2 border-orange-100">
-                  <AvatarFallback className="bg-orange-100 text-orange-600 font-semibold">
-                    {recipient?.full_name?.charAt(0) || 'U'}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center border border-orange-200">
+                  <UserIcon className="h-5 w-5 text-orange-600" />
+                </div>
                 <div>
                   <CardTitle className="text-lg font-bold text-gray-900">
                     {recipient?.full_name || 'Chat Partner'}
@@ -205,11 +161,6 @@ const Chat = () => {
                   <div className="flex items-center gap-1.5">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
                     <p className="text-xs text-gray-500 font-medium">Online</p>
-                    {unreadCount > 0 && (
-                      <Badge variant="secondary" className="ml-2 bg-orange-100 text-orange-700">
-                        {unreadCount} unread
-                      </Badge>
-                    )}
                   </div>
                 </div>
               </div>
@@ -253,12 +204,10 @@ const Chat = () => {
                           >
                             <p className="leading-relaxed">{msg.content}</p>
                           </div>
-                          <div className={`flex items-center gap-1.5 mt-1 ${isMe ? 'flex-row-reverse' : ''}`}>
-                            <span className={`text-[10px] font-medium text-gray-400 px-1`}>
-                              {formatMessageTime(msg.created_at)}
-                            </span>
-                            {isMe && getMessageStatus(msg)}
-                          </div>
+                          <span className={`text-[10px] mt-1.5 font-medium text-gray-400 px-1`}>
+                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {isMe && msg.is_read && <span className="ml-1 text-blue-500">Read</span>}
+                          </span>
                         </div>
                       </div>
                     </React.Fragment>
@@ -272,22 +221,22 @@ const Chat = () => {
           <div className="p-4 bg-white border-t shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
             <form onSubmit={handleSendMessage} className="flex gap-3 items-center">
               <div className="flex-grow relative">
-                <Input
-                  placeholder="Type a message..."
+                <Input                  placeholder="Type a message..."
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   className="pr-10 py-6 rounded-xl border-gray-200 focus:ring-orange-500 focus:border-orange-500"
                   disabled={sending}
                 />
               </div>
-              <Button
-                type="submit"
+              <Button                 type="submit" 
                 size="icon"
                 className="h-12 w-12 rounded-xl bg-orange-600 hover:bg-orange-700 shadow-md transition-all hover:shadow-lg active:scale-95"
                 disabled={sending || !newMessage.trim()}
               >
                 {sending ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  </>
                 ) : (
                   <Send className="h-5 w-5" />
                 )}

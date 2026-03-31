@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { showSuccess, showError } from '@/utils/toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -110,7 +110,8 @@ const MyShipments = () => {
         <div className="grid gap-6">
           {shipments.map(shipment => {
             const requestCount = shipment.requests?.[0]?.count || 0;
-                        return (
+            
+            return (
               <Card key={shipment.id} className="overflow-hidden border-blue-100 hover:shadow-md transition-shadow">
                 <CardContent className="p-0">
                   <div className="flex flex-col md:flex-row md:items-center justify-between p-6 gap-6">
@@ -156,9 +157,11 @@ const MyShipments = () => {
                       <Link to={`/shipments/${shipment.id}`}>
                         <Button variant="outline" size="sm" className="border-blue-200 text-blue-700 hover:bg-blue-50">
                           <Eye className="h-4 w-4 mr-2" />
-                          Manage Requests                        </Button>
+                          Manage Requests
+                        </Button>
                       </Link>
-                                            {shipment.status === 'pending' && (
+                      
+                      {shipment.status === 'pending' && (
                         <>
                           <Link to={`/shipper/edit-shipment/${shipment.id}`}>
                             <Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50">
@@ -171,7 +174,8 @@ const MyShipments = () => {
                             <AlertDialogTrigger asChild>
                               <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50">
                                 <Trash2 className="h-4 w-4 mr-2" />
-                                Delete                              </Button>
+                                Delete
+                              </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>

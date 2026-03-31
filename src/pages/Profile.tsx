@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,16 +23,12 @@ import {
   Lock,
   Loader2,
   CheckCircle2,
-  MessageSquare,
-  ArrowLeft,
-  RefreshCw
+  MessageSquare
 } from 'lucide-react';
 import Star from '@/components/Star';
-import { useUser } from '@clerk/clerk-react';
 
 const Profile = () => {
-  const { userProfile, refreshProfile } = useAuth();
-  const { user } = useUser();
+  const { userProfile, refreshProfile, resetPassword } = useAuth();
   const [fullName, setFullName] = useState(userProfile?.full_name || '');
   const [phone, setPhone] = useState(userProfile?.phone || '');
   const [companyName, setCompanyName] = useState(userProfile?.company_name || '');
@@ -115,15 +111,18 @@ const Profile = () => {
     } else {
       showSuccess('Profile updated successfully!');
       refreshProfile();
-      // Update Clerk metadata too
-      await user?.update({
-        firstName: fullName.split(' ')[0],
-        lastName: fullName.split(' ').slice(1).join(' '),
-        unsafeMetadata: {
-          phone,
-          company_name: companyName
-        }
-      });
+    }
+    setLoading(false);
+  };
+
+  const handlePasswordReset = async () => {
+    if (!userProfile?.email) return;
+    setLoading(true);
+    const { error } = await resetPassword(userProfile.email);
+    if (error) {
+      showError(error.message);
+    } else {
+      showSuccess('Password reset link sent to your email!');
     }
     setLoading(false);
   };
@@ -370,11 +369,11 @@ const Profile = () => {
                     <Button 
                       variant="outline" 
                       className="mt-4 border-red-200 text-red-700 hover:bg-red-100"
-                      onClick={() => {
-                        // Clerk handles password reset
-                      }}
+                      onClick={handlePasswordReset}
+                      disabled={loading}
                     >
-                      Change Password
+                      {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Send Reset Link
                     </Button>
                   </div>
                 </div>
@@ -383,7 +382,7 @@ const Profile = () => {
               <div className="pt-4 border-t">
                 <h4 className="text-sm font-bold text-gray-900 mb-2">Account Safety</h4>
                 <p className="text-sm text-gray-500">
-                  Your account is protected by industry-standard encryption with Clerk. Always ensure you use a strong, unique password.
+                  Your account is protected by industry-standard encryption. Always ensure you use a strong, unique password.
                 </p>
               </div>
             </CardContent>

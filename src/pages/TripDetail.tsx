@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { Trip } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,6 +35,7 @@ const TripDetail = () => {
       if (error) {
         showError('Trip not found');
       } else if (data) {
+        // Handle potential array return for trucker join
         const mappedTrip = {
           ...data,
           trucker: Array.isArray(data.trucker) ? data.trucker[0] : data.trucker
@@ -68,7 +69,8 @@ const TripDetail = () => {
 
     setSubmitting(true);
     try {
-      const { error: insertError } = await supabase
+      // Insert the request
+      const { data: requestData, error: insertError } = await supabase
         .from('requests')
         .insert({
           trip_id: id,
@@ -76,9 +78,26 @@ const TripDetail = () => {
           goods_description: description.trim(),
           weight_tonnes: requestedWeight,
           status: 'pending'
-        });
+        })
+        .select()
+        .single();
 
-      if (insertError) throw insertError;
+      if (insertError) {
+        throw insertError;
+      }
+
+      // Update the trip capacity
+      const newCapacity = trip.available_capacity_tonnes - requestedWeight;
+      const { error: updateError } = await supabase
+        .from('trips')
+        .update({ available_capacity_tonnes: newCapacity })
+        .eq('id', id);
+
+      if (updateError) {
+        // Rollback: delete the request we just inserted
+        await supabase.from('requests').delete().eq('id', requestData.id);
+        throw updateError;
+      }
 
       showSuccess('Booking request sent successfully!');
       navigate('/shipper/my-shipments');
@@ -139,8 +158,7 @@ const TripDetail = () => {
 
             <div className="bg-blue-50 p-4 rounded-lg flex items-center justify-between">
               <div className="flex items-center">
-                <CheckCircle className="mr-2 h-5 w-5" /> Available Capacity
-              </div>
+                <CheckCircle className="mr-2 h-5 w-5" /> Available Capacity              </div>
               <Badge className="bg-blue-600 text-white text-lg px-3 py-1">
                 {trip.available_capacity_tonnes} Tonnes
               </Badge>

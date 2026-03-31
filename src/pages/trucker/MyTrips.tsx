@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabaseClient';
 import { Trip } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -107,7 +107,8 @@ const MyTrips = () => {
           <p className="text-gray-500 mb-6">Start earning by sharing your empty truck space</p>
           <Link to="/trucker/post-trip">
             <Button variant="outline" className="border-orange-600 text-orange-600 hover:bg-orange-50">
-              Post Your First Trip            </Button>
+              Post Your First Trip
+            </Button>
           </Link>
         </div>
       ) : (
@@ -148,9 +149,11 @@ const MyTrips = () => {
                     <Link to={`/trips/${trip.id}`}>
                       <Button variant="ghost" size="sm" className="hover:bg-orange-50">
                         <Eye className="h-4 w-4 mr-2" />
-                        View                      </Button>
+                        View
+                      </Button>
                     </Link>
-                                        {trip.status === 'active' && (
+                    
+                    {trip.status === 'active' && (
                       <>
                         <Link to={`/trucker/edit-trip/${trip.id}`}>
                           <Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50">
