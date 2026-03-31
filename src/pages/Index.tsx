@@ -61,10 +61,10 @@ const Index = () => {
             No brokers, no commission, just pure savings.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/register?type=shipper" className="bg-orange-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center">
+            <Link to="/register?userType=shipper" className="bg-orange-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center">
               I'm a Shipper - Find Trucks <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
-            <Link to="/register?type=trucker" className="bg-white text-orange-600 border-2 border-orange-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-50 transition-all flex items-center justify-center">
+            <Link to="/register?userType=trucker" className="bg-white text-orange-600 border-2 border-orange-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-orange-50 transition-all flex items-center justify-center">
               I'm a Trucker - Earn Extra <ArrowRight className="ml-2 h-5 w-5" />
             </Link>
           </div>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -12,12 +12,21 @@ import { useSignUp } from '@clerk/clerk-react';
 
 const Register = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { signUp } = useAuth();
   const { signUp: clerkSignUp, isLoaded } = useSignUp();
   
   const [userType, setUserType] = useState<'trucker' | 'shipper' | null>(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Get user type from URL query parameter
+  useEffect(() => {
+    const userTypeParam = searchParams.get('userType') as 'trucker' | 'shipper' | null;
+    if (userTypeParam) {
+      setUserType(userTypeParam);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,7 +135,7 @@ const Register = () => {
         </form>
 
         <p className="text-center text-gray-600">
-          Already have an account? <a href="/login" className="text-orange-600 font-medium hover:underline">Login</a>
+          Already have an account? <Link to="/login" className="text-orange-600 font-medium hover:underline">Login</Link>
         </p>
       </div>
     </div>
