@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, User, ArrowRight, Loader2, Clock } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { MessageSquare, User, ArrowRight, Loader2, Clock, Search } from 'lucide-react';
 import { showError } from '@/utils/toast';
+import { formatDistanceToNow } from 'date-fns';
 
 interface ChatConversation {
   id: string;
@@ -28,6 +30,7 @@ const ChatList = () => {
   const navigate = useNavigate();
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (!userProfile) return;
@@ -111,9 +114,17 @@ const ChatList = () => {
     fetchConversations();
   }, [userProfile]);
 
+  const filteredConversations = useMemo(() => {
+    if (!searchQuery.trim()) return conversations;
+    
+    return conversations.filter(conv => 
+      conv.other_user.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      conv.last_message.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [conversations, searchQuery]);
+
   const getRequestTitle = (conv: ChatConversation) => {
-    // Try to get trip info from the request
-    return `${conv.other_user.full_name}`;
+    return conv.other_user.full_name;
   };
 
   if (loading) {
@@ -131,7 +142,18 @@ const ChatList = () => {
         <p className="text-gray-600">Your conversations with shippers and truckers</p>
       </div>
 
-      {conversations.length === 0 ? (
+      <div className="mb-6 relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search conversations..."
+          className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
+      {filteredConversations.length === 0 ? (
         <Card className="border-orange-100">
           <CardContent className="pt-6">
             <div className="text-center py-12">
@@ -149,7 +171,7 @@ const ChatList = () => {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {conversations.map((conv) => (
+          {filteredConversations.map((conv) => (
             <Card 
               key={conv.id} 
               className="cursor-pointer hover:shadow-md transition-shadow border-orange-100"
@@ -157,33 +179,30 @@ const ChatList = () => {
             >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4 flex-1">
-                    <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center border border-orange-200">
-                      <User className="h-6 w-6 text-orange-600" />
-                    </div>
+                  <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <Avatar className="h-12 w-12 border-2 border-orange-100">
+                      <AvatarFallback className="bg-orange-100 text-orange-600 font-semibold">
+                        {conv.other_user.full_name?.charAt(0) || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
                         <h3 className="font-bold text-gray-900 truncate">
                           {getRequestTitle(conv)}
                         </h3>
-                        <span className="text-xs text-gray-400 ml-2">
-                          {new Date(conv.last_message_time).toLocaleDateString('en-IN', { 
-                            day: 'numeric', 
-                            month: 'short',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                        <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
+                          {formatDistanceToNow(new Date(conv.last_message_time), { addSuffix: true })}
                         </span>
                       </div>
                       <p className="text-sm text-gray-600 truncate">{conv.last_message}</p>
                     </div>
                   </div>
                   {conv.unread_count > 0 && (
-                    <Badge className="bg-orange-600 text-white ml-2">
+                    <Badge className="bg-orange-600 text-white ml-2 flex-shrink-0">
                       {conv.unread_count}
                     </Badge>
                   )}
-                  <ArrowRight className="h-5 w-5 text-gray-400 ml-2" />
+                  <ArrowRight className="h-5 w-5 text-gray-400 ml-2 flex-shrink-0" />
                 </div>
               </CardContent>
             </Card>
