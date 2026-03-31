@@ -1,9 +1,11 @@
 "use client";
 
 import { useSearchParams, Navigate } from "react-router-dom";
-import { SignUp } from "@clerk/nextjs";
+import { SignUp } from "@clerk/clerk-react";
 import { useAuth } from "@/contexts/AuthContext";
 import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { Truck, Package, ArrowRight } from "lucide-react";
 
 const Register = () => {
   const [searchParams] = useSearchParams();
@@ -12,7 +14,7 @@ const Register = () => {
 
   useEffect(() => {
     const type = searchParams.get("role") as "trucker" | "shipper";
-    if (type) setUserType(type);
+    if (type) setRole(type);
   }, [searchParams]);
 
   useEffect(() => {

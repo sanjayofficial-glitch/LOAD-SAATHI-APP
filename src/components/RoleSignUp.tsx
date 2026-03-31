@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { SignUp } from "@clerk/nextjs";
-import { useAuth } from "@clerk/nextjs";
+import { SignUp } from "@clerk/clerk-react";
+import { useAuth } from "@clerk/clerk-react";
 
 export default function RoleSignUp() {
   const [role, setRole] = useState<"trucker" | "shipper">("trucker");
