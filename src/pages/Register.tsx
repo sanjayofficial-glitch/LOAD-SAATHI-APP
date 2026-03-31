@@ -1,12 +1,9 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useSearchParams, Navigate } from 'react-router-dom';
-import { Auth } from '@supabase/auth-ui-react';
-import { ThemeSupa } from '@supabase/auth-ui-shared';
-import { supabase } from '@/integrations/supabase/client';
+import { useSearchParams, Navigate, Link } from 'react-router-dom';
+import { SignUp } from '@clerk/clerk-react';
 import { Truck } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
 const Register = () => {
@@ -31,7 +28,7 @@ const Register = () => {
             <Truck className="h-12 w-12 text-orange-600" />
           </div>
           <h2 className="text-3xl font-bold text-gray-900">Create Account</h2>
-          <p className="text-gray-600 mt-2">
+          <p className="text-gray-600 mt-2 mb-6">
             Join as a {userType === 'trucker' ? 'Trucker' : 'Shipper'}
           </p>
         </div>
@@ -51,15 +48,19 @@ const Register = () => {
           </button>
         </div>
 
-        <Auth
-          supabaseClient={supabase}
-          appearance={{ theme: ThemeSupa }}
-          theme="light"
-          providers={[]}
-          view="sign_up"
-          additionalData={{
-            full_name: '',
-            user_type: userType
+        <SignUp 
+          routing="path" 
+          path="/register" 
+          signInUrl="/login"
+          unsafeMetadata={{ user_type: userType }}
+          appearance={{
+            elements: {
+              formButtonPrimary: 'bg-orange-600 hover:bg-orange-700 text-sm normal-case',
+              card: 'shadow-none border-0 p-0',
+              headerTitle: 'hidden',
+              headerSubtitle: 'hidden',
+              footer: 'hidden'
+            }
           }}
         />
         

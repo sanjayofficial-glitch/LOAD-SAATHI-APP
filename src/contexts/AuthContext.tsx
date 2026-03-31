@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { useUser, useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@/types';
 
@@ -25,7 +26,8 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<any>(null);
+  const { user, isLoaded, isSignedIn } = useUser();
+  const { signOut } = useClerkAuth();
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -50,35 +52,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    // Check active sessions and sets the user
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserProfile(session.user.id).then(profile => {
+    const syncProfile = async () => {
+      if (isLoaded) {
+        if (isSignedIn && user) {
+          const profile = await fetchUserProfile(user.id);
           setUserProfile(profile);
-          setLoading(false);
-        });
-      } else {
+        } else {
+          setUserProfile(null);
+        }
         setLoading(false);
       }
-    });
+    };
 
-    // Listen for changes on auth state (logged in, signed out, etc.)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
-      
-      if (currentUser) {
-        const profile = await fetchUserProfile(currentUser.id);
-        setUserProfile(profile);
-      } else {
-        setUserProfile(null);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, [fetchUserProfile]);
+    syncProfile();
+  }, [isLoaded, isSignedIn, user, fetchUserProfile]);
 
   const refreshProfile = useCallback(async () => {
     if (user) {
@@ -88,18 +75,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user, fetchUserProfile]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     setUserProfile(null);
-    setUser(null);
   };
 
   return (
     <AuthContext.Provider value={{ 
       user, 
-      isLoaded: !loading, 
-      isSignedIn: !!user, 
+      isLoaded, 
+      isSignedIn: !!isSignedIn, 
       userProfile, 
-      loading, 
+      loading: !isLoaded || loading, 
       signOut: handleSignOut, 
       refreshProfile 
     }}>

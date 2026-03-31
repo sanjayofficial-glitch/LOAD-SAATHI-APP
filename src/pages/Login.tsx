@@ -1,8 +1,6 @@
 "use client";
 
-import { Auth } from '@supabase/auth-ui-react';
-import { ThemeSupa } from '@supabase/auth-ui-shared';
-import { supabase } from '@/integrations/supabase/client';
+import { SignIn } from '@clerk/clerk-react';
 import { Truck } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,15 +20,22 @@ const Login = () => {
             <Truck className="h-12 w-12 text-orange-600" />
           </div>
           <h2 className="text-3xl font-bold text-gray-900">Welcome back</h2>
-          <p className="text-gray-600 mt-2">Sign in to your LoadSaathi account</p>
+          <p className="text-gray-600 mt-2 mb-6">Sign in to your LoadSaathi account</p>
         </div>
 
-        <Auth
-          supabaseClient={supabase}
-          appearance={{ theme: ThemeSupa }}
-          theme="light"
-          providers={[]}
-          redirectTo={window.location.origin}
+        <SignIn 
+          routing="path" 
+          path="/login" 
+          signUpUrl="/register"
+          appearance={{
+            elements: {
+              formButtonPrimary: 'bg-orange-600 hover:bg-orange-700 text-sm normal-case',
+              card: 'shadow-none border-0 p-0',
+              headerTitle: 'hidden',
+              headerSubtitle: 'hidden',
+              footer: 'hidden'
+            }
+          }}
         />
         
         <p className="text-center text-gray-600 mt-4">
