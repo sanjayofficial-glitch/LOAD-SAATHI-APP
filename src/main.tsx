@@ -1,5 +1,5 @@
-import { StrictMode } from "react";
-import { createRoot } from "react-dom/client";
+"use client";
+
 import "./globals.css";
 import App from "./App";
 import { ClerkProviderWrapper } from "./components/ClerkProvider";

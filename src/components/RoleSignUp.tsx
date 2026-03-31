@@ -6,7 +6,6 @@ export default function RoleSignUp() {
 
   return (
     <form>
-      {/* Email & password are automatically rendered by Clerk's SignUp */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Select your role:
@@ -37,8 +36,15 @@ export default function RoleSignUp() {
         </div>
       </div>
 
-      {/* Clerk's built-in UI for email, password, etc. */}
-      <SignUp unsafeMetadata={{ role }} />
+      {/* Clerk's SignUp component now receives the selected role via unsafeMetadata */}
+      <SignUp
+        unsafeMetadata={{ role }}
+        routing="path"
+        path="/register"
+        signInUrl="/login"
+        afterSignUpUrl="/"
+        redirectUrl="/"
+      />
     </form>
   );
 }
