@@ -21,14 +21,16 @@ const Register = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12">
-      <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-xl shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-8">
+      <div className="w-full max-w-md space-y-6 bg-white p-6 rounded-xl shadow-lg sm:p-8">
         <div className="text-center">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <Truck className="h-12 w-12 text-orange-600" />
+          <div className="flex items-center justify-center mb-4">
+            <Truck className="h-10 w-10 text-orange-600 sm:h-12 sm:w-12" />
           </div>
-          <h2 className="text-3xl font-bold text-gray-900">Create Account</h2>
-          <p className="text-gray-600 mt-2 mb-6">Join as a <span className="font-medium text-orange-600">{userType === "trucker" ? "Trucker" : "Shipper"}</span></p>
+          <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl">Create Account</h2>
+          <p className="text-sm text-gray-600 mt-2 mb-6 sm:mt-3 sm:mb-8 sm:text-base">
+            Join as a <span className="font-medium text-orange-600">{userType === "trucker" ? "Trucker" : "Shipper"}</span>
+          </p>
         </div>
 
         <div className="flex gap-2 mb-6">
