@@ -4,6 +4,7 @@ import { useSearchParams, Navigate, Link } from "react-router-dom";
 import { SignUp } from "@clerk/clerk-react";
 import { Truck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import React, { useState } from "react"; // Add missing React import
 
 const Register = () => {
   const [searchParams] = useSearchParams();
@@ -27,9 +28,7 @@ const Register = () => {
             <Truck className="h-12 w-12 text-orange-600" />
           </div>
           <h2 className="text-3xl font-bold text-gray-900">Create Account</h2>
-          <p className="text-gray-600 mt-2 mb-6">
-            Join as a <span className="font-medium">{userType === "trucker" ? "Trucker" : "Shipper"}</span>
-          </p>
+          <p className="text-gray-600 mt-2 mb-6">Join as a <span className="font-medium">{userType === "trucker" ? "Trucker" : "Shipper"}</span></p>
         </div>
 
         <div className="flex gap-2 mb-6">
