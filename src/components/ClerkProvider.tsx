@@ -1,13 +1,32 @@
 import { ClerkProvider } from "@clerk/clerk-react";
-import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useUser } from "@/types";
 
-const ClerkProviderWrapper = ({ children }: { children: React.ReactNode }) => {
-  const navigate = useNavigate();
+const ClerkProviderWrapper = ({ children }) => {
+  const { userProfile } = useAuth();
+  const { user } = useUser();
+
   return (
     <ClerkProvider
-      publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || ""}
-      routerPush={(to) => navigate(to)}
-      routerReplace={(to) => navigate(to, { replace: true })}
+      user={user}
+      onAuthStateChange={(auth) => {
+        if (auth) {
+          const { user } = auth;
+          const { full_name, email, user_type } = user;
+          const profile = {
+            id: user.id,
+            full_name: full_name || '',
+            email: email || '',
+            user_type: user_type || 'shipper',
+            company_name: '',
+            rating: 0,
+            total_trips: 0,
+            created_at: new Date().toISOString(),
+          };
+          return profile;
+        }
+        return null;
+      }}
     >
       {children}
     </ClerkProvider>
