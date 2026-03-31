@@ -11,7 +11,7 @@ const Login = () => {
 
   useEffect(() => {
     if (isSignedIn && userProfile) {
-      navigate(userProfile.user_type === 'trucker' ? '/trucker/dashboard' : '/shipper/dashboard', { replace: true });
+      navigate(userProfile.user_type === 'trucker' ? '/trucker-dashboard' : '/shipper-dashboard', { replace: true });
     }
   }, [isSignedIn, userProfile, navigate]);
 
@@ -24,7 +24,7 @@ const Login = () => {
   }
 
   if (isSignedIn && userProfile) {
-    return <Navigate to={userProfile.user_type === 'trucker' ? '/trucker/dashboard' : '/shipper/dashboard'} replace />;
+    return <Navigate to={userProfile.user_type === 'trucker' ? '/trucker-dashboard' : '/shipper-dashboard'} replace />;
   }
 
   return (

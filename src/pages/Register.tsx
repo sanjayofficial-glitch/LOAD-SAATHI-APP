@@ -1,24 +1,23 @@
 "use client";
 
-import { useSearchParams, Navigate, Link } from "react-router-dom";
-import { SignUp } from "@clerk/clerk-react";
-import { Truck, ArrowLeft } from "lucide-react";
+import { useSearchParams, Navigate } from "react-router-dom";
+import { SignUp } from "@clerk/nextjs";
 import { useAuth } from "@/contexts/AuthContext";
 import React, { useState, useEffect } from "react";
 
 const Register = () => {
   const [searchParams] = useSearchParams();
   const { isSignedIn, userProfile, loading } = useAuth();
-  const [userType, setUserType] = useState<"trucker" | "shipper">("shipper");
+  const [role, setRole] = useState<"trucker" | "shipper">("shipper");
 
   useEffect(() => {
-    const type = searchParams.get("userType") as "trucker" | "shipper";
+    const type = searchParams.get("role") as "trucker" | "shipper";
     if (type) setUserType(type);
   }, [searchParams]);
 
   useEffect(() => {
     if (isSignedIn && userProfile) {
-      window.location.href = userProfile.user_type === "trucker" ? "/trucker/dashboard" : "/shipper/dashboard";
+      window.location.href = userProfile.user_type === "trucker" ? "/trucker-dashboard" : "/shipper-dashboard";
     }
   }, [isSignedIn, userProfile]);
 
@@ -31,7 +30,7 @@ const Register = () => {
   }
 
   if (isSignedIn && userProfile) {
-    return <Navigate to={userProfile.user_type === "trucker" ? "/trucker/dashboard" : "/shipper/dashboard"} replace />;
+    return <Navigate to={userProfile.user_type === "trucker" ? "/trucker-dashboard" : "/shipper-dashboard"} replace />;
   }
 
   return (
@@ -44,14 +43,6 @@ const Register = () => {
 
       <div className="w-full max-w-md z-10">
         <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl border border-gray-100 space-y-6">
-          <Link 
-            to="/" 
-            className="inline-flex items-center text-sm text-gray-500 hover:text-orange-600 transition-colors group mb-2"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2 transition-transform group-hover:-translate-x-1" />
-            Back to Home
-          </Link>
-
           <div className="text-center">
             <div className="flex items-center justify-center mb-4">
               <div className="bg-orange-50 p-3 rounded-2xl">
@@ -60,17 +51,17 @@ const Register = () => {
             </div>
             <h2 className="text-2xl font-bold text-gray-900 sm:text-3xl tracking-tight">Create Account</h2>
             <p className="text-sm text-gray-500 mt-2">
-              Join the LoadSaathi community as a <span className="font-bold text-orange-600 uppercase tracking-wider text-xs">{userType}</span>
+              Join the LoadSaathi community as a <span className="font-bold text-orange-600 uppercase tracking-wider text-xs">{role}</span>
             </p>
           </div>
 
           <div className="flex p-1 bg-gray-100 rounded-xl">
             <button
               type="button"
-              onClick={() => setUserType("shipper")}
+              onClick={() => setRole("shipper")}
               className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-                userType === "shipper"
-                  ? "bg-white text-orange-600 shadow-sm"
+                role === "shipper"
+                  ? "bg-white text-blue-600 shadow-sm"
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
@@ -78,9 +69,9 @@ const Register = () => {
             </button>
             <button
               type="button"
-              onClick={() => setUserType("trucker")}
+              onClick={() => setRole("trucker")}
               className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
-                userType === "trucker"
+                role === "trucker"
                   ? "bg-white text-orange-600 shadow-sm"
                   : "text-gray-500 hover:text-gray-700"
               }`}
@@ -94,7 +85,7 @@ const Register = () => {
               routing="path"
               path="/register"
               signInUrl="/login"
-              unsafeMetadata={{ user_type: userType }}
+              unsafeMetadata={{ user_type: role }}
               afterSignUpUrl="/"
               redirectUrl="/"
               appearance={{
