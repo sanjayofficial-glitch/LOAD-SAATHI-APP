@@ -1,10 +1,12 @@
+"use client";
+
 import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { ClerkProviderWrapper, AuthProvider, useAuth } from "@/contexts/AuthContext";
 import Layout from "@/components/Layout";
 import { Truck, Loader2 } from "lucide-react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
@@ -67,7 +69,6 @@ const ProtectedRoute = ({ children, allowedTypes }: { children: React.ReactNode,
   }
 
   if (allowedTypes && !allowedTypes.includes(userProfile.user_type)) {
-    // Redirect to their own dashboard if they try to access a page not meant for their role
     return <Navigate to={userProfile.user_type === 'trucker' ? '/trucker/dashboard' : '/shipper/dashboard'} replace />;
   }
 
@@ -80,112 +81,114 @@ const App = () => (
       <Toaster />
       <Sonner />
       <SpeedInsights />
-      <AuthProvider>
-        <BrowserRouter>
-          <Suspense fallback={<LoadingFallback />}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/forgot-password" element={<ForgotPassword />} />
-              <Route path="/update-password" element={<UpdatePassword />} />
-              <Route path="/test-auth" element={<TestAuth />} />
-              
-              {/* Trucker Routes */}
-              <Route path="/trucker/dashboard" element={
-                <ProtectedRoute allowedTypes={['trucker']}>
-                  <TruckerDashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/trucker/post-trip" element={
-                <ProtectedRoute allowedTypes={['trucker']}>
-                  <PostTrip />
-                </ProtectedRoute>
-              } />
-              <Route path="/trucker/edit-trip/:id" element={
-                <ProtectedRoute allowedTypes={['trucker']}>
-                  <EditTrip />
-                </ProtectedRoute>
-              } />
-              <Route path="/trucker/my-trips" element={
-                <ProtectedRoute allowedTypes={['trucker']}>
-                  <MyTrips />
-                </ProtectedRoute>
-              } />
-              <Route path="/trucker/browse-shipments" element={
-                <ProtectedRoute allowedTypes={['trucker']}>
-                  <BrowseShipments />
-                </ProtectedRoute>
-              } />
-              <Route path="/trucker/my-requests" element={
-                <ProtectedRoute allowedTypes={['trucker']}>
-                  <MyShipmentRequests />
-                </ProtectedRoute>
-              } />
-              
-              {/* Shipper Routes */}
-              <Route path="/shipper/dashboard" element={
-                <ProtectedRoute allowedTypes={['shipper']}>
-                  <ShipperDashboard />
-                </ProtectedRoute>
-              } />
-              <Route path="/shipper/post-shipment" element={
-                <ProtectedRoute allowedTypes={['shipper']}>
-                  <PostShipments />
-                </ProtectedRoute>
-              } />
-              <Route path="/shipper/edit-shipment/:id" element={
-                <ProtectedRoute allowedTypes={['shipper']}>
-                  <EditShipment />
-                </ProtectedRoute>
-              } />
-              <Route path="/browse-trucks" element={
-                <ProtectedRoute allowedTypes={['shipper']}>
-                  <BrowseTrips />
-                </ProtectedRoute>
-              } />
-              <Route path="/shipper/my-shipments" element={
-                <ProtectedRoute allowedTypes={['shipper']}>
-                  <MyShipments />
-                </ProtectedRoute>
-              } />
-              <Route path="/shipments/:id" element={
-                <ProtectedRoute allowedTypes={['shipper']}>
-                  <ShipmentDetail />
-                </ProtectedRoute>
-              } />
-              
-              {/* Shared Routes */}
-              <Route path="/trips/:id" element={
-                <ProtectedRoute>
-                  <TripDetail />
-                </ProtectedRoute>
-              } />
-              <Route path="/chat/:requestId" element={
-                <ProtectedRoute>
-                  <Chat />
-                </ProtectedRoute>
-              } />
-              <Route path="/messages" element={
-                <ProtectedRoute>
-                  <ChatList />
-                </ProtectedRoute>
-              } />
-              <Route path="/profile" element={
-                <ProtectedRoute>
-                  <Profile />
-                </ProtectedRoute>
-              } />
-              <Route path="/admin" element={
-                <ProtectedRoute allowedTypes={['trucker']}>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } />              
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </BrowserRouter>
-      </AuthProvider>
+      <ClerkProviderWrapper>
+        <AuthProvider>
+          <BrowserRouter>
+            <Suspense fallback={<LoadingFallback />}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/update-password" element={<UpdatePassword />} />
+                <Route path="/test-auth" element={<TestAuth />} />
+                
+                {/* Trucker Routes */}
+                <Route path="/trucker/dashboard" element={
+                  <ProtectedRoute allowedTypes={['trucker']}>
+                    <TruckerDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/trucker/post-trip" element={
+                  <ProtectedRoute allowedTypes={['trucker']}>
+                    <PostTrip />
+                  </ProtectedRoute>
+                } />
+                <Route path="/trucker/edit-trip/:id" element={
+                  <ProtectedRoute allowedTypes={['trucker']}>
+                    <EditTrip />
+                  </ProtectedRoute>
+                } />
+                <Route path="/trucker/my-trips" element={
+                  <ProtectedRoute allowedTypes={['trucker']}>
+                    <MyTrips />
+                  </ProtectedRoute>
+                } />
+                <Route path="/trucker/browse-shipments" element={
+                  <ProtectedRoute allowedTypes={['trucker']}>
+                    <BrowseShipments />
+                  </ProtectedRoute>
+                } />
+                <Route path="/trucker/my-requests" element={
+                  <ProtectedRoute allowedTypes={['trucker']}>
+                    <MyShipmentRequests />
+                  </ProtectedRoute>
+                } />
+                
+                {/* Shipper Routes */}
+                <Route path="/shipper/dashboard" element={
+                  <ProtectedRoute allowedTypes={['shipper']}>
+                    <ShipperDashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/shipper/post-shipment" element={
+                  <ProtectedRoute allowedTypes={['shipper']}>
+                    <PostShipments />
+                  </ProtectedRoute>
+                } />
+                <Route path="/shipper/edit-shipment/:id" element={
+                  <ProtectedRoute allowedTypes={['shipper']}>
+                    <EditShipment />
+                  </ProtectedRoute>
+                } />
+                <Route path="/browse-trucks" element={
+                  <ProtectedRoute allowedTypes={['shipper']}>
+                    <BrowseTrips />
+                  </ProtectedRoute>
+                } />
+                <Route path="/shipper/my-shipments" element={
+                  <ProtectedRoute allowedTypes={['shipper']}>
+                    <MyShipments />
+                  </ProtectedRoute>
+                } />
+                <Route path="/shipments/:id" element={
+                  <ProtectedRoute allowedTypes={['shipper']}>
+                    <ShipmentDetail />
+                  </ProtectedRoute>
+                } />
+                
+                {/* Shared Routes */}
+                <Route path="/trips/:id" element={
+                  <ProtectedRoute>
+                    <TripDetail />
+                  </ProtectedRoute>
+                } />
+                <Route path="/chat/:requestId" element={
+                  <ProtectedRoute>
+                    <Chat />
+                  </ProtectedRoute>
+                } />
+                <Route path="/messages" element={
+                  <ProtectedRoute>
+                    <ChatList />
+                  </ProtectedRoute>
+                } />
+                <Route path="/profile" element={
+                  <ProtectedRoute>
+                    <Profile />
+                  </ProtectedRoute>
+                } />
+                <Route path="/admin" element={
+                  <ProtectedRoute allowedTypes={['trucker']}>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } />              
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </BrowserRouter>
+        </AuthProvider>
+      </ClerkProviderWrapper>
     </TooltipProvider>
   </QueryClientProvider>
 );

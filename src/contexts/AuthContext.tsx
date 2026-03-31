@@ -1,20 +1,18 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
-import { User as SupabaseUser, Session } from '@supabase/supabase-js';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { useAuth as useClerkAuth, useUser } from '@clerk/clerk-react';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@/types';
 
 interface AuthContextType {
-  user: SupabaseUser | null;
-  session: Session | null;
+  user: any | null;
+  isLoaded: boolean;
+  isSignedIn: boolean;
   userProfile: User | null;
   loading: boolean;
-  signUp: (email: string, password: string, userType: 'trucker' | 'shipper', fullName: string, phone: string, companyName?: string) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,176 +26,100 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
+  const { isLoaded, isSignedIn, user, signOut: clerkSignOut } = useUser();
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const initialized = useRef(false);
 
-  const fetchUserProfile = useCallback(async (supabaseUser: SupabaseUser) => {
-    if (!supabase) return null;
-    
+  const fetchUserProfile = useCallback(async (clerkUserId: string) => {
     try {
+      // Try to fetch existing profile
       const { data, error } = await supabase
         .from('users')
-        .select('id, email, full_name, phone, user_type, is_verified, rating, total_trips, created_at, company_name')
-        .eq('id', supabaseUser.id)
+        .select('*')
+        .eq('id', clerkUserId)
         .maybeSingle();
 
       if (error) {
         console.error("[AuthContext] Error fetching profile:", error);
+        return null;
       }
-      
+
+      // If profile exists, return it
       if (data) {
         return data as User;
       }
 
-      const metadata = supabaseUser.user_metadata;
-      return {
-        id: supabaseUser.id,
-        email: supabaseUser.email || '',
-        full_name: metadata?.full_name || 'User',
+      // If no profile exists, create one using metadata
+      const metadata = user?.publicMetadata || {};
+      const newProfile = {
+        id: clerkUserId,
+        email: user?.emailAddresses[0]?.emailAddress || '',
+        full_name: metadata?.full_name || user?.fullName || 'User',
         phone: metadata?.phone || '',
         user_type: metadata?.user_type || 'shipper',
         is_verified: false,
         rating: 0,
         total_trips: 0,
-        created_at: supabaseUser.created_at
-      } as User;
+        created_at: new Date().toISOString(),
+        company_name: metadata?.company_name || null
+      };
+
+      const { data: inserted, error: insertError } = await supabase
+        .from('users')
+        .insert(newProfile)
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error("[AuthContext] Error creating profile:", insertError);
+        return null;
+      }
+
+      return inserted as User;
     } catch (err) {
       console.error("[AuthContext] Unexpected error in fetchUserProfile:", err);
       return null;
     }
-  }, []);
+  }, [user]);
+
+  useEffect(() => {
+    const initAuth = async () => {
+      if (!isLoaded) return;
+
+      if (isSignedIn && user) {
+        const profile = await fetchUserProfile(user.id);
+        setUserProfile(profile);
+      } else {
+        setUserProfile(null);
+      }
+      setLoading(false);
+    };
+
+    initAuth();
+  }, [isLoaded, isSignedIn, user, fetchUserProfile]);
 
   const refreshProfile = useCallback(async () => {
     if (user) {
-      const profile = await fetchUserProfile(user);
+      const profile = await fetchUserProfile(user.id);
       setUserProfile(profile);
     }
   }, [user, fetchUserProfile]);
 
-  useEffect(() => {
-    let mounted = true;
-
-    const initAuth = async () => {
-      if (initialized.current) return;
-      initialized.current = true;
-
-      try {
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
-        
-        if (!mounted) return;
-
-        if (initialSession) {
-          setSession(initialSession);
-          setUser(initialSession.user);
-          const profile = await fetchUserProfile(initialSession.user);
-          if (mounted) setUserProfile(profile);
-        }
-      } catch (error) {
-        console.error("[AuthContext] Auth initialization error:", error);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    initAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        if (!mounted) return;
-        
-        console.log("[AuthContext] Auth state changed:", event);
-
-        if (event === 'SIGNED_OUT') {
-          setSession(null);
-          setUser(null);
-          setUserProfile(null);
-          setLoading(false);
-          return;
-        }
-
-        if (event === 'PASSWORD_RECOVERY') {
-          console.log("[AuthContext] Password recovery detected.");
-          return;
-        }
-        
-        if (currentSession) {
-          setSession(currentSession);
-          setUser(currentSession.user);
-          
-          if (!userProfile || userProfile.id !== currentSession.user.id) {
-            const profile = await fetchUserProfile(currentSession.user);
-            if (mounted) setUserProfile(profile);
-          }
-        }
-        
-        if (mounted) setLoading(false);
-      }
-    );
-
-    const timeout = setTimeout(() => {
-      if (mounted && loading) {
-        setLoading(false);
-      }
-    }, 2000);
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-      clearTimeout(timeout);
-    };
-  }, [fetchUserProfile, loading, userProfile]);
-
-  const signUp = async (email: string, password: string, userType: 'trucker' | 'shipper', fullName: string, phone: string, companyName?: string) => {
-    // Strict role validation to prevent tampering
-    const validRoles = ['trucker', 'shipper'];
-    if (!validRoles.includes(userType)) {
-      return { error: { message: 'Invalid user role selected.' } };
-    }
-
-    return await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { 
-          full_name: fullName.trim(), 
-          phone: phone.trim(), 
-          user_type: userType, 
-          company_name: companyName?.trim() || null 
-        }
-      }
-    });
-  };
-
-  const signIn = async (email: string, password: string) => {
-    setLoading(true);
-    return await supabase.auth.signInWithPassword({ email, password });
-  };
-
-  const resetPassword = async (email: string) => {
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/update-password`,
-      });
-      return { error };
-    } catch (err: any) {
-      return { error: err.message };
-    }
-  };
-
   const signOut = async () => {
-    setLoading(true);
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
+    await clerkSignOut();
     setUserProfile(null);
-    setLoading(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, userProfile, loading, signUp, signIn, signOut, refreshProfile, resetPassword }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      isLoaded, 
+      isSignedIn, 
+      userProfile, 
+      loading, 
+      signOut, 
+      refreshProfile 
+    }}>
       {children}
     </AuthContext.Provider>
   );
