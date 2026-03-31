@@ -370,7 +370,9 @@ const Profile = () => {
                     <Button 
                       variant="outline" 
                       className="mt-4 border-red-200 text-red-700 hover:bg-red-100"
-                      onClick={() => {/* Clerk handles password reset */}
+                      onClick={() => {
+                        // Clerk handles password reset
+                      }}
                     >
                       Change Password
                     </Button>

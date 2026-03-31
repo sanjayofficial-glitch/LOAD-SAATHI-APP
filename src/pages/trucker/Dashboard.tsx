@@ -12,7 +12,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { showSuccess, showError } from '@/utils/toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import DashboardSkeleton from '@/components/DashboardSkeleton';
-import {   Truck, 
+import { 
+  Truck, 
   CheckCircle, 
   Clock,
   MessageSquare,
@@ -322,7 +323,7 @@ const TruckerDashboard = () => {
                   <Star filled className="h-4 w-4 text-yellow-500 mr-1" />
                   <span className="font-bold">{userProfile?.rating?.toFixed(1) || '0.0'}</span>
                 </div>
-              </div
+              </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Total Reviews</span>
                 <span className="font-bold">{reviews.length}</span>

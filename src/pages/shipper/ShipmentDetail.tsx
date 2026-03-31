@@ -7,12 +7,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import {   Package, 
+import { 
+  Package, 
   MapPin, 
   Calendar, 
   IndianRupee, 
-  ArrowLeft,   User, 
-  Star,   Phone, 
+  ArrowLeft, 
+  User, 
+  Star, 
+  Phone, 
   MessageSquare,
   CheckCircle2,
   XCircle,
@@ -240,7 +243,8 @@ const ShipmentDetail = () => {
                           {request.status === 'pending' && shipment.status === 'pending' ? (
                             <>
                               <Button 
-                                size="sm"                                 variant="outline" 
+                                size="sm" 
+                                variant="outline" 
                                 className="text-red-600 border-red-200 hover:bg-red-50"
                                 onClick={() => handleRequestAction(request.id, 'declined')}
                                 disabled={!!actionLoading}
@@ -248,7 +252,8 @@ const ShipmentDetail = () => {
                                 {actionLoading === request.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4 mr-2" />}
                                 Decline
                               </Button>
-                              <Button                                 size="sm" 
+                              <Button 
+                                size="sm" 
                                 className="bg-green-600 hover:bg-green-700"
                                 onClick={() => handleRequestAction(request.id, 'accepted')}
                                 disabled={!!actionLoading}
@@ -259,7 +264,9 @@ const ShipmentDetail = () => {
                             </>
                           ) : (
                             <Badge className={
-                              request.status === 'accepted' ? 'bg-green-100 text-green-700' :                               request.status === 'declined' ? 'bg-red-100 text-red-700' :                               'bg-gray-100 text-gray-600'
+                              request.status === 'accepted' ? 'bg-green-100 text-green-700' : 
+                              request.status === 'declined' ? 'bg-red-100 text-red-700' : 
+                              'bg-gray-100 text-gray-600'
                             }>
                               {request.status.toUpperCase()}
                             </Badge>
@@ -274,7 +281,8 @@ const ShipmentDetail = () => {
                               <Phone className="h-4 w-4 mr-2" />
                               Call Trucker
                             </Button>
-                          </Link to={`/chat/${request.id}`} className="flex-1">
+                          </a>
+                          <Link to={`/chat/${request.id}`} className="flex-1">
                             <Button className="w-full bg-blue-600 hover:bg-blue-700">
                               <MessageSquare className="h-4 w-4 mr-2" />
                               Chat
@@ -295,15 +303,15 @@ const ShipmentDetail = () => {
             <CardHeader><CardTitle>Next Steps</CardTitle></CardHeader>
             <CardContent className="text-sm text-gray-600 space-y-4">
               <div className="flex gap-3">
-                <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex-items-center justify-center flex-shrink-0 font-bold">1</div>
+                <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 font-bold">1</div>
                 <p>Review the truckers who have expressed interest in your shipment.</p>
               </div>
               <div className="flex gap-3">
-                <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex-items-center justify-center flex-shrink-0 font-bold">2</div>
+                <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 font-bold">2</div>
                 <p>Click <strong>Accept</strong> on the trucker you want to hire. This will notify them and close the shipment to others.</p>
               </div>
               <div className="flex gap-3">
-                <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex-items-center justify-center flex-shrink-0 font-bold">3</div>
+                <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 font-bold">3</div>
                 <p>Once accepted, you'll get their contact details to finalize the pickup.</p>
               </div>
             </CardContent>

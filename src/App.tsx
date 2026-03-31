@@ -20,7 +20,8 @@ import EditTrip from "./pages/trucker/EditTrip";
 import BrowseShipments from "./pages/trucker/BrowseShipments";
 import MyShipmentRequests from "./pages/trucker/MyShipmentRequests";
 
-// Shipper Pagesimport ShipperDashboard from "./pages/shipper/Dashboard";
+// Shipper Pages
+import ShipperDashboard from "./pages/shipper/Dashboard";
 import PostShipments from "./pages/shipper/PostShipments";
 import MyShipments from "./pages/shipper/MyShipments";
 import EditShipment from "./pages/shipper/EditShipment";
@@ -48,7 +49,7 @@ function App() {
         <Route path="/test-auth" element={<TestAuth />} />
         
         {/* Protected Routes with Layout */}
-        <Route element={<Layout />}>
+        <Route element={<Layout><div /></Layout>}>
           <Route path="/profile" element={<Profile />} />
           <Route path="/messages" element={<ChatList />} />
           <Route path="/chat/:requestId" element={<Chat />} />

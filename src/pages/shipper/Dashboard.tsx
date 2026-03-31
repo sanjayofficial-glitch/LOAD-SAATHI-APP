@@ -21,7 +21,8 @@ import {
   Loader2,
   Search,
   PlusSquare,
-  Star as StarIcon} from 'lucide-react';
+  Star as StarIcon
+} from 'lucide-react';
 import Star from '@/components/Star';
 
 const ShipperDashboard = () => {
@@ -162,7 +163,7 @@ const ShipperDashboard = () => {
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Accepted</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader
+          </CardHeader>
           <CardContent><div className="text-2xl font-bold">{acceptedCount}</div></CardContent>
         </Card>
         <Card className="shadow-sm border-blue-100 hover:shadow-md transition-shadow">
@@ -231,12 +232,14 @@ const ShipperDashboard = () => {
                           <div className="flex items-center space-x-2">
                             {canReview && (
                               <Button 
-                                size="sm"                                 className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                                size="sm" 
+                                className="bg-yellow-500 hover:bg-yellow-600 text-white"
                                 onClick={() => setReviewTarget({
                                   tripId: request.trip_id,
                                   truckerId: request.trip.trucker_id,
                                   truckerName: request.trip.trucker.full_name,
-                                  requestId: request.id                                })}
+                                  requestId: request.id
+                                })}
                               >
                                 <StarIcon className="h-4 w-4 mr-1 fill-current" /> Rate Trucker
                               </Button>
