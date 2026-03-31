@@ -1,12 +1,12 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useAuth as useClerkAuth } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth, User as ClerkUser } from '@clerk/clerk-react';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@/types';
 
 interface AuthContextType {
-  user: any | null;
+  user: ClerkUser | null;
   isLoaded: boolean;
   isSignedIn: boolean;
   userProfile: User | null;
@@ -32,7 +32,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUserProfile = useCallback(async (clerkUserId: string) => {
     try {
-      // Try to fetch existing profile
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -44,12 +43,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return null;
       }
 
-      // If profile exists, return it
       if (data) {
         return data as User;
       }
 
-      // If no profile exists, create one using metadata
       const metadata = user?.publicMetadata || {};
       const newProfile = {
         id: clerkUserId,

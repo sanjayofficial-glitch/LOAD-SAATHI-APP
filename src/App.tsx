@@ -19,32 +19,32 @@ import TruckerDashboard from "./pages/trucker/Dashboard";
 import ShipperDashboard from "./pages/shipper/Dashboard";
 
 // Lazy load secondary pages
-import NotFound from "./pages/NotFound";
-import Register from "./pages/Register";
-import ForgotPassword from "./pages/ForgotPassword";
-import UpdatePassword from "./pages/UpdatePassword";
-import PostTrip from "./pages/trucker/PostTrip";
-import EditTrip from "./pages/trucker/EditTrip";
-import BrowseTrips from "./pages/shipper/BrowseTrips";
-import TripDetail from "./pages/TripDetail";
-import MyTrips from "./pages/trucker/MyTrips";
-import MyShipments from "./pages/shipper/MyShipments";
-import Profile from "./pages/Profile";
-import AdminDashboard from "./pages/admin/Dashboard";
-import Chat from "./pages/Chat";
-import ChatList from "./pages/ChatList";
-import TestAuth from "./pages/TestAuth";
-import PostShipments from "./pages/shipper/PostShipments";
-import EditShipment from "./pages/shipper/EditShipment";
-import BrowseShipments from "./pages/trucker/BrowseShipments";
-import ShipmentDetail from "./pages/shipper/ShipmentDetail";
-import MyShipmentRequests from "./pages/trucker/MyShipmentRequests";
+const NotFound = lazy(() => import("./pages/NotFound"));
+const Register = lazy(() => import("./pages/Register"));
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
+const UpdatePassword = lazy(() => import("./pages/UpdatePassword"));
+const PostTrip = lazy(() => import("./pages/trucker/PostTrip"));
+const EditTrip = lazy(() => import("./pages/trucker/EditTrip"));
+const BrowseTrips = lazy(() => import("./pages/shipper/BrowseTrips"));
+const TripDetail = lazy(() => import("./pages/TripDetail"));
+const MyTrips = lazy(() => import("./pages/trucker/MyTrips"));
+const MyShipments = lazy(() => import("./pages/shipper/MyShipments"));
+const Profile = lazy(() => import("./pages/Profile"));
+const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
+const Chat = lazy(() => import("./pages/Chat"));
+const ChatList = lazy(() => import("./pages/ChatList"));
+const TestAuth = lazy(() => import("./pages/TestAuth"));
+const PostShipments = lazy(() => import("./pages/shipper/PostShipments"));
+const EditShipment = lazy(() => import("./pages/shipper/EditShipment"));
+const BrowseShipments = lazy(() => import("./pages/trucker/BrowseShipments"));
+const ShipmentDetail = lazy(() => import("./pages/shipper/ShipmentDetail"));
+const MyShipmentRequests = lazy(() => import("./pages/trucker/MyShipmentRequests"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 30, // 30 minutes
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 30,
       retry: 1,
       refetchOnWindowFocus: false,
     },
