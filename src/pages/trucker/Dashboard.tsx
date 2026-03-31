@@ -43,7 +43,6 @@ const TruckerDashboard = () => {
     enabled: !!userProfile?.id,
   });
 
-  // We include trip IDs in the query key so it re-fetches when trips change
   const tripIdsKey = useMemo(() => trips.map(t => t.id).sort().join(','), [trips]);
 
   const { data: requests = [], isLoading: requestsLoading } = useQuery({
@@ -52,7 +51,6 @@ const TruckerDashboard = () => {
       const tripIds = trips.map(t => t.id);
       if (tripIds.length === 0) return [];
       
-      // 1. Fetch requests
       const { data: requestData, error: requestError } = await supabase
         .from('requests')
         .select('*')
@@ -62,7 +60,6 @@ const TruckerDashboard = () => {
       if (requestError) throw requestError;
       if (!requestData || requestData.length === 0) return [];
 
-      // 2. Fetch related shippers
       const shipperIds = [...new Set(requestData.map(r => r.shipper_id))];
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -127,13 +124,11 @@ const TruckerDashboard = () => {
   const handleAcceptRequest = useCallback(async (request: Request) => {
     if (!request.trip) return;
 
-    const newCapacity = request.trip.available_capacity_tonnes - request.weight_tonnes;
-    if (newCapacity < 0) {
+    if (request.trip.available_capacity_tonnes < request.weight_tonnes) {
       showError('Not enough capacity left!');
       return;
     }
 
-    // Optimistic Update
     queryClient.setQueryData(['trucker-requests', userProfile?.id, tripIdsKey], (old: Request[] | undefined) => {
       return old?.map(r => r.id === request.id ? { ...r, status: 'accepted' } : r);
     });
@@ -149,18 +144,12 @@ const TruckerDashboard = () => {
       return;
     }
 
-    await supabase
-      .from('trips')
-      .update({ available_capacity_tonnes: newCapacity })
-      .eq('id', request.trip_id);
-
     showSuccess('Request accepted!');
     queryClient.invalidateQueries({ queryKey: ['trucker-requests'] });
     queryClient.invalidateQueries({ queryKey: ['trucker-trips'] });
   }, [queryClient, userProfile?.id, tripIdsKey]);
 
   const handleDeclineRequest = useCallback(async (requestId: string) => {
-    // Optimistic Update
     queryClient.setQueryData(['trucker-requests', userProfile?.id, tripIdsKey], (old: Request[] | undefined) => {
       return old?.map(r => r.id === requestId ? { ...r, status: 'declined' } : r);
     });
