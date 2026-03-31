@@ -18,8 +18,7 @@ import Login from "./pages/Login";
 import TruckerDashboard from "./pages/trucker/Dashboard";
 import ShipperDashboard from "./pages/shipper/Dashboard";
 
-// Lazy load secondary pages
-const NotFound = lazy(() => import("./pages/NotFound"));
+// Lazy load secondary pagesconst NotFound = lazy(() => import("./pages/NotFound"));
 const Register = lazy(() => import("./pages/Register"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const UpdatePassword = lazy(() => import("./pages/UpdatePassword"));

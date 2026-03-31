@@ -1,12 +1,12 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useAuth as useClerkAuth, User as ClerkUser } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@/types';
 
 interface AuthContextType {
-  user: ClerkUser | null;
+  user: any; // Clerk User object
   isLoaded: boolean;
   isSignedIn: boolean;
   userProfile: User | null;
@@ -50,8 +50,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const metadata = user?.publicMetadata || {};
       const newProfile = {
         id: clerkUserId,
-        email: user?.emailAddresses[0]?.emailAddress || '',
-        full_name: metadata?.full_name || user?.fullName || 'User',
+        email: user?.emailAddresses?.[0]?.emailAddress || '',
+        full_name: metadata?.full_name || user?.firstName + ' ' + user?.lastName || 'User',
         phone: metadata?.phone || '',
         user_type: metadata?.user_type || 'shipper',
         is_verified: false,
@@ -61,8 +61,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         company_name: metadata?.company_name || null
       };
 
-      const { data: inserted, error: insertError } = await supabase
-        .from('users')
+      const { data: inserted, error: insertError } = await supabase        .from('users')
         .insert(newProfile)
         .select()
         .single();
@@ -110,8 +109,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <AuthContext.Provider value={{ 
       user, 
-      isLoaded, 
-      isSignedIn, 
+      isLoaded,       isSignedIn, 
       userProfile, 
       loading, 
       signOut: handleSignOut, 
