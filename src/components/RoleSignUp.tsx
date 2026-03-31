@@ -1,35 +1,11 @@
 import { useState } from "react";
 import { SignUp } from "@clerk/clerk-react";
-import { useAuth } from "@clerk/clerk-react";
 
 export default function RoleSignUp() {
   const [role, setRole] = useState<"trucker" | "shipper">("trucker");
-  const { setUser } = useAuth();
-
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-
-    // Create the user with Clerk
-    const { user } = await SignUp.handleSubmit(
-      async (inputs) => {
-        // Add the role to publicMetadata before creating the user
-        const publicMetadata = { role };
-        // You can pass it via the `publicMetadata` option in Clerk's API
-        // (see step 3 for the exact call)
-      },
-      { publicMetadata: { role } }
-    );
-
-    // Optional: redirect based on role
-    if (role === "trucker") {
-      window.location.href = "/trucker-dashboard";
-    } else {
-      window.location.href = "/shipper-dashboard";
-    }
-  };
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form>
       {/* Email & password are automatically rendered by Clerk's SignUp */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -62,7 +38,7 @@ export default function RoleSignUp() {
       </div>
 
       {/* Clerk's built-in UI for email, password, etc. */}
-      <SignUp />
+      <SignUp unsafeMetadata={{ role }} />
     </form>
   );
 }
