@@ -33,18 +33,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUserProfile = useCallback(async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      // Handle both UUID and Clerk user ID formats
+      const query = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
 
-      if (error) {
-        console.error("[AuthContext] Error fetching profile:", error);
+      if (query.error) {
+        console.error("[AuthContext] Error fetching profile:", query.error);
         return null;
       }
 
-      return data as User;
+      return query.data as User;
     } catch (err) {
       console.error("[AuthContext] Unexpected error in fetchUserProfile:", err);
       return null;
@@ -56,14 +57,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const fullName = clerkUser.fullName || `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim();
     
     try {
-      // First check if it exists again to avoid race conditions
+      // Check if profile already exists
       const existing = await fetchUserProfile(clerkUser.id);
       if (existing) return existing;
 
+      // Insert new profile - use string userId for UUID compatibility
       const { data, error } = await supabase
         .from('users')
         .insert({
-          id: clerkUser.id,
+          id: clerkUser.id, // Clerk user ID as string
           email: clerkUser.primaryEmailAddress?.emailAddress,
           full_name: fullName,
           user_type: userType,
@@ -138,3 +140,5 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     </AuthContext.Provider>
   );
 };
+
+export default AuthProvider;
