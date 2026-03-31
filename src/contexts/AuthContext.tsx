@@ -51,11 +51,48 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
+  const createUserProfile = useCallback(async (clerkUser: any) => {
+    const userType = clerkUser.unsafeMetadata?.user_type || 'shipper';
+    const fullName = clerkUser.fullName || `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim();
+    
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .insert({
+          id: clerkUser.id,
+          email: clerkUser.primaryEmailAddress?.emailAddress,
+          full_name: fullName,
+          user_type: userType,
+          is_verified: false,
+          rating: 0,
+          total_trips: 0
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("[AuthContext] Error creating profile:", error);
+        return null;
+      }
+      return data as User;
+    } catch (err) {
+      console.error("[AuthContext] Unexpected error in createUserProfile:", err);
+      return null;
+    }
+  }, []);
+
   useEffect(() => {
     const syncProfile = async () => {
       if (isLoaded) {
         if (isSignedIn && user) {
-          const profile = await fetchUserProfile(user.id);
+          let profile = await fetchUserProfile(user.id);
+          
+          // If profile doesn't exist in Supabase, create it
+          if (!profile) {
+            console.log("[AuthContext] Profile missing, creating for:", user.id);
+            profile = await createUserProfile(user);
+          }
+          
           setUserProfile(profile);
         } else {
           setUserProfile(null);
@@ -65,7 +102,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     syncProfile();
-  }, [isLoaded, isSignedIn, user, fetchUserProfile]);
+  }, [isLoaded, isSignedIn, user, fetchUserProfile, createUserProfile]);
 
   const refreshProfile = useCallback(async () => {
     if (user) {
