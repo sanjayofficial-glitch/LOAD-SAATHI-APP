@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,9 @@ import {
   Lock,
   Loader2,
   CheckCircle2,
-  MessageSquare
+  MessageSquare,
+  ArrowLeft,
+  RefreshCw
 } from 'lucide-react';
 import Star from '@/components/Star';
 import { useUser } from '@clerk/clerk-react';
@@ -329,8 +331,7 @@ const Profile = () => {
                       id="company"
                       className="pl-10"
                       value={companyName} 
-                      onChange={(e) => setCompanyName(e.target.value)} 
-                      placeholder="Enter your company name"
+                      onChange={(e) => setCompanyName(e.target.value)}                       placeholder="Enter your company name"
                     />
                   </div>
                 </div>
@@ -352,8 +353,7 @@ const Profile = () => {
             <CardHeader>
               <CardTitle className="flex items-center text-red-900">
                 <Shield className="mr-2 h-5 w-5 text-red-600" />
-                Security Settings
-              </CardTitle>
+                Security Settings              </CardTitle>
               <CardDescription>Manage your password and account security</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
