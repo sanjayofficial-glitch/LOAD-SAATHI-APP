@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -105,8 +105,7 @@ const ShipmentDetail = () => {
           .from('shipments')
           .update({ status: 'matched' })
           .eq('id', id);
-        
-        if (shipmentError) throw shipmentError;
+                if (shipmentError) throw shipmentError;
         
         await supabase
           .from('shipment_requests')
@@ -265,8 +264,7 @@ const ShipmentDetail = () => {
                             </>
                           ) : (
                             <Badge className={
-                              request.status === 'accepted' ? 'bg-green-100 text-green-700' : 
-                              request.status === 'declined' ? 'bg-red-100 text-red-700' : 
+                              request.status === 'accepted' ? 'bg-green-100 text-green-700' :                               request.status === 'declined' ? 'bg-red-100 text-red-700' : 
                               'bg-gray-100 text-gray-600'
                             }>
                               {request.status.toUpperCase()}
@@ -282,8 +280,7 @@ const ShipmentDetail = () => {
                               <Phone className="h-4 w-4 mr-2" />
                               Call Trucker
                             </Button>
-                          </a>
-                          <Link to={`/chat/${request.id}`} className="flex-1">
+                          </Link to={`/chat/${request.id}`} className="flex-1">
                             <Button className="w-full bg-blue-600 hover:bg-blue-700">
                               <MessageSquare className="h-4 w-4 mr-2" />
                               Chat
@@ -304,15 +301,15 @@ const ShipmentDetail = () => {
             <CardHeader><CardTitle>Next Steps</CardTitle></CardHeader>
             <CardContent className="text-sm text-gray-600 space-y-4">
               <div className="flex gap-3">
-                <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 font-bold">1</div>
+                <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex-items-center justify-center flex-shrink-0 font-bold">1</div>
                 <p>Review the truckers who have expressed interest in your shipment.</p>
               </div>
               <div className="flex gap-3">
-                <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 font-bold">2</div>
+                <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex-items-center justify-center flex-shrink-0 font-bold">2</div>
                 <p>Click <strong>Accept</strong> on the trucker you want to hire. This will notify them and close the shipment to others.</p>
-              </div>
+              </div
               <div className="flex gap-3">
-                <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 font-bold">3</div>
+                <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex-items-center justify-center flex-shrink-0 font-bold">3</div>
                 <p>Once accepted, you'll get their contact details to finalize the pickup.</p>
               </div>
             </CardContent>

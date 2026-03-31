@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -331,7 +331,8 @@ const Profile = () => {
                       id="company"
                       className="pl-10"
                       value={companyName} 
-                      onChange={(e) => setCompanyName(e.target.value)}                       placeholder="Enter your company name"
+                      onChange={(e) => setCompanyName(e.target.value)} 
+                      placeholder="Enter your company name"
                     />
                   </div>
                 </div>
@@ -353,7 +354,8 @@ const Profile = () => {
             <CardHeader>
               <CardTitle className="flex items-center text-red-900">
                 <Shield className="mr-2 h-5 w-5 text-red-600" />
-                Security Settings              </CardTitle>
+                Security Settings
+              </CardTitle>
               <CardDescription>Manage your password and account security</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -368,7 +370,7 @@ const Profile = () => {
                     <Button 
                       variant="outline" 
                       className="mt-4 border-red-200 text-red-700 hover:bg-red-100"
-                      onClick={() => {/* Clerk handles password reset */}}
+                      onClick={() => {/* Clerk handles password reset */}
                     >
                       Change Password
                     </Button>

@@ -20,8 +20,7 @@ import EditTrip from "./pages/trucker/EditTrip";
 import BrowseShipments from "./pages/trucker/BrowseShipments";
 import MyShipmentRequests from "./pages/trucker/MyShipmentRequests";
 
-// Shipper Pages
-import ShipperDashboard from "./pages/shipper/Dashboard";
+// Shipper Pagesimport ShipperDashboard from "./pages/shipper/Dashboard";
 import PostShipments from "./pages/shipper/PostShipments";
 import MyShipments from "./pages/shipper/MyShipments";
 import EditShipment from "./pages/shipper/EditShipment";
@@ -33,7 +32,12 @@ import AdminDashboard from "./pages/admin/Dashboard";
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Index />} />

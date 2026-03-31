@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/integrations/supabase/client';
 import { Message } from '@/types/chat';
 
 export const showSuccess = (message: string) => {

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/integrations/supabase/client';
 import { Trip, Request } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,8 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { showSuccess, showError } from '@/utils/toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import DashboardSkeleton from '@/components/DashboardSkeleton';
-import { 
-  Truck, 
+import {   Truck, 
   CheckCircle, 
   Clock,
   MessageSquare,
@@ -278,7 +277,7 @@ const TruckerDashboard = () => {
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <p className="font-bold text-lg">{request.goods_description}</p>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-500">
                           {request.weight_tonnes}t • {request.trip?.origin_city} → {request.trip?.destination_city}
                         </p>
                       </div>
@@ -323,7 +322,7 @@ const TruckerDashboard = () => {
                   <Star filled className="h-4 w-4 text-yellow-500 mr-1" />
                   <span className="font-bold">{userProfile?.rating?.toFixed(1) || '0.0'}</span>
                 </div>
-              </div>
+              </div
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Total Reviews</span>
                 <span className="font-bold">{reviews.length}</span>

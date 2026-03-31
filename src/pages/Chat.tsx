@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/integrations/supabase/client';
 import { Message } from '@/types/chat';
 import { fetchMessages, sendMessage, subscribeToMessages, markMessagesAsRead } from '@/utils/chat';
 import { Button } from '@/components/ui/button';
@@ -48,7 +48,11 @@ const Chat = () => {
           .select(`
             *,
             trip:trips(*),
-            shipper:users!requests_shipper_id_fkey(*),
+            shipper:users!requests_shipper_id_fkey(
+              id,
+              full_name,
+              user_type
+            ),
             trip:trip_id
           `)
           .eq('id', requestId)

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,8 +12,7 @@ import {
   MapPin, 
   Calendar, 
   IndianRupee, 
-  Search, 
-  ArrowRight,
+  Search,   ArrowRight,
   Loader2,
   CheckCircle2
 } from 'lucide-react';
@@ -65,8 +64,7 @@ const BrowseShipments = () => {
   const { data: myRequests = [] } = useQuery({
     queryKey: ['my-shipment-requests', userProfile?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('shipment_requests')
+      const { data, error } = await supabase        .from('shipment_requests')
         .select('shipment_id')
         .eq('trucker_id', userProfile?.id);
       

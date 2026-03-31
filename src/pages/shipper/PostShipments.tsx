@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -94,8 +94,7 @@ const PostShipments = () => {
                     id="origin"
                     placeholder="e.g. Jaipur"
                     className="pl-10"
-                    value={formData.origin_city} 
-                    onChange={(e) => setFormData({...formData, origin_city: e.target.value})} 
+                    value={formData.origin_city}                     onChange={(e) => setFormData({...formData, origin_city: e.target.value})} 
                     required 
                   />
                 </div>
@@ -124,8 +123,7 @@ const PostShipments = () => {
                   id="date"
                   type="date" 
                   className="pl-10"
-                  value={formData.departure_date} 
-                  onChange={(e) => setFormData({...formData, departure_date: e.target.value})} 
+                  value={formData.departure_date}                   onChange={(e) => setFormData({...formData, departure_date: e.target.value})} 
                   required 
                 />
               </div>
@@ -133,14 +131,13 @@ const PostShipments = () => {
 
             <div className="space-y-2">
               <Label htmlFor="goods" className="text-gray-700 font-medium">Goods Description</Label>
-              <Input 
-                id="goods"
+              <Input                 id="goods"
                 placeholder="e.g. Cotton fabric, Electronics, Machinery parts, etc."
                 value={formData.goods_description} 
                 onChange={(e) => setFormData({...formData, goods_description: e.target.value})} 
                 required 
               />
-            </div>
+            </div
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">

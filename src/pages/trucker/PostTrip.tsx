@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -94,8 +94,7 @@ const PostTrip = () => {
                     className="pl-10"
                     value={formData.origin_city} 
                     onChange={(e) => setFormData({...formData, origin_city: e.target.value})} 
-                    required 
-                  />
+                    required                   />
                 </div>
               </div>
               <div className="space-y-2">
@@ -120,12 +119,10 @@ const PostTrip = () => {
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input 
                   id="date"
-                  type="date" 
-                  className="pl-10"
+                  type="date"                   className="pl-10"
                   value={formData.departure_date} 
                   onChange={(e) => setFormData({...formData, departure_date: e.target.value})} 
-                  required 
-                />
+                  required                 />
               </div>
             </div>
 
@@ -162,13 +159,11 @@ const PostTrip = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="vehicleType" className="text-gray-700 font-medium">Vehicle Type</Label>
-                <Input 
-                  id="vehicleType"
+                <Input                   id="vehicleType"
                   placeholder="e.g. 12-Wheeler Truck"
                   value={formData.vehicle_type} 
                   onChange={(e) => setFormData({...formData, vehicle_type: e.target.value})} 
-                  required 
-                />
+                  required                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="vehicleNumber" className="text-gray-700 font-medium">Vehicle Number</Label>

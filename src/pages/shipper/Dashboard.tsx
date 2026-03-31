@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/integrations/supabase/client';
 import { Request } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,8 +21,7 @@ import {
   Loader2,
   Search,
   PlusSquare,
-  Star as StarIcon
-} from 'lucide-react';
+  Star as StarIcon} from 'lucide-react';
 import Star from '@/components/Star';
 
 const ShipperDashboard = () => {
@@ -163,7 +162,7 @@ const ShipperDashboard = () => {
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Accepted</CardTitle>
             <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader>
+          </CardHeader
           <CardContent><div className="text-2xl font-bold">{acceptedCount}</div></CardContent>
         </Card>
         <Card className="shadow-sm border-blue-100 hover:shadow-md transition-shadow">
@@ -232,14 +231,12 @@ const ShipperDashboard = () => {
                           <div className="flex items-center space-x-2">
                             {canReview && (
                               <Button 
-                                size="sm" 
-                                className="bg-yellow-500 hover:bg-yellow-600 text-white"
+                                size="sm"                                 className="bg-yellow-500 hover:bg-yellow-600 text-white"
                                 onClick={() => setReviewTarget({
                                   tripId: request.trip_id,
                                   truckerId: request.trip.trucker_id,
                                   truckerName: request.trip.trucker.full_name,
-                                  requestId: request.id
-                                })}
+                                  requestId: request.id                                })}
                               >
                                 <StarIcon className="h-4 w-4 mr-1 fill-current" /> Rate Trucker
                               </Button>
@@ -291,6 +288,10 @@ const ShipperDashboard = () => {
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Successful Shipments</span>
+                <span className="font-bold">{acceptedCount}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Completed Trips</span>
                 <span className="font-bold">{acceptedCount}</span>
               </div>
             </CardContent>

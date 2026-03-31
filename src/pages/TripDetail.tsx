@@ -3,7 +3,120 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { supabase } from '@/integrations/supabase/client';
+import { Trip } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { showSuccess, showError } from '@/utils/toast';
+import { MapPin, Calendar, Truck, IndianRupee, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
+import Star from '@/components/Star';
+
+const TripDetail = () => {
+  const { id } = useParams();
+  const { userProfile } = useAuth();
+  const navigate = useNavigate();
+  const [trip, setTrip] = useState<Trip | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [weight, setWeight] = useState('');
+  const [description, setDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const fetchTrip = async () => {
+      const { data, error } = await supabase
+        .from('trips')
+        .select('*, trucker:users(*)')
+        .eq('id', id)
+        .single();
+      
+      if (error) {
+        showError('Trip not found');
+      } else if (data) {
+        const mappedTrip = {
+          ...data,
+          trucker: Array.isArray(data.trucker) ? data.trucker[0] : data.trucker        };
+        setTrip(mappedTrip as unknown as Trip);
+      }
+      setLoading(false);
+    };
+    fetchTrip();
+  }, [id]);
+
+  const handleRequest = async () => {
+    if (!userProfile) return navigate('/login');
+    if (!trip) return;
+
+    const requestedWeight = parseFloat(weight);
+    if (isNaN(requestedWeight) || requestedWeight <= 0) {
+      showError('Please enter a valid weight');
+      return;
+    }
+
+    if (requestedWeight > trip.available_capacity_tonnes) {
+      showError(`Requested weight exceeds available capacity (${trip.available_capacity_tonnes} tonnes)`);
+      return;
+    }
+
+    if (!description.trim()) {
+      showError('Please provide a description of your goods');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const { error: insertError } = await supabase
+        .from('requests')
+        .insert({
+          trip_id: id,
+          shipper_id: userProfile.id,
+          goods_description: description.trim(),
+          weight_tonnes: requestedWeight,
+          status: 'pending'
+        });
+
+      if (insertError) throw insertError;
+
+      showSuccess('Booking request sent successfully!');
+      navigate('/shipper/my-shipments');
+    } catch (err: any) {
+      console.error('[TripDetail] Error sending request:', err);
+      showError(err.message || 'An unexpected error occurred');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) return <div className="p-8 text-center">Loading trip details...</div>;
+  if (!trip) return <div className="p-8 text-center">Trip not found</div>;
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
+        <ArrowLeft className="mr-2 h-4 w-4" /> Back
+      </Button>
+      
+      <div className="grid md:grid-cols-2 gap-8">
+        <Card className="border-orange-100">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold text-gray-900">Trip Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <div className="flex items-center text-xl font-bold text-gray-900">
+                <MapPin className="mr-2 text-orange-600" /> {trip.origin_city} → {trip.destination_city}
+              </div>
+              <div className="flex items-center text-gray-600">
+                <Calendar className="mr-2 h-4 w-4" />                 {new Date(trip.departure_date).toLocaleDateString('en-IN', { 
+                  weekday: 'long',                   year:<dyad-write path="src/pages/TripDetail.tsx" description="Updating Supabase import to use integrations path (continued)">
+"use client";
+
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Trip } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
