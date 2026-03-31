@@ -21,7 +21,7 @@ const Register = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4 py-8 relative overflow-hidden">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 px-4 py-12 relative overflow-hidden">
       {/* Background Decoration */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none opacity-5">
         <div className="absolute -top-24 -left-24 w-96 h-96 bg-orange-600 rounded-full blur-3xl" />
@@ -29,15 +29,15 @@ const Register = () => {
       </div>
 
       <div className="w-full max-w-md z-10">
-        <Link 
-          to="/" 
-          className="inline-flex items-center text-sm text-gray-500 hover:text-orange-600 transition-colors mb-6 group"
-        >
-          <ArrowLeft className="h-4 w-4 mr-2 transition-transform group-hover:-translate-x-1" />
-          Back to Home
-        </Link>
+        <div className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl border border-gray-100 space-y-6">
+          <Link 
+            to="/" 
+            className="inline-flex items-center text-sm text-gray-500 hover:text-orange-600 transition-colors group mb-2"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2 transition-transform group-hover:-translate-x-1" />
+            Back to Home
+          </Link>
 
-        <div className="space-y-6 bg-white p-6 sm:p-8 rounded-2xl shadow-xl border border-gray-100">
           <div className="text-center">
             <div className="flex items-center justify-center mb-4">
               <div className="bg-orange-50 p-3 rounded-2xl">
@@ -75,29 +75,33 @@ const Register = () => {
             </button>
           </div>
 
-          <SignUp
-            routing="path"
-            path="/register"
-            signInUrl="/login"
-            unsafeMetadata={{ user_type: userType }}
-            appearance={{
-              elements: {
-                formButtonPrimary: 
-                  "bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold py-3 px-4 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-[0.98] normal-case",
-                card: "shadow-none border-0 p-0",
-                headerTitle: "hidden",
-                headerSubtitle: "hidden",
-                footer: "hidden",
-                formFieldLabel: "text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5",
-                formFieldInput: 
-                  "h-12 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all",
-                formField: "mb-5",
-                identityPreviewText: "text-gray-600 font-medium",
-                identityPreviewEditButton: "text-orange-600 font-bold hover:text-orange-700",
-                formResendCodeLink: "text-orange-600 font-bold hover:text-orange-700"
-              }
-            }}
-          />
+          <div className="clerk-signup-container">
+            <SignUp
+              routing="path"
+              path="/register"
+              signInUrl="/login"
+              unsafeMetadata={{ user_type: userType }}
+              appearance={{
+                elements: {
+                  formButtonPrimary: 
+                    "bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold py-3 px-4 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-[0.98] normal-case w-full",
+                  card: "shadow-none border-0 p-0 w-full",
+                  headerTitle: "hidden",
+                  headerSubtitle: "hidden",
+                  footer: "hidden",
+                  formFieldLabel: "text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5",
+                  formFieldInput: 
+                    "h-12 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all w-full",
+                  formField: "mb-5",
+                  identityPreviewText: "text-gray-600 font-medium",
+                  identityPreviewEditButton: "text-orange-600 font-bold hover:text-orange-700",
+                  formResendCodeLink: "text-orange-600 font-bold hover:text-orange-700",
+                  rootBox: "w-full",
+                  main: "w-full"
+                }
+              }}
+            />
+          </div>
 
           <div className="text-center pt-4 border-t border-gray-50">
             <p className="text-sm text-gray-500">
