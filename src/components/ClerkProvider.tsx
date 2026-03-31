@@ -11,7 +11,11 @@ interface ClerkProviderWrapperProps {
 
 export const ClerkProviderWrapper = ({ children }: ClerkProviderWrapperProps) => {
   return (
-    <ClerkProvider publishableKey={clerkPublishableKey} afterSignInUrl="/dashboard" afterSignUpUrl="/dashboard">
+    <ClerkProvider 
+      publishableKey={clerkPublishableKey} 
+      afterSignInUrl="/" 
+      afterSignUpUrl="/"
+    >
       {children}
     </ClerkProvider>
   );
