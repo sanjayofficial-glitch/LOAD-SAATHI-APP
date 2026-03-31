@@ -30,8 +30,7 @@ const AdminDashboard = () => {
     requests: 0,
     shipments: 0,
     messages: 0,
-    reviews: 0
-  });
+    reviews: 0  });
   const [users, setUsers] = useState<any[]>([]);
   const [recentTrips, setRecentTrips] = useState<any[]>([]);
   const [recentRequests, setRecentRequests] = useState<any[]>([]);
@@ -120,8 +119,7 @@ const AdminDashboard = () => {
   const handleVerifyUser = async (userId: string, isVerified: boolean) => {
     setActionLoading(userId);
     try {
-      const { error } = await supabase
-        .from('users')
+      const { error } = await supabase        .from('users')
         .update({ is_verified: isVerified })
         .eq('id', userId);
 
@@ -442,8 +440,7 @@ const AdminDashboard = () => {
                         >
                           <CheckCircle className="h-4 w-4 mr-2" /> Approve
                         </Button>
-                        <Button 
-                          size="sm" 
+                        <Button                           size="sm" 
                           variant="outline" 
                           className="text-red-600 border-red-200 hover:bg-red-50 flex-1 sm:flex-none"
                         >
