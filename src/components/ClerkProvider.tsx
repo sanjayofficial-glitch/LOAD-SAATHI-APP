@@ -1,9 +1,14 @@
 import { ClerkProvider } from "@clerk/clerk-react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
-const ClerkProviderWrapper = ({ children }) => {
+const ClerkProviderWrapper = ({ children }: { children: React.ReactNode }) => {
+  const navigate = useNavigate();
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || ""}
+      routerPush={(to) => navigate(to)}
+      routerReplace={(to) => navigate(to, { replace: true })}
+    >
       {children}
     </ClerkProvider>
   );
