@@ -9,7 +9,6 @@ import ChatList from "./pages/ChatList";
 import TripDetail from "./pages/TripDetail";
 import ForgotPassword from "./pages/ForgotPassword";
 import UpdatePassword from "./pages/UpdatePassword";
-import TestAuth from "./pages/TestAuth";
 import Layout from "./components/Layout";
 
 // Trucker Pages
@@ -46,7 +45,6 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/update-password" element={<UpdatePassword />} />
-        <Route path="/test-auth" element={<TestAuth />} />
         
         {/* Protected Routes with Layout */}
         <Route element={<Layout><div /></Layout>}>
