@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useAuth as useClerkAuth, useUser } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth, useUser, signOut } from '@clerk/clerk-react';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@/types';
 
@@ -26,7 +26,7 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const { isLoaded, isSignedIn, user, signOut: clerkSignOut } = useUser();
+  const { isLoaded, isSignedIn, user } = useUser();
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -105,8 +105,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [user, fetchUserProfile]);
 
-  const signOut = async () => {
-    await clerkSignOut();
+  const handleSignOut = async () => {
+    await signOut();
     setUserProfile(null);
   };
 
@@ -116,7 +116,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       isLoaded, 
       isSignedIn,       userProfile, 
       loading, 
-      signOut, 
+      signOut: handleSignOut, 
       refreshProfile 
     }}>
       {children}
