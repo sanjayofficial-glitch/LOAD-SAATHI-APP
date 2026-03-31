@@ -56,6 +56,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const fullName = clerkUser.fullName || `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim();
     
     try {
+      // First check if it exists again to avoid race conditions
+      const existing = await fetchUserProfile(clerkUser.id);
+      if (existing) return existing;
+
       const { data, error } = await supabase
         .from('users')
         .insert({
@@ -72,6 +76,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) {
         console.error("[AuthContext] Error creating profile:", error);
+        // If it's a duplicate key error, try fetching again
+        if (error.code === '23505') {
+          return await fetchUserProfile(clerkUser.id);
+        }
         return null;
       }
       return data as User;
@@ -79,7 +87,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("[AuthContext] Unexpected error in createUserProfile:", err);
       return null;
     }
-  }, []);
+  }, [fetchUserProfile]);
 
   useEffect(() => {
     const syncProfile = async () => {
