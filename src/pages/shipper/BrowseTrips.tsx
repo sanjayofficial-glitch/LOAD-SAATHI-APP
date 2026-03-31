@@ -1,9 +1,3 @@
-<p className="text-xs text-gray-500">Vehicle</p>
-```
-
-This is clearly corrupted. I need to write the complete file correctly.
-
-Let me write the complete `BrowseTrips.tsx` file.</think><dyad-write path="src/pages/shipper/BrowseTrips.tsx" description="Completing the BrowseTrips.tsx file with proper JSX structure">
 import React from 'react';
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
