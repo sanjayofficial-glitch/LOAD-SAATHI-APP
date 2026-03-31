@@ -1,11 +1,3 @@
-... ＜/dyad-write>
-
-＜dyad-write path="src/main.tsx"> ... ＜/dyad-write>
-
-Make sure to close tags.
-
-We'll output the corrected code.
-</think><dyad-writepath="src/App.tsx">
 "use client";
 
 import { Suspense, lazy } from "react";
@@ -20,13 +12,14 @@ import { Truck, Loader2 } from "lucide-react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { SignedIn, SignedOut, UserButton, SignInButton, SignUpButton, SignOutButton } from "@clerk/clerk-react";
 
-// Eager load core pages for faster transitionsimport Index from "./pages/Index";
+// Eager loaded pages
+import Index from "./pages/Index";
 import Login from "./pages/Login";
 import TruckerDashboard from "./pages/trucker/Dashboard";
 import ShipperDashboard from "./pages/shipper/Dashboard";
 import NotFound from "./pages/NotFound";
 
-// Lazy load secondary pages
+// Lazy loaded pages
 const Register = lazy(() => import("./pages/Register"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const UpdatePassword = lazy(() => import("./pages/UpdatePassword"));
@@ -67,13 +60,13 @@ const LoadingFallback = () => (
   </div>
 );
 
-const ProtectedRoute = ({ children, allowedTypes }: { children: React.ReactNode; allowedTypes?: ('trucker' | 'shipper')[] }) => {
+const ProtectedRoute = ({ children, allowedTypes }: { children: React.ReactNode; allowedTypes?: ("trucker" | "shipper")[] }) => {
   const { userProfile, loading } = useAuth();
 
   if (loading) return <LoadingFallback />;
   if (!userProfile) return <Navigate to="/login" replace />;
   if (allowedTypes && !allowedTypes.includes(userProfile.user_type)) {
-    return <Navigate to={userProfile.user_type === 'trucker' ? '/trucker/dashboard' : '/shipper/dashboard'} replace />;
+    return <Navigate to={userProfile.user_type === "trucker" ? "/trucker/dashboard" : "/shipper/dashboard"} replace />;
   }
   return <Layout>{children}</Layout>;
 };
@@ -87,24 +80,6 @@ const App = () => (
       <AuthProvider>
         <BrowserRouter>
           <Suspense fallback={<LoadingFallback />}>
-            <header className="border-b bg-white p-4 flex justify-between items-center container mx-auto">
-              <div className="flex items-center gap-2">
-                <Truck className="h-6 w-6 text-orange-600" />
-                <span className="font-bold text-lg">LoadSaathi</span>
-              </div>
-              <SignedOut>
-                <div className="flex gap-2">
-                  <SignInButton />
-                  <SignUpButton />
-                </div>
-              </SignedOut>
-              <SignedIn>
-                <div className="flex items-center gap-3">
-                  <UserButton />
-                  <SignOutButton />
-                </div>
-              </SignedIn>
-            </header>
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
@@ -112,66 +87,66 @@ const App = () => (
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/update-password" element={<UpdatePassword />} />
               <Route path="/test-auth" element={<TestAuth />} />
+              
               {/* Trucker Routes */}
               <Route path="/trucker/dashboard" element={
-                <ProtectedRoute allowedTypes={['trucker']}>
+                <ProtectedRoute allowedTypes={["trucker"]}>
                   <TruckerDashboard />
                 </ProtectedRoute>
               } />
               <Route path="/trucker/post-trip" element={
-                <ProtectedRoute allowedTypes={['trucker']}>
+                <ProtectedRoute allowedTypes={["trucker"]}>
                   <PostTrip />
                 </ProtectedRoute>
               } />
               <Route path="/trucker/edit-trip/:id" element={
-                <ProtectedRoute allowedTypes={['trucker']}>
+                <ProtectedRoute allowedTypes={["trucker"]}>
                   <EditTrip />
                 </ProtectedRoute>
               } />
               <Route path="/trucker/my-trips" element={
-                <ProtectedRoute allowedTypes={['trucker']}>
+                <ProtectedRoute allowedTypes={["trucker"]}>
                   <MyTrips />
                 </ProtectedRoute>
               } />
               <Route path="/trucker/browse-shipments" element={
-                <ProtectedRoute allowedTypes={['trucker']}>
+                <ProtectedRoute allowedTypes={["trucker"]}>
                   <BrowseShipments />
                 </ProtectedRoute>
               } />
               <Route path="/trucker/my-requests" element={
-                <ProtectedRoute allowedTypes={['trucker']}>
+                <ProtectedRoute allowedTypes={["trucker"]}>
                   <MyShipmentRequests />
                 </ProtectedRoute>
               } />
-              
-              {/* Shipper Routes */}
+                            {/* Shipper Routes */}
               <Route path="/shipper/dashboard" element={
-                <ProtectedRoute allowedTypes={['shipper']}>
+                <ProtectedRoute allowedTypes={["shipper"]}>
                   <ShipperDashboard />
                 </ProtectedRoute>
               } />
               <Route path="/shipper/post-shipment" element={
-                <ProtectedRoute allowedTypes={['shipper']}>
+                <ProtectedRoute allowedTypes={["shipper"]}>
                   <PostShipments />
                 </ProtectedRoute>
               } />
               <Route path="/shipper/edit-shipment/:id" element={
-                <ProtectedRoute allowedTypes={['shipper']}>
+                <ProtectedRoute allowedTypes={["shipper"]}>
                   <EditShipment />
                 </ProtectedRoute>
               } />
               <Route path="/browse-trucks" element={
-                <ProtectedRoute allowedTypes={['shipper']}>
+                <ProtectedRoute allowedTypes={["shipper"]}>
                   <BrowseTrips />
                 </ProtectedRoute>
               } />
               <Route path="/shipper/my-shipments" element={
-                <ProtectedRoute allowedTypes={['shipper']}>
+                <ProtectedRoute allowedTypes={["shipper"]}>
                   <MyShipments />
                 </ProtectedRoute>
               } />
               <Route path="/shipments/:id" element={
-                <ProtectedRoute allowedTypes={['shipper']}>
+                <ProtectedRoute allowedTypes={["shipper"]}>
                   <ShipmentDetail />
                 </ProtectedRoute>
               } />
@@ -198,7 +173,7 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/admin" element={
-                <ProtectedRoute allowedTypes={['trucker']}>
+                <ProtectedRoute allowedTypes={["trucker"]}>
                   <AdminDashboard />
                 </ProtectedRoute>
               } />              
