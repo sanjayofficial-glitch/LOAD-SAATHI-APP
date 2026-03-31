@@ -27,25 +27,24 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoaded, isSignedIn } = useUser();
-  const { signOut } = useClerkAuth();
+  const { signOut: clerkSignOut } = useClerkAuth();
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchUserProfile = useCallback(async (userId: string) => {
     try {
-      // Handle both UUID and Clerk user ID formats
-      const query = await supabase
+      const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .maybeSingle();
 
-      if (query.error) {
-        console.error("[AuthContext] Error fetching profile:", query.error);
+      if (error) {
+        console.error("[AuthContext] Error fetching profile:", error);
         return null;
       }
 
-      return query.data as User;
+      return data as User;
     } catch (err) {
       console.error("[AuthContext] Unexpected error in fetchUserProfile:", err);
       return null;
@@ -61,11 +60,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const existing = await fetchUserProfile(clerkUser.id);
       if (existing) return existing;
 
-      // Insert new profile - use string userId for UUID compatibility
+      // Insert new profile with Clerk user ID
       const { data, error } = await supabase
         .from('users')
         .insert({
-          id: clerkUser.id, // Clerk user ID as string
+          id: clerkUser.id,
           email: clerkUser.primaryEmailAddress?.emailAddress,
           full_name: fullName,
           user_type: userType,
@@ -122,7 +121,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, [user, fetchUserProfile]);
 
   const handleSignOut = async () => {
-    await signOut();
+    await clerkSignOut();
     setUserProfile(null);
   };
 

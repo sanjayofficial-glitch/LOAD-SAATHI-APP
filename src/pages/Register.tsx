@@ -8,13 +8,27 @@ import React, { useState, useEffect } from "react";
 
 const Register = () => {
   const [searchParams] = useSearchParams();
-  const { isSignedIn, userProfile } = useAuth();
+  const { isSignedIn, userProfile, loading } = useAuth();
   const [userType, setUserType] = useState<"trucker" | "shipper">("shipper");
 
   useEffect(() => {
     const type = searchParams.get("userType") as "trucker" | "shipper";
     if (type) setUserType(type);
   }, [searchParams]);
+
+  useEffect(() => {
+    if (isSignedIn && userProfile) {
+      window.location.href = userProfile.user_type === "trucker" ? "/trucker/dashboard" : "/shipper/dashboard";
+    }
+  }, [isSignedIn, userProfile]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+      </div>
+    );
+  }
 
   if (isSignedIn && userProfile) {
     return <Navigate to={userProfile.user_type === "trucker" ? "/trucker/dashboard" : "/shipper/dashboard"} replace />;
@@ -81,6 +95,8 @@ const Register = () => {
               path="/register"
               signInUrl="/login"
               unsafeMetadata={{ user_type: userType }}
+              afterSignUpUrl="/"
+              redirectUrl="/"
               appearance={{
                 elements: {
                   formButtonPrimary: 

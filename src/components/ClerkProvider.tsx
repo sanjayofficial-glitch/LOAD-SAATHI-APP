@@ -15,6 +15,8 @@ export const ClerkProviderWrapper = ({ children }: ClerkProviderWrapperProps) =>
       publishableKey={clerkPublishableKey} 
       afterSignInUrl="/" 
       afterSignUpUrl="/"
+      signInFallbackRedirectUrl="/"
+      signUpFallbackRedirectUrl="/"
     >
       {children}
     </ClerkProvider>
