@@ -3,7 +3,7 @@
 import { ClerkProvider } from "@clerk/clerk-react";
 import { ReactNode } from "react";
 
-const clerkPublishableKey = import.meta.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || "pk_test_placeholder";
+const clerkPublishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || "pk_test_placeholder";
 
 interface ClerkProviderWrapperProps {
   children: ReactNode;
