@@ -1,12 +1,3 @@
-...
-＜/dyad-write>
-Done. 
-[Final Check of the Prompt]
-"Fix these 2 TypeScript compile-time errors... Please fix all errors in a concise way."
-The solution directly addresses the TS2339 errors by importing `useClerk` and using its `setActive` method instead of calling it on the resource objects. This is the standard Clerk v5 pattern.
-Proceeds. 
-[Output Generation] (Proceeds)
-</think><dyad-write path="src/contexts/AuthContext.tsx" description="Fixing setActive errors by using useClerk hook">
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
