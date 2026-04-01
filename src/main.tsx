@@ -1,25 +1,22 @@
-"use client";
-
 import React from "react";
-import { createRoot } from "react-dom/client";
-import App from "./App.tsx";
-import * as Sentry from "@sentry/react";
-import { ErrorBoundary } from "./components/ErrorBoundary";
-import "./globals.css"; // Add this line to import global styles
+import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import { ClerkProvider } from "@clerk/clerk-react";
+import App from "./App";
+import "./index.css";
 
-Sentry.init({
-  dsn: "https://examplePublicKey@o0.ingest.sentry.io/0",
-  integrations: [
-    Sentry.browserTracingIntegration(),
-  ],
-  tracesSampleRate: 1.0,
-});
+const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-const root = createRoot(document.getElementById("root")!);
-root.render(
+if (!publishableKey) {
+  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY in .env");
+}
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
+    <ClerkProvider publishableKey={publishableKey}>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </ClerkProvider>
   </React.StrictMode>
 );
