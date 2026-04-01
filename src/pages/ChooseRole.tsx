@@ -31,7 +31,7 @@ const ChooseRole = () => {
       const supabase = createClerkSupabaseClient(supabaseToken);
 
       // 3. UPSERT user into the public.users table
-      // This will INSERT if the user doesn't exist, or UPDATE if they do (trigger already created them)
+      // This safely updates the existing row created by the trigger, or inserts if missing
       const { error: upsertError } = await supabase
         .from("users")
         .upsert({
@@ -40,7 +40,7 @@ const ChooseRole = () => {
           user_type: role,
           full_name: user.fullName || "",
         }, {
-          onConflict: 'id'  // Specify the conflict column
+          onConflict: 'id'
         });
 
       if (upsertError) {
