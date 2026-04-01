@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUser } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { showSuccess, showError } from '@/utils/toast';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,7 +33,7 @@ import {
 
 const MyShipments = () => {
   const { userProfile } = useAuth();
-  const { getToken } = useUser();
+  const { getToken } = useClerkAuth();
   const [shipments, setShipments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 

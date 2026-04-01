@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUser } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { Truck, MapPin, Calendar, IndianRupee, Loader2 } from 'lucide-react';
 
 const PostTrip = () => {
   const { userProfile } = useAuth();
-  const { getToken } = useUser();
+  const { getToken } = useClerkAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({

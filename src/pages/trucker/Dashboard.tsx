@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUser } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Trip, Request } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ import Star from '@/components/Star';
 
 const TruckerDashboard = () => {
   const { userProfile, refreshProfile } = useAuth();
-  const { getToken } = useUser();
+  const { getToken } = useClerkAuth();
   const queryClient = useQueryClient();
 
   const { data: trips = [], isLoading: tripsLoading } = useQuery({

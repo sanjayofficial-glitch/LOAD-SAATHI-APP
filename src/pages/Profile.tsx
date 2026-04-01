@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUser } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,7 +30,7 @@ import Star from '@/components/Star';
 
 const Profile = () => {
   const { userProfile, refreshProfile } = useAuth();
-  const { getToken } = useUser();
+  const { getToken } = useClerkAuth();
   const [fullName, setFullName] = useState(userProfile?.full_name || '');
   const [phone, setPhone] = useState(userProfile?.phone || '');
   const [companyName, setCompanyName] = useState(userProfile?.company_name || '');

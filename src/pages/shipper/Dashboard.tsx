@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUser } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Request } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,7 @@ import Star from '@/components/Star';
 
 const ShipperDashboard = () => {
   const { userProfile } = useAuth();
-  const { getToken } = useUser();
+  const { getToken } = useClerkAuth();
   const queryClient = useQueryClient();
   
   const [reviewTarget, setReviewTarget] = useState<{

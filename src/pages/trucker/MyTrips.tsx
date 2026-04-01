@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUser } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Trip } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,7 +33,7 @@ import {
 
 const MyTrips = () => {
   const { userProfile } = useAuth();
-  const { getToken } = useUser();
+  const { getToken } = useClerkAuth();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -146,8 +146,7 @@ const MyTrips = () => {
           {trips.map(trip => (
             <Card key={trip.id} className="overflow-hidden border-orange-100 hover:shadow-md transition-shadow">
               <CardContent className="p-0">
-                <div className="flex flex-col md:flex-row md:items<dyad-write path="src/pages/trucker/MyTrips.tsx" description="Completing MyTrips page update">
-...center justify-between p-6 gap-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between p-6 gap-6">
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center text-xl font-bold text-gray-900">

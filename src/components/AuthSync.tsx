@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import { useUser } from "@clerk/clerk-react";
+import { useUser, useSession } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import { createClerkSupabaseClient } from "@/utils/supabaseClient";
 
 const AuthSync = () => {
   const { isLoaded, isSignedIn, user } = useUser();
+  const { session } = useSession();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -14,8 +15,7 @@ const AuthSync = () => {
 
     const handleAuthSync = async () => {
       try {
-        // Use any cast to avoid TypeScript error with getToken
-        const supabaseToken = await (user as any).getToken?.({ template: "supabase" });
+        const supabaseToken = await session?.getToken({ template: "supabase" });
         if (!supabaseToken) {
           console.error("[AuthSync] Failed to get Supabase token");
           return;
@@ -35,9 +35,9 @@ const AuthSync = () => {
           return;
         }
 
-        if (data.user_type === "shipper") {
+        if (data?.user_type === "shipper") {
           navigate("/shipper/dashboard");
-        } else if (data.user_type === "trucker") {
+        } else if (data?.user_type === "trucker") {
           navigate("/trucker/dashboard");
         } else {
           navigate("/choose-role");
@@ -49,7 +49,7 @@ const AuthSync = () => {
     };
 
     handleAuthSync();
-  }, [isLoaded, isSignedIn, user, navigate]);
+  }, [isLoaded, isSignedIn, user, session, navigate]);
 
   return null;
 };

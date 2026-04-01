@@ -2,7 +2,7 @@ import React from 'react';
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUser } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Trip } from '@/types';
 import { Button } from '@/components/ui/button';
@@ -35,7 +35,7 @@ const INDIAN_CITIES = [
 
 const BrowseTrips = () => {
   const { userProfile } = useAuth();
-  const { getToken } = useUser();
+  const { getToken } = useClerkAuth();
   const [aiQuery, setAiQuery] = useState('');
   const [filters, setFilters] = useState({
     origin: '',

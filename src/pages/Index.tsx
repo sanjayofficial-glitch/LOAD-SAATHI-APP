@@ -1,22 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Truck, Package, CheckCircle, ArrowRight } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useUser } from '@clerk/clerk-react';
 import IndexSkeleton from '@/components/IndexSkeleton';
 
 const Index = () => {
-  const { userProfile, loading: authLoading } = useAuth();
+  const { isLoaded, isSignedIn, user } = useUser();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate a brief loading for skeleton display
     const timer = setTimeout(() => setIsLoading(false), 500);
     return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    // Check if we are in a recovery flow before redirecting to dashboard
+    if (!isLoaded) return;
+    
     const isRecovery = window.location.hash.includes('type=recovery') || 
                        window.location.search.includes('type=recovery') ||
                        window.location.search.includes('code=');
@@ -26,13 +26,12 @@ const Index = () => {
       return;
     }
 
-    // Only redirect if we are CERTAIN the user is logged in and NOT in recovery
-    if (!authLoading && userProfile) {
-      navigate(userProfile.user_type === 'trucker' ? '/trucker/dashboard' : '/shipper/dashboard');
+    if (isSignedIn && user) {
+      navigate('/auth-sync');
     }
-  }, [userProfile, authLoading, navigate]);
+  }, [isLoaded, isSignedIn, user, navigate]);
 
-  if (isLoading) {
+  if (isLoading || !isLoaded) {
     return <IndexSkeleton />;
   }
 

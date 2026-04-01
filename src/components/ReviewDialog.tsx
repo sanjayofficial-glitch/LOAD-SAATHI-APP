@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { 
   Dialog, 
@@ -36,7 +36,7 @@ const ReviewDialog = ({
   truckerName,
   onSuccess 
 }: ReviewDialogProps) => {
-  const { getToken } = useUser();
+  const { getToken } = useClerkAuth();
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
   const [comment, setComment] = useState('');

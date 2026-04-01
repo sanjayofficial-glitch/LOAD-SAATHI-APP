@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useUser } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Message } from '@/types/chat';
 import { fetchMessages, sendMessage, subscribeToMessages, markMessagesAsRead } from '@/utils/chat';
@@ -17,7 +17,7 @@ import { showError } from '@/utils/toast';
 const Chat = () => {
   const { requestId } = useParams<{ requestId: string }>();
   const { userProfile } = useAuth();
-  const { getToken } = useUser();
+  const { getToken } = useClerkAuth();
   const navigate = useNavigate();
   
   const [messages, setMessages] = useState<Message[]>([]);
@@ -118,6 +118,8 @@ const Chat = () => {
         recipientId: recipient.id,
         content: content,
         requestId: requestId,
+        getToken: () => getToken({ template: 'supabase' }),
+        userId: userProfile.id,
       });
       
       // Optimistically add message if not already added by subscription

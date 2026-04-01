@@ -1,5 +1,4 @@
 import { toast } from "sonner";
-import { useUser } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Message } from '@/types/chat';
 
@@ -26,21 +25,17 @@ export const sendMessage = async (payload: {
   recipientId: string;
   content: string;
   requestId?: string;
+  getToken: () => Promise<string | null>;
+  userId: string;
 }): Promise<Message> => {
-  const { recipientId, content, requestId } = payload;
+  const { recipientId, content, requestId, getToken, userId } = payload;
 
   if (!recipientId || !content) {
     throw new Error('Recipient ID and message content are required');
   }
 
   try {
-    // Get Clerk user and token
-    const { user, getToken } = useUser();
-    if (!user) {
-      throw new Error('User not authenticated. Please log in again.');
-    }
-
-    const supabaseToken = await getToken({ template: 'supabase' });
+    const supabaseToken = await getToken();
     if (!supabaseToken) {
       throw new Error('Failed to get Supabase token');
     }
@@ -50,7 +45,7 @@ export const sendMessage = async (payload: {
     const { data, error } = await supabase
       .from('messages')
       .insert({
-        sender_id: user.id,
+        sender_id: userId,
         recipient_id: recipientId,
         content: content.trim(),
         request_id: requestId,

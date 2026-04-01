@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
-import { useUser } from '@clerk/clerk-react';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { Notification } from '@/types';
 import { Button } from '@/components/ui/button';
 import { useQueryClient } from '@tanstack/react-query';
@@ -34,7 +34,7 @@ import { showSuccess } from '@/utils/toast';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const { userProfile, signOut, refreshProfile } = useAuth();
-  const { getToken } = useUser();
+  const { getToken } = useClerkAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
