@@ -13,10 +13,10 @@ if (!publishableKey) {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <BrowserRouter>
-      <ClerkProvider publishableKey={publishableKey}>
+    <ClerkProvider publishableKey={publishableKey}>
+      <BrowserRouter>
         <App />
-      </ClerkProvider>
-    </BrowserRouter>
+      </BrowserRouter>
+    </ClerkProvider>
   </React.StrictMode>
 );
