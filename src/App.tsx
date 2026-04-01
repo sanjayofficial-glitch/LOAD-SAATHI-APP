@@ -3,8 +3,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ClerkProvider, SignIn, SignUp, SignedIn, SignedOut } from "@clerk/clerk-react";
+import { Routes, Route } from "react-router-dom";
+import { SignIn, SignUp, SignedIn, SignedOut } from "@clerk/clerk-react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Layout from "@/components/Layout";
 import { Loader2 } from "lucide-react";
@@ -47,65 +47,59 @@ const LoadingFallback = () => (
 );
 
 const App = () => {
-  const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || "";
-
   return (
-    <ClerkProvider publishableKey={publishableKey}>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <SpeedInsights />
-          <BrowserRouter>
-            <AuthProvider>
-              <Suspense fallback={<LoadingFallback />}>
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  
-                  {/* Auth Routes */}
-                  <Route path="/login" element={
-                    <SignedOut>
-                      <SignIn routing="path" path="/login" forceRedirectUrl="/auth-sync" />
-                    </SignedOut>
-                  } />
-                  <Route path="/register" element={
-                    <SignedOut>
-                      <SignUp routing="path" path="/register" forceRedirectUrl="/choose-role" />
-                    </SignedOut>
-                  } />
-                  
-                  <Route path="/choose-role" element={<ChooseRole />} />
-                  <Route path="/auth-sync" element={<AuthSync />} />
-                  
-                  {/* Protected Routes */}
-                  <Route path="/shipper/dashboard" element={<SignedIn><Layout><ShipperDashboard /></Layout></SignedIn>} />
-                  <Route path="/shipper/post-shipment" element={<SignedIn><Layout><PostShipments /></Layout></SignedIn>} />
-                  <Route path="/shipper/my-shipments" element={<SignedIn><Layout><MyShipments /></Layout></SignedIn>} />
-                  <Route path="/shipper/edit-shipment/:id" element={<SignedIn><Layout><EditShipment /></Layout></SignedIn>} />
-                  <Route path="/shipments/:id" element={<SignedIn><Layout><ShipmentDetail /></Layout></SignedIn>} />
-                  
-                  <Route path="/trucker/dashboard" element={<SignedIn><Layout><TruckerDashboard /></Layout></SignedIn>} />
-                  <Route path="/trucker/post-trip" element={<SignedIn><Layout><PostTrip /></Layout></SignedIn>} />
-                  <Route path="/trucker/my-trips" element={<SignedIn><Layout><MyTrips /></Layout></SignedIn>} />
-                  <Route path="/trucker/edit-trip/:id" element={<SignedIn><Layout><EditTrip /></Layout></SignedIn>} />
-                  <Route path="/trucker/browse-shipments" element={<SignedIn><Layout><BrowseShipments /></Layout></SignedIn>} />
-                  <Route path="/trucker/my-requests" element={<SignedIn><Layout><MyShipmentRequests /></Layout></SignedIn>} />
-                  
-                  <Route path="/browse-trucks" element={<SignedIn><Layout><BrowseTrips /></Layout></SignedIn>} />
-                  <Route path="/trips/:id" element={<SignedIn><Layout><TripDetail /></Layout></SignedIn>} />
-                  <Route path="/profile" element={<SignedIn><Layout><Profile /></Layout></SignedIn>} />
-                  <Route path="/messages" element={<SignedIn><Layout><ChatList /></Layout></SignedIn>} />
-                  <Route path="/chat/:requestId" element={<SignedIn><Layout><Chat /></Layout></SignedIn>} />
-                  <Route path="/admin" element={<SignedIn><Layout><AdminDashboard /></Layout></SignedIn>} />
-                  
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </Suspense>
-            </AuthProvider>
-          </BrowserRouter>
-        </TooltipProvider>
-      </QueryClientProvider>
-    </ClerkProvider>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <SpeedInsights />
+        <AuthProvider>
+          <Suspense fallback={<LoadingFallback />}>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              
+              {/* Auth Routes */}
+              <Route path="/login" element={
+                <SignedOut>
+                  <SignIn routing="path" path="/login" forceRedirectUrl="/auth-sync" />
+                </SignedOut>
+              } />
+              <Route path="/register" element={
+                <SignedOut>
+                  <SignUp routing="path" path="/register" forceRedirectUrl="/choose-role" />
+                </SignedOut>
+              } />
+              
+              <Route path="/choose-role" element={<ChooseRole />} />
+              <Route path="/auth-sync" element={<AuthSync />} />
+              
+              {/* Protected Routes */}
+              <Route path="/shipper/dashboard" element={<SignedIn><Layout><ShipperDashboard /></Layout></SignedIn>} />
+              <Route path="/shipper/post-shipment" element={<SignedIn><Layout><PostShipments /></Layout></SignedIn>} />
+              <Route path="/shipper/my-shipments" element={<SignedIn><Layout><MyShipments /></Layout></SignedIn>} />
+              <Route path="/shipper/edit-shipment/:id" element={<SignedIn><Layout><EditShipment /></Layout></SignedIn>} />
+              <Route path="/shipments/:id" element={<SignedIn><Layout><ShipmentDetail /></Layout></SignedIn>} />
+              
+              <Route path="/trucker/dashboard" element={<SignedIn><Layout><TruckerDashboard /></Layout></SignedIn>} />
+              <Route path="/trucker/post-trip" element={<SignedIn><Layout><PostTrip /></Layout></SignedIn>} />
+              <Route path="/trucker/my-trips" element={<SignedIn><Layout><MyTrips /></Layout></SignedIn>} />
+              <Route path="/trucker/edit-trip/:id" element={<SignedIn><Layout><EditTrip /></Layout></SignedIn>} />
+              <Route path="/trucker/browse-shipments" element={<SignedIn><Layout><BrowseShipments /></Layout></SignedIn>} />
+              <Route path="/trucker/my-requests" element={<SignedIn><Layout><MyShipmentRequests /></Layout></SignedIn>} />
+              
+              <Route path="/browse-trucks" element={<SignedIn><Layout><BrowseTrips /></Layout></SignedIn>} />
+              <Route path="/trips/:id" element={<SignedIn><Layout><TripDetail /></Layout></SignedIn>} />
+              <Route path="/profile" element={<SignedIn><Layout><Profile /></Layout></SignedIn>} />
+              <Route path="/messages" element={<SignedIn><Layout><ChatList /></Layout></SignedIn>} />
+              <Route path="/chat/:requestId" element={<SignedIn><Layout><Chat /></Layout></SignedIn>} />
+              <Route path="/admin" element={<SignedIn><Layout><AdminDashboard /></Layout></SignedIn>} />
+              
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </AuthProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 };
 
