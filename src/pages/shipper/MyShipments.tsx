@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { useUser } from '@clerk/clerk-react';
+import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { showSuccess, showError } from '@/utils/toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,27 +33,38 @@ import {
 
 const MyShipments = () => {
   const { userProfile } = useAuth();
+  const { getToken } = useUser();
   const [shipments, setShipments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchShipments = async () => {
     if (!userProfile?.id) return;
 
-    const { data, error } = await supabase
-      .from('shipments')
-      .select(`
-        *,
-        requests:shipment_requests(count)
-      `)
-      .eq('shipper_id', userProfile.id)
-      .order('created_at', { ascending: false });
-    
-    if (error) {
-      showError('Failed to fetch shipments');
-    } else if (data) {
-      setShipments(data);
+    try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('No Supabase token');
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
+
+      const { data, error } = await supabase
+        .from('shipments')
+        .select(`
+          *,
+          requests:shipment_requests(count)
+        `)
+        .eq('shipper_id', userProfile.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        showError('Failed to fetch shipments');
+      } else if (data) {
+        setShipments(data);
+      }
+    } catch (err: any) {
+      showError(err.message || 'Failed to fetch shipments');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -60,16 +72,25 @@ const MyShipments = () => {
   }, [userProfile]);
 
   const handleDeleteShipment = async (shipmentId: string) => {
-    const { error } = await supabase
-      .from('shipments')
-      .delete()
-      .eq('id', shipmentId);
+    try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('No Supabase token');
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
 
-    if (error) {
-      showError('Failed to delete shipment. It might have active requests.');
-    } else {
-      showSuccess('Shipment deleted successfully');
-      fetchShipments();
+      const { error } = await supabase
+        .from('shipments')
+        .delete()
+        .eq('id', shipmentId);
+
+      if (error) {
+        showError('Failed to delete shipment. It might have active requests.');
+      } else {
+        showSuccess('Shipment deleted successfully');
+        fetchShipments();
+      }
+    } catch (err: any) {
+      showError(err.message || 'Failed to delete shipment');
     }
   };
 
