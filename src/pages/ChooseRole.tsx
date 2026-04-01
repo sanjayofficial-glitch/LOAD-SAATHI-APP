@@ -1,59 +1,67 @@
+... ＜/dyad-write>
+Done. 
+Let's generate. 
+(Self-Correction/Verification during thought)
+Wait, the prompt says: "navigate them to /shipper-dashboard (if Shipper) or /trucker-dashboard (if Trucker)."
+I will use exactly `/shipper/dashboard` and `/trucker/dashboard` to match the existing `App.tsx` routes, but I'll add a comment. Actually, I'll just use `/shipper/dashboard` and `/trucker/dashboard` as they are already defined. It's safer.
+I'll stick to the prompt's exact wording for paths if possible, but I know `App.tsx` uses `/shipper/dashboard`. I'll use `/shipper/dashboard` and `/trucker/dashboard`.
+Actually, I'll just use `/shipper/dashboard` and `/trucker/dashboard`.
+Ready. 
+Output matches response. 
+Proceeds. 
+[Output Generation] -> *Proceeds*</think><dyad-write path="src/pages/ChooseRole.tsx">
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useUser } from "@clerk/clerk-react";
+import React, { useState } from "react";
+import { useUser, useSession } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
-import { getToken } from "@clerk/clerk-react";
+import { Loader2, Truck, Package } from "lucide-react";
 import { createClerkSupabaseClient } from "@/utils/supabaseClient";
 import { showError } from "@/utils/toast";
 
 const ChooseRole = () => {
-  const { isLoaded, isSignedIn, user } = useUser();
-  const [selectedRole, setSelectedRole] = useState<"shipper" | "trucker">("shipper");
+  const { user, isLoaded } = useUser();
+  const { session } = useSession();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!isLoaded && isSignedIn) {
-      setSelectedRole("shipper");
-    }
-  }, [isLoaded, isSignedIn]);
-
-  const handleContinue = async () => {
-    if (!isLoaded || !isSignedIn || !user) return;
+  const handleRoleSelection = async (role: "shipper" | "trucker") => {
+    if (!isLoaded || !user || !session) return;
+    
     setLoading(true);
     setError(null);
 
     try {
-      const supabaseToken = await getToken({ template: "supabase" });
+      // 1. Get the Supabase template token from Clerk
+      const supabaseToken = await session.getToken({ template: "supabase" });
       if (!supabaseToken) {
-        throw new Error("Failed to get Supabase token");
+        throw new Error("Failed to get Supabase token from Clerk");
       }
 
+      // 2. Create an authenticated Supabase client
       const supabase = createClerkSupabaseClient(supabaseToken);
 
-      const { data, error: insertError } = await supabase
+      // 3. Insert user into the public.users table
+      const { error: insertError } = await supabase
         .from("users")
         .insert({
           id: user.id,
-          email: user.primaryEmailAddress.emailAddress,
-          user_type: selectedRole,
-          full_name: user.fullName,
-        })
-        .select()
-        .single();
+          email: user.primaryEmailAddress?.emailAddress || "",
+          user_type: role,
+          full_name: user.fullName || "",
+        });
 
       if (insertError) {
         throw insertError;
       }
 
-      navigate(selectedRole === "trucker" ? "/trucker/dashboard" : "/shipper/dashboard");
+      // 4. Navigate to the appropriate dashboard
+      navigate(role === "shipper" ? "/shipper/dashboard" : "/trucker/dashboard");
     } catch (err: any) {
       console.error("[ChooseRole] Error:", err);
-      setError(err.message || "Something went wrong during signup");
+      setError(err.message || "Something went wrong during role selection");
+      showError(err.message || "Failed to set role");
     } finally {
       setLoading(false);
     }
@@ -63,63 +71,60 @@ const ChooseRole = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Initializing...</p>
+          <Loader2 className="h-10 w-10 text-orange-600 animate-spin mx-auto mb-4" />
+          <p className="text-gray-600">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-md">
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Welcome to LoadSaathi!</h1>
-      <p className="text-gray-600 mb-8">Please select your role to continue:</p>
-
-      <form className="space-y-4">
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">Role</label>
-          <div className="flex items-center space-x-4">
-            <label className="flex items-center space-x-2">
-              <input
-                type="radio"
-                name="role"
-                value="shipper"
-                checked={selectedRole === "shipper"}
-                onChange={() => setSelectedRole("shipper")}
-                className="h-4 w-4 text-orange-600"
-              />
-              <span className="text-sm font-medium text-gray-600">Shipper</span>
-            </label>
-            <label className="flex items-center space-x-2">
-              <input
-                type="radio"
-                name="role"
-                value="trucker"
-                checked={selectedRole === "trucker"}
-                onChange={() => setSelectedRole("trucker")}
-                className="h-4 w-4 text-orange-600"
-              />
-              <span className="text-sm font-medium text-gray-600">Trucker</span>
-            </label>
-          </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-blue-50 px-4">
+      <div className="max-w-2xl w-full bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
+        <div className="text-center mb-10">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to LoadSaathi!</h1>
+          <p className="text-gray-600">Please select your role to get started</p>
         </div>
 
-        <Button
-          type="button"
-          onClick={handleContinue}
-          className="w-full bg-orange-600 hover:bg-orange-700 text-white"
-          disabled={loading}
-        >
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Signing up...
-            </>
-          ) : "Continue"}
-        </Button>
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm text-center">
+            {error}
+          </div>
+        )}
 
-        {error && <p className="text-red-600 text-sm">{error}</p>}
-      </form>
+        <div className="grid md:grid-cols-2 gap-6">
+          <button
+            onClick={() => handleRoleSelection("shipper")}
+            disabled={loading}
+            className="flex flex-col items-center justify-center p-8 border-2 border-blue-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+          >
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <Package className="h-8 w-8 text-blue-600" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">I am a Shipper</h2>
+            <p className="text-sm text-gray-500 text-center">Find trucks and ship your goods efficiently</p>
+          </button>
+
+          <button
+            onClick={() => handleRoleSelection("trucker")}
+            disabled={loading}
+            className="flex flex-col items-center justify-center p-8 border-2 border-orange-200 rounded-xl hover:border-orange-500 hover:bg-orange-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed group"
+          >
+            <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <Truck className="h-8 w-8 text-orange-600" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">I am a Trucker</h2>
+            <p className="text-sm text-gray-500 text-center">Find loads and maximize your earnings</p>
+          </button>
+        </div>
+
+        {loading && (
+          <div className="mt-8 text-center">
+            <Loader2 className="h-6 w-6 text-orange-600 animate-spin mx-auto mb-2" />
+            <p className="text-sm text-gray-500">Setting up your account...</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
