@@ -8,7 +8,6 @@ const Register = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check if user is already signed in
     if (window.Clerk?.user) {
       navigate("/trucker/dashboard");
     }
@@ -20,7 +19,7 @@ const Register = () => {
         routing="path"
         path="/register"
         signInFallbackRedirectUrl="/login"
-        afterSignUpUrl="/register"
+        afterSignUpUrl="/choose-role"
         afterSignInUrl="/trucker/dashboard"
       />
     </div>

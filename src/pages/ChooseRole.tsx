@@ -18,7 +18,6 @@ const ChooseRole = () => {
 
   useEffect(() => {
     if (!isLoaded && isSignedIn) {
-      // Default to shipper if loaded while signed in
       setSelectedRole("shipper");
     }
   }, [isLoaded, isSignedIn]);
@@ -29,16 +28,13 @@ const ChooseRole = () => {
     setError(null);
 
     try {
-      // Get Supabase auth token from Clerk
       const supabaseToken = await getToken({ template: "supabase" });
       if (!supabaseToken) {
         throw new Error("Failed to get Supabase token");
       }
 
-      // Create Supabase client with Clerk JWT
       const supabase = createClerkSupabaseClient(supabaseToken);
 
-      // Insert user profile into our database
       const { data, error: insertError } = await supabase
         .from("users")
         .insert({
@@ -54,7 +50,6 @@ const ChooseRole = () => {
         throw insertError;
       }
 
-      // Navigate to appropriate dashboard
       navigate(selectedRole === "trucker" ? "/trucker/dashboard" : "/shipper/dashboard");
     } catch (err: any) {
       console.error("[ChooseRole] Error:", err);
