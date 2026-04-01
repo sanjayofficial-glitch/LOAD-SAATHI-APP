@@ -1,14 +1,14 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { useAuth as useClerkAuth, useUser } from "@clerk/clerk-react";
+import { useUser, useAuth } from "@clerk/clerk-react";
 import { supabase } from "@/lib/supabaseClient";
 import { User } from "@/types";
 
 interface ClerkContextType {
-  user: ReturnType<typeof useClerkAuth>["user"];
-  isSignedIn: ReturnType<typeof useClerkAuth>["isSignedIn"];
-  isLoaded: ReturnType<typeof useClerkAuth>["isLoaded"];
+  user: any;
+  isSignedIn: boolean;
+  isLoaded: boolean;
   signOut: () => Promise<void>;
   userProfile: User | null;
   loading: boolean;
@@ -25,7 +25,8 @@ export const useClerk = () => {
 };
 
 export const ClerkAuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const { user, isSignedIn, isLoaded, signOut: clerkSignOut } = useUser();
+  const { user, isLoaded, isSignedIn } = useUser();
+  const { signOut: clerkSignOut } = useAuth();
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -33,7 +34,6 @@ export const ClerkAuthProvider = ({ children }: { children: React.ReactNode }) =
     if (!clerkUser) return null;
 
     try {
-      // Check if user exists in our database
       const { data: existingUser } = await supabase
         .from("users")
         .select("*")
@@ -44,7 +44,6 @@ export const ClerkAuthProvider = ({ children }: { children: React.ReactNode }) =
         return existingUser as User;
       }
 
-      // Create new user in our database
       const { data: newUser, error } = await supabase
         .from("users")
         .insert({
@@ -52,7 +51,7 @@ export const ClerkAuthProvider = ({ children }: { children: React.ReactNode }) =
           email: clerkUser.emailAddresses[0]?.emailAddress || "",
           full_name: `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim(),
           phone: clerkUser.phoneNumbers[0]?.phoneNumber || "",
-          user_type: "shipper", // Default, can be changed in profile
+          user_type: "shipper",
           is_verified: clerkUser.verifications?.status === "verified",
           rating: 0,
           total_trips: 0,

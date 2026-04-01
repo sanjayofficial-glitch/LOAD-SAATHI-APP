@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useUser } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
-import { getToken } from "@clerk/clerk-react";
 import { createClerkSupabaseClient } from "@/utils/supabaseClient";
 
 const AuthSync = () => {
@@ -15,7 +14,7 @@ const AuthSync = () => {
 
     const handleAuthSync = async () => {
       try {
-        const supabaseToken = await getToken({ template: "supabase" });
+        const supabaseToken = await user.getToken({ template: "supabase" });
         if (!supabaseToken) {
           console.error("[AuthSync] Failed to get Supabase token");
           return;

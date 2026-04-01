@@ -1,37 +1,33 @@
 "use client";
 
-import { useUser } from "@clerk/clerk-react";
-import { useEffect, useState, useCallback } from "react";
+import React from "react";
+import { useUser, useAuth } from "@clerk/clerk-react";
+import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { User } from "@/types";
-import { createClerkSupabaseClient } from "@/utils/supabaseClient";
 
 interface ClerkContextType {
-  user: ReturnType<typeof useUser>["user"];
-  isSignedIn: ReturnType<typeof useUser>["isSignedIn"];
-  isLoaded: ReturnType<typeof useUser>["isLoaded"];
+  user: any;
+  isSignedIn: boolean;
+  isLoaded: boolean;
   signOut: () => Promise<void>;
   userProfile: User | null;
   loading: boolean;
 }
 
-const ClerkContext = /*#__PURE__*/ (() => {
-  const ctx = /*#__PURE__*/ React.createContext<ClerkContextType | undefined>(undefined);
-  
-  return {
-    ClerkContext: ctx,
-    useClerk: () => {
-      const context = React.useContext(ctx);
-      if (!context) {
-        throw new Error("useClerk must be used within a ClerkAuthProvider");
-      }
-      return context;
-    }
-  };
-})();
+const ClerkContext = createContext<ClerkContextType | undefined>(undefined);
+
+export const useClerk = () => {
+  const context = useContext(ClerkContext);
+  if (!context) {
+    throw new Error("useClerk must be used within a ClerkAuthProvider");
+  }
+  return context;
+};
 
 export const ClerkAuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const { user, isSignedIn, isLoaded, signOut: clerkSignOut } = useUser();
+  const { user, isLoaded, isSignedIn } = useUser();
+  const { signOut: clerkSignOut } = useAuth();
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -98,7 +94,7 @@ export const ClerkAuthProvider = ({ children }: { children: React.ReactNode }) =
   };
 
   return (
-    <ClerkContext.ClerkContext.Provider
+    <ClerkContext.Provider
       value={{
         user,
         isSignedIn,
@@ -109,6 +105,6 @@ export const ClerkAuthProvider = ({ children }: { children: React.ReactNode }) =
       }}
     >
       {children}
-    </ClerkContext.ClerkContext.Provider>
+    </ClerkContext.Provider>
   );
 };
