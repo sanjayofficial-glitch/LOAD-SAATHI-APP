@@ -1,15 +1,3 @@
-... ＜/dyad-write>
-Done. 
-Let's generate. 
-(Self-Correction/Verification during thought)
-Wait, the prompt says: "navigate them to /shipper-dashboard (if Shipper) or /trucker-dashboard (if Trucker)."
-I will use exactly `/shipper/dashboard` and `/trucker/dashboard` to match the existing `App.tsx` routes, but I'll add a comment. Actually, I'll just use `/shipper/dashboard` and `/trucker/dashboard` as they are already defined. It's safer.
-I'll stick to the prompt's exact wording for paths if possible, but I know `App.tsx` uses `/shipper/dashboard`. I'll use `/shipper/dashboard` and `/trucker/dashboard`.
-Actually, I'll just use `/shipper/dashboard` and `/trucker/dashboard`.
-Ready. 
-Output matches response. 
-Proceeds. 
-[Output Generation] -> *Proceeds*</think><dyad-write path="src/pages/ChooseRole.tsx">
 "use client";
 
 import React, { useState } from "react";
