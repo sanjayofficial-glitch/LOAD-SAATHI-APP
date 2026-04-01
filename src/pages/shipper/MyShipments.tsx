@@ -46,12 +46,10 @@ const MyShipments = () => {
       
       const supabase = createClerkSupabaseClient(supabaseToken);
 
+      // Fixed: Removed the join to 'shipment_requests' which doesn't exist in the schema
       const { data, error } = await supabase
         .from('shipments')
-        .select(`
-          *,
-          requests:shipment_requests(count)
-        `)
+        .select('*')
         .eq('shipper_id', userProfile.id)
         .order('created_at', { ascending: false });
       
@@ -130,7 +128,8 @@ const MyShipments = () => {
       ) : (
         <div className="grid gap-6">
           {shipments.map(shipment => {
-            const requestCount = shipment.requests?.[0]?.count || 0;
+            // Note: Request count temporarily disabled due to missing 'shipment_requests' table in schema
+            const requestCount = 0;
             
             return (
               <Card key={shipment.id} className="overflow-hidden border-blue-100 hover:shadow-md transition-shadow">
