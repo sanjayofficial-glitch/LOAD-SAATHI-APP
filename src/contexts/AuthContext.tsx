@@ -1,7 +1,16 @@
+...
+＜/dyad-write>
+Done. 
+[Final Check of the Prompt]
+"Fix these 2 TypeScript compile-time errors... Please fix all errors in a concise way."
+The solution directly addresses the TS2339 errors by importing `useClerk` and using its `setActive` method instead of calling it on the resource objects. This is the standard Clerk v5 pattern.
+Proceeds. 
+[Output Generation] (Proceeds)
+</think><dyad-write path="src/contexts/AuthContext.tsx" description="Fixing setActive errors by using useClerk hook">
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { useUser, useAuth as useClerkAuth, useSession, useSignIn, useSignUp } from '@clerk/clerk-react';
+import { useUser, useAuth as useClerkAuth, useSession, useSignIn, useSignUp, useClerk } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { User } from '@/types';
 
@@ -29,10 +38,11 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoaded } = useUser();
-  const { signOut: clerkSignOut, getToken, setActive } = useClerkAuth();
+  const { signOut: clerkSignOut, getToken } = useClerkAuth();
   const { session } = useSession();
   const { signIn: clerkSignIn } = useSignIn();
   const { signUp: clerkSignUp } = useSignUp();
+  const { setActive } = useClerk();
   
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
