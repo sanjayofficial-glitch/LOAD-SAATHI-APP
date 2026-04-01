@@ -29,7 +29,7 @@ export const useAuth = () => {
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoaded } = useUser();
-  const { signOut: clerkSignOut, getToken } = useClerkAuth();
+  const { signOut: clerkSignOut, getToken, setActive } = useClerkAuth();
   const { session } = useSession();
   const { signIn: clerkSignIn } = useSignIn();
   const { signUp: clerkSignUp } = useSignUp();
@@ -63,7 +63,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return data as User;
       }
 
-      // Fallback to Clerk user data if not in DB yet
       return {
         id: clerkUser.id,
         email: clerkUser.primaryEmailAddress?.emailAddress || '',
@@ -118,7 +117,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       
       if (result.status === 'complete') {
-        await clerkSignUp.setActive({ session: result.createdSessionId });
+        await setActive({ session: result.createdSessionId });
       }
       return { error: null };
     } catch (err: any) {
@@ -134,7 +133,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       
       if (result.status === 'complete') {
-        await clerkSignIn.setActive({ session: result.createdSessionId });
+        await setActive({ session: result.createdSessionId });
       }
       return { error: null };
     } catch (err: any) {
