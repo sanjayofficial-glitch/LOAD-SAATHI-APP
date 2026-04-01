@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { useUser } from '@clerk/clerk-react';
+import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Trip } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,6 +18,7 @@ import Star from '@/components/Star';
 const TripDetail = () => {
   const { id } = useParams();
   const { userProfile } = useAuth();
+  const { getToken } = useUser();
   const navigate = useNavigate();
   const [trip, setTrip] = useState<Trip | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,26 +28,36 @@ const TripDetail = () => {
 
   useEffect(() => {
     const fetchTrip = async () => {
-      const { data, error } = await supabase
-        .from('trips')
-        .select('*, trucker:users(*)')
-        .eq('id', id)
-        .single();
-      
-      if (error) {
-        showError('Trip not found');
-      } else if (data) {
-        // Handle potential array return for trucker join
-        const mappedTrip = {
-          ...data,
-          trucker: Array.isArray(data.trucker) ? data.trucker[0] : data.trucker
-        };
-        setTrip(mappedTrip as unknown as Trip);
+      try {
+        const supabaseToken = await getToken({ template: 'supabase' });
+        if (!supabaseToken) throw new Error('No Supabase token');
+        
+        const supabase = createClerkSupabaseClient(supabaseToken);
+        
+        const { data, error } = await supabase
+          .from('trips')
+          .select('*, trucker:users(*)')
+          .eq('id', id)
+          .single();
+        
+        if (error) {
+          showError('Trip not found');
+        } else if (data) {
+          // Handle potential array return for trucker join
+          const mappedTrip = {
+            ...data,
+            trucker: Array.isArray(data.trucker) ? data.trucker[0] : data.trucker
+          };
+          setTrip(mappedTrip as unknown as Trip);
+        }
+      } catch (err: any) {
+        showError(err.message || 'Failed to load trip');
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
     fetchTrip();
-  }, [id]);
+  }, [id, getToken]);
 
   const handleRequest = async () => {
     if (!userProfile) return navigate('/login');
@@ -69,6 +81,11 @@ const TripDetail = () => {
 
     setSubmitting(true);
     try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('No Supabase token');
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
+      
       // Insert the request
       const { data: requestData, error: insertError } = await supabase
         .from('requests')

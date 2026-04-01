@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { useUser } from '@clerk/clerk-react';
+import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +12,7 @@ import { Truck, MapPin, Calendar, IndianRupee, Loader2 } from 'lucide-react';
 
 const PostTrip = () => {
   const { userProfile } = useAuth();
+  const { getToken } = useUser();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -47,6 +49,11 @@ const PostTrip = () => {
 
     setLoading(true);
     try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('No Supabase token');
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
+      
       const { error } = await supabase.from('trips').insert({
         trucker_id: userProfile.id,
         origin_city: formData.origin_city.trim(),
@@ -65,8 +72,8 @@ const PostTrip = () => {
         showSuccess('Trip posted successfully!');
         navigate('/trucker/dashboard');
       }
-    } catch (err) {
-      showError('An unexpected error occurred while posting the trip.');
+    } catch (err: any) {
+      showError(err.message || 'An unexpected error occurred while posting the trip.');
     } finally {
       setLoading(false);
     }

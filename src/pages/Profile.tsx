@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { useUser } from '@clerk/clerk-react';
+import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,7 +29,8 @@ import {
 import Star from '@/components/Star';
 
 const Profile = () => {
-  const { userProfile, refreshProfile, resetPassword } = useAuth();
+  const { userProfile, refreshProfile } = useAuth();
+  const { getToken } = useUser();
   const [fullName, setFullName] = useState(userProfile?.full_name || '');
   const [phone, setPhone] = useState(userProfile?.phone || '');
   const [companyName, setCompanyName] = useState(userProfile?.company_name || '');
@@ -55,6 +57,11 @@ const Profile = () => {
     setStatsLoading(true);
     
     try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) return;
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
+      
       if (userProfile.user_type === 'trucker') {
         const { count } = await supabase
           .from('trips')
@@ -79,6 +86,11 @@ const Profile = () => {
     if (!userProfile) return;
     setReviewsLoading(true);
     try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) return;
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
+      
       const { data, error } = await supabase
         .from('reviews')
         .select('*, shipper:users(full_name)')
@@ -97,34 +109,35 @@ const Profile = () => {
 
   const handleUpdate = async () => {
     setLoading(true);
-    const { error } = await supabase
-      .from('users')
-      .update({ 
-        full_name: fullName, 
-        phone, 
-        company_name: companyName 
-      })
-      .eq('id', userProfile?.id);
+    try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) {
+        showError('Authentication error');
+        return;
+      }
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
+      
+      const { error } = await supabase
+        .from('users')
+        .update({ 
+          full_name: fullName, 
+          phone, 
+          company_name: companyName 
+        })
+        .eq('id', userProfile?.id);
 
-    if (error) {
-      showError(error.message);
-    } else {
-      showSuccess('Profile updated successfully!');
-      refreshProfile();
+      if (error) {
+        showError(error.message);
+      } else {
+        showSuccess('Profile updated successfully!');
+        refreshProfile();
+      }
+    } catch (err: any) {
+      showError(err.message || 'Failed to update profile');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  };
-
-  const handlePasswordReset = async () => {
-    if (!userProfile?.email) return;
-    setLoading(true);
-    const { error } = await resetPassword(userProfile.email);
-    if (error) {
-      showError(error.message);
-    } else {
-      showSuccess('Password reset link sent to your email!');
-    }
-    setLoading(false);
   };
 
   return (
@@ -364,17 +377,8 @@ const Profile = () => {
                   <div>
                     <h4 className="text-sm font-bold text-red-900">Password Management</h4>
                     <p className="text-sm text-red-700 mt-1">
-                      Need to change your password? We'll send a secure reset link to your registered email address.
+                      Manage your password through your Clerk account settings.
                     </p>
-                    <Button 
-                      variant="outline" 
-                      className="mt-4 border-red-200 text-red-700 hover:bg-red-100"
-                      onClick={handlePasswordReset}
-                      disabled={loading}
-                    >
-                      {loading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                      Send Reset Link
-                    </Button>
                   </div>
                 </div>
               </div>

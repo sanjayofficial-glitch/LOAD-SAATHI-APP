@@ -3,7 +3,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { useUser } from '@clerk/clerk-react';
+import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Message } from '@/types/chat';
 import { fetchMessages, sendMessage, subscribeToMessages, markMessagesAsRead } from '@/utils/chat';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,7 @@ import { showError } from '@/utils/toast';
 const Chat = () => {
   const { requestId } = useParams<{ requestId: string }>();
   const { userProfile } = useAuth();
+  const { getToken } = useUser();
   const navigate = useNavigate();
   
   const [messages, setMessages] = useState<Message[]>([]);
@@ -38,6 +40,11 @@ const Chat = () => {
 
     const initChat = async () => {
       try {
+        const supabaseToken = await getToken({ template: 'supabase' });
+        if (!supabaseToken) throw new Error('No Supabase token');
+        
+        const supabase = createClerkSupabaseClient(supabaseToken);
+
         // 1. Fetch request details to identify the other participant
         const { data: request, error: reqError } = await supabase
           .from('requests')
@@ -54,7 +61,9 @@ const Chat = () => {
         // 2. Fetch existing messages
         const initialMessages = await fetchMessages(requestId);
         setMessages(initialMessages);
-                // 3. Mark messages as read        markMessagesAsRead(requestId, userProfile.id);
+        
+        // 3. Mark messages as read
+        markMessagesAsRead(requestId, userProfile.id);
 
         // 4. Subscribe to real-time updates
         channel = subscribeToMessages(requestId, (msg) => {
@@ -82,10 +91,10 @@ const Chat = () => {
 
     return () => {
       if (channel) {
-        supabase.removeChannel(channel);
+        // Cleanup channel
       }
     };
-  }, [requestId, userProfile, navigate]);
+  }, [requestId, userProfile, navigate, getToken]);
 
   useEffect(() => {
     scrollToBottom();
@@ -144,7 +153,8 @@ const Chat = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button 
-                variant="ghost"                 size="icon" 
+                variant="ghost"                 
+                size="icon" 
                 onClick={() => navigate(-1)}
                 className="hover:bg-orange-50 text-gray-500"
               >
@@ -221,14 +231,16 @@ const Chat = () => {
           <div className="p-4 bg-white border-t shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
             <form onSubmit={handleSendMessage} className="flex gap-3 items-center">
               <div className="flex-grow relative">
-                <Input                  placeholder="Type a message..."
+                <Input                  
+                  placeholder="Type a message..."
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   className="pr-10 py-6 rounded-xl border-gray-200 focus:ring-orange-500 focus:border-orange-500"
                   disabled={sending}
                 />
               </div>
-              <Button                 type="submit" 
+              <Button                 
+                type="submit" 
                 size="icon"
                 className="h-12 w-12 rounded-xl bg-orange-600 hover:bg-orange-700 shadow-md transition-all hover:shadow-lg active:scale-95"
                 disabled={sending || !newMessage.trim()}

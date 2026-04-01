@@ -2,7 +2,8 @@ import React from 'react';
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { useUser } from '@clerk/clerk-react';
+import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Trip } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -34,6 +35,7 @@ const INDIAN_CITIES = [
 
 const BrowseTrips = () => {
   const { userProfile } = useAuth();
+  const { getToken } = useUser();
   const [aiQuery, setAiQuery] = useState('');
   const [filters, setFilters] = useState({
     origin: '',
@@ -49,6 +51,11 @@ const BrowseTrips = () => {
   const { data: trips = [], isLoading: loading } = useQuery({
     queryKey: ['trips', 'active'],
     queryFn: async () => {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('No Supabase token');
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
+      
       const { data, error } = await supabase
         .from('trips')
         .select('*')

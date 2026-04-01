@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { useUser, useAuth as useClerkAuth, useSession } from '@clerk/clerk-react';
-import { supabase } from '@/lib/supabaseClient';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { User } from '@/types';
 
@@ -11,11 +10,8 @@ interface AuthContextType {
   session: any;
   userProfile: User | null;
   loading: boolean;
-  signUp: (email: string, password: string, userType: 'trucker' | 'shipper', fullName: string, phone: string, companyName?: string) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -103,19 +99,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     initAuth();
   }, [isLoaded, user, fetchUserProfile]);
 
-  // These are now handled by Clerk UI components
-  const signUp = async () => {
-    return { error: { message: 'Please use the registration form' } };
-  };
-
-  const signIn = async () => {
-    return { error: { message: 'Please use the login form' } };
-  };
-
-  const resetPassword = async () => {
-    return { error: { message: 'Please use the forgot password form' } };
-  };
-
   const signOut = async () => {
     await clerkSignOut();
     setUserProfile(null);
@@ -127,11 +110,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       session, 
       userProfile, 
       loading, 
-      signUp, 
-      signIn, 
       signOut, 
       refreshProfile, 
-      resetPassword 
     }}>
       {children}
     </AuthContext.Provider>

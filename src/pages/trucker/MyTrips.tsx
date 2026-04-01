@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { useUser } from '@clerk/clerk-react';
+import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Trip } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,18 +33,29 @@ import {
 
 const MyTrips = () => {
   const { userProfile } = useAuth();
+  const { getToken } = useUser();
   const [trips, setTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchTrips = async () => {
-    const { data } = await supabase
-      .from('trips')
-      .select('*')
-      .eq('trucker_id', userProfile?.id)
-      .order('created_at', { ascending: false });
-    
-    if (data) setTrips(data as Trip[]);
-    setLoading(false);
+    try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('No Supabase token');
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
+      
+      const { data } = await supabase
+        .from('trips')
+        .select('*')
+        .eq('trucker_id', userProfile?.id)
+        .order('created_at', { ascending: false });
+      
+      if (data) setTrips(data as Trip[]);
+    } catch (err: any) {
+      showError(err.message || 'Failed to load trips');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -51,30 +63,48 @@ const MyTrips = () => {
   }, [userProfile]);
 
   const handleCompleteTrip = async (tripId: string) => {
-    const { error } = await supabase
-      .from('trips')
-      .update({ status: 'completed' })
-      .eq('id', tripId);
+    try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('No Supabase token');
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
+      
+      const { error } = await supabase
+        .from('trips')
+        .update({ status: 'completed' })
+        .eq('id', tripId);
 
-    if (error) {
-      showError('Failed to complete trip');
-    } else {
-      showSuccess('Trip marked as completed!');
-      fetchTrips();
+      if (error) {
+        showError('Failed to complete trip');
+      } else {
+        showSuccess('Trip marked as completed!');
+        fetchTrips();
+      }
+    } catch (err: any) {
+      showError(err.message || 'Failed to complete trip');
     }
   };
 
   const handleDeleteTrip = async (tripId: string) => {
-    const { error } = await supabase
-      .from('trips')
-      .delete()
-      .eq('id', tripId);
+    try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('No Supabase token');
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
+      
+      const { error } = await supabase
+        .from('trips')
+        .delete()
+        .eq('id', tripId);
 
-    if (error) {
-      showError('Failed to delete trip. It might have active booking requests.');
-    } else {
-      showSuccess('Trip deleted successfully');
-      fetchTrips();
+      if (error) {
+        showError('Failed to delete trip. It might have active booking requests.');
+      } else {
+        showSuccess('Trip deleted successfully');
+        fetchTrips();
+      }
+    } catch (err: any) {
+      showError(err.message || 'Failed to delete trip');
     }
   };
 
@@ -116,7 +146,8 @@ const MyTrips = () => {
           {trips.map(trip => (
             <Card key={trip.id} className="overflow-hidden border-orange-100 hover:shadow-md transition-shadow">
               <CardContent className="p-0">
-                <div className="flex flex-col md:flex-row md:items-center justify-between p-6 gap-6">
+                <div className="flex flex-col md:flex-row md:items<dyad-write path="src/pages/trucker/MyTrips.tsx" description="Completing MyTrips page update">
+...center justify-between p-6 gap-6">
                   <div className="flex-1 space-y-3">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center text-xl font-bold text-gray-900">

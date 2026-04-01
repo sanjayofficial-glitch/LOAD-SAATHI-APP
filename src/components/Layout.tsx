@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { createClerkSupabaseClient } from '@/utils/supabaseClient';
+import { useUser } from '@clerk/clerk-react';
 import { Notification } from '@/types';
 import { Button } from '@/components/ui/button';
 import { useQueryClient } from '@tanstack/react-query';
@@ -32,7 +33,8 @@ import {
 import { showSuccess } from '@/utils/toast';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
-  const { userProfile, signOut } = useAuth();
+  const { userProfile, signOut, refreshProfile } = useAuth();
+  const { getToken } = useUser();
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
@@ -43,56 +45,55 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const fetchNotifications = useCallback(async () => {
     if (!userProfile?.id) return;
     
-    const { data } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userProfile.id)
-      .order('created_at', { ascending: false })
-      .limit(10);
+    try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) return;
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
+      
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userProfile.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
 
-    if (data) {
-      setNotifications(data as Notification[]);
-      setUnreadCount(data.filter(n => !n.is_read).length);
+      if (data) {
+        setNotifications(data as Notification[]);
+        setUnreadCount(data.filter(n => !n.is_read).length);
+      }
+    } catch (err) {
+      console.error('[Layout] Error fetching notifications:', err);
     }
-  }, [userProfile?.id]);
+  }, [userProfile?.id, getToken]);
 
   useEffect(() => {
     if (userProfile) {
       fetchNotifications();
-      
-      const subscription = supabase
-        .channel(`notifications:${userProfile.id}`)
-        .on('postgres_changes', { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'notifications',
-          filter: `user_id=eq.${userProfile.id}`
-        }, (payload) => {
-          const newNotif = payload.new as Notification;
-          setNotifications(prev => [newNotif, ...prev].slice(0, 10));
-          setUnreadCount(prev => prev + 1);
-          showSuccess(newNotif.message);
-        })
-        .subscribe();
-
-      return () => {
-        subscription.unsubscribe();
-      };
     }
   }, [userProfile, fetchNotifications]);
 
   const markAsRead = async () => {
     if (unreadCount === 0 || !userProfile?.id) return;
     
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('user_id', userProfile.id)
-      .eq('is_read', false);
-    
-    if (!error) {
-      setUnreadCount(0);
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) return;
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
+      
+      const { error } = await supabase
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', userProfile.id)
+        .eq('is_read', false);
+      
+      if (!error) {
+        setUnreadCount(0);
+        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      }
+    } catch (err) {
+      console.error('[Layout] Error marking notifications as read:', err);
     }
   };
 

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import { useUser } from '@clerk/clerk-react';
+import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { 
   Dialog, 
   DialogContent, 
@@ -35,6 +36,7 @@ const ReviewDialog = ({
   truckerName,
   onSuccess 
 }: ReviewDialogProps) => {
+  const { getToken } = useUser();
   const [rating, setRating] = useState(0);
   const [hover, setHover] = useState(0);
   const [comment, setComment] = useState('');
@@ -48,6 +50,11 @@ const ReviewDialog = ({
 
     setSubmitting(true);
     try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('No Supabase token');
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
+      
       const { error } = await supabase
         .from('reviews')
         .insert({
