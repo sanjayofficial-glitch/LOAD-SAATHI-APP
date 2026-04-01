@@ -30,18 +30,21 @@ const ChooseRole = () => {
       // 2. Create an authenticated Supabase client
       const supabase = createClerkSupabaseClient(supabaseToken);
 
-      // 3. Insert user into the public.users table
-      const { error: insertError } = await supabase
+      // 3. UPSERT user into the public.users table
+      // This will INSERT if the user doesn't exist, or UPDATE if they do (trigger already created them)
+      const { error: upsertError } = await supabase
         .from("users")
-        .insert({
+        .upsert({
           id: user.id,
           email: user.primaryEmailAddress?.emailAddress || "",
           user_type: role,
           full_name: user.fullName || "",
+        }, {
+          onConflict: 'id'  // Specify the conflict column
         });
 
-      if (insertError) {
-        throw insertError;
+      if (upsertError) {
+        throw upsertError;
       }
 
       // 4. Navigate to the appropriate dashboard
