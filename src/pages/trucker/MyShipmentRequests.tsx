@@ -2,8 +2,8 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSupabase } from '@/hooks/useSupabase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,7 @@ import { showError } from '@/utils/toast';
 
 const MyShipmentRequests = () => {
   const { userProfile } = useAuth();
+  const { getAuthenticatedClient } = useSupabase();
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,48 +30,41 @@ const MyShipmentRequests = () => {
     if (!userProfile?.id) return;
     
     try {
-      // 1. Fetch requests
+      const supabase = await getAuthenticatedClient();
+      
+      // 1. Fetch requests joined with their associated trips
       const { data: requestData, error: requestError } = await supabase
-        .from('shipment_requests')
-        .select('*')
-        .eq('trucker_id', userProfile.id)
+        .from('requests')
+        .select(`
+          *,
+          trip:trips(*)
+        `)
         .order('created_at', { ascending: false });
 
       if (requestError) throw requestError;
 
-      if (requestData && requestData.length > 0) {
-        // 2. Fetch related shipments
-        const shipmentIds = [...new Set(requestData.map(r => r.shipment_id))];
-        const { data: shipmentData, error: shipmentError } = await supabase
-          .from('shipments')
-          .select('*')
-          .in('id', shipmentIds);
+      // 2. Filter client-side for requests on this trucker's trips
+      const myRequests = (requestData || []).filter(r => r.trip?.trucker_id === userProfile.id);
 
-        if (shipmentError) throw shipmentError;
-
-        // 3. Fetch shippers for those shipments
-        const shipperIds = [...new Set(shipmentData?.map(s => s.shipper_id) || [])];
+      if (myRequests.length > 0) {
+        // 3. Fetch shipper profiles for these requests
+        const shipperIds = [...new Set(myRequests.map(r => r.shipper_id))];
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('*')
           .in('id', shipperIds);
+
+        if (userError) throw userError;
 
         const userMap = (userData || []).reduce((acc: any, user: any) => {
           acc[user.id] = user;
           return acc;
         }, {});
 
-        const shipmentMap = (shipmentData || []).reduce((acc: any, shipment: any) => {
-          acc[shipment.id] = {
-            ...shipment,
-            shipper: userMap[shipment.shipper_id]
-          };
-          return acc;
-        }, {});
-
-        const requestsWithData = requestData.map(r => ({
+        // Attach shipper data to each request
+        const requestsWithData = myRequests.map(r => ({
           ...r,
-          shipment: shipmentMap[r.shipment_id]
+          shipper: userMap[r.shipper_id]
         }));
 
         setRequests(requestsWithData);
@@ -83,29 +77,11 @@ const MyShipmentRequests = () => {
     } finally {
       setLoading(false);
     }
-  }, [userProfile?.id]);
+  }, [userProfile?.id, getAuthenticatedClient]);
 
   useEffect(() => {
     fetchRequests();
-
-    if (userProfile?.id) {
-      const channel = supabase
-        .channel(`my_shipment_requests_${userProfile.id}`)
-        .on('postgres_changes', { 
-          event: '*', 
-          schema: 'public', 
-          table: 'shipment_requests',
-          filter: `trucker_id=eq.${userProfile.id}`
-        }, () => {
-          fetchRequests();
-        })
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    }
-  }, [userProfile?.id, fetchRequests]);
+  }, [fetchRequests]);
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[400px]">
@@ -134,8 +110,8 @@ const MyShipmentRequests = () => {
       ) : (
         <div className="grid gap-6">
           {requests.map((request) => {
-            const shipment = request.shipment;
-            if (!shipment) return null;
+            const trip = request.trip;
+            if (!trip) return null;
 
             return (
               <Card key={request.id} className={`overflow-hidden border-orange-100 ${
@@ -146,7 +122,7 @@ const MyShipmentRequests = () => {
                     <div className="flex-1 space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center text-xl font-bold text-gray-900">
-                          {shipment.origin_city} <ArrowRight className="h-4 w-4 mx-2 text-gray-400" /> {shipment.destination_city}
+                          {trip.origin_city} <ArrowRight className="h-4 w-4 mx-2 text-gray-400" /> {trip.destination_city}
                         </div>
                         <Badge className={
                           request.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 
@@ -160,17 +136,17 @@ const MyShipmentRequests = () => {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                         <div className="flex items-center text-gray-600">
                           <Calendar className="h-4 w-4 mr-2 text-orange-600" />
-                          Ready by: {new Date(shipment.departure_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                          Ready by: {new Date(trip.departure_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                         </div>
                         <div className="flex items-center font-bold text-green-600">
                           <IndianRupee className="h-4 w-4 mr-1" />
-                          Budget: {shipment.budget_per_tonne.toLocaleString()} /t
+                          Price: {trip.price_per_tonne.toLocaleString()} /t
                         </div>
                       </div>
 
                       <div className="bg-gray-50 p-3 rounded-lg">
                         <p className="text-xs text-gray-500 uppercase font-bold mb-1">Goods</p>
-                        <p className="text-sm text-gray-700">{shipment.goods_description} ({shipment.weight_tonnes}t)</p>
+                        <p className="text-sm text-gray-700">{request.goods_description} ({request.weight_tonnes}t)</p>
                       </div>
                     </div>
 
@@ -179,11 +155,11 @@ const MyShipmentRequests = () => {
                         <>
                           <div className="bg-green-50 p-3 rounded-lg border border-green-100 mb-2">
                             <p className="text-[10px] text-green-700 font-bold uppercase mb-1">Shipper Contact</p>
-                            <p className="text-sm font-bold text-gray-900">{shipment.shipper?.full_name}</p>
-                            <p className="text-xs text-gray-600">{shipment.shipper?.phone}</p>
+                            <p className="text-sm font-bold text-gray-900">{request.shipper?.full_name}</p>
+                            <p className="text-xs text-gray-600">{request.shipper?.phone}</p>
                           </div>
                           <div className="flex gap-2">
-                            <a href={`tel:${shipment.shipper?.phone}`} className="flex-1">
+                            <a href={`tel:${request.shipper?.phone}`} className="flex-1">
                               <Button size="sm" variant="outline" className="w-full border-green-200 text-green-700 hover:bg-green-50">
                                 <Phone className="h-4 w-4" />
                               </Button>
