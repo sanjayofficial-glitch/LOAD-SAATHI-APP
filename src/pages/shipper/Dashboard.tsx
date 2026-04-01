@@ -6,15 +6,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSupabase } from '@/hooks/useSupabase';
 import { Request } from '@/types';
 import { Button } from '@/components/ui/button';
-<dyad-write path="src/pages/shipper/Dashboard.tsx" description="Refactoring ShipperDashboard to use useSupabase hook">
-"use client";
-
-import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useSupabase } from '@/hooks/useSupabase';
-import { Request } from '@/types';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
