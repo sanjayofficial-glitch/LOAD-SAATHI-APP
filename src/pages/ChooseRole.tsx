@@ -6,11 +6,13 @@ import { useNavigate } from "react-router-dom";
 import { Loader2, Truck, Package } from "lucide-react";
 import { createClerkSupabaseClient } from "@/utils/supabaseClient";
 import { showError } from "@/utils/toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const ChooseRole = () => {
   const { user, isLoaded } = useUser();
   const { session } = useSession();
   const navigate = useNavigate();
+  const { refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -21,25 +23,30 @@ const ChooseRole = () => {
     setError(null);
 
     try {
-      // 1. Get the Supabase template token from Clerk
       const supabaseToken = await session.getToken({ template: "supabase" });
       if (!supabaseToken) {
         throw new Error("Failed to get Supabase token from Clerk");
       }
 
-      // 2. Create an authenticated Supabase client
       const supabase = createClerkSupabaseClient(supabaseToken);
 
-      // 3. UPSERT user into the public.users table
-      // This safely updates the existing row created by the trigger, or inserts if missing
+      // Prepare user data with ALL required fields from the users table
+      const userData = {
+        id: user.id,
+        email: user.primaryEmailAddress?.emailAddress || "",
+        user_type: role,
+        full_name: user.fullName || "",
+        phone: user.primaryPhoneNumber?.phoneNumber || "",
+        company_name: null,
+        is_verified: false,
+        rating: 0,
+        total_trips: 0,
+        created_at: user.createdAt || new Date().toISOString(),
+      };
+
       const { error: upsertError } = await supabase
         .from("users")
-        .upsert({
-          id: user.id,
-          email: user.primaryEmailAddress?.emailAddress || "",
-          user_type: role,
-          full_name: user.fullName || "",
-        }, {
+        .upsert(userData, {
           onConflict: 'id'
         });
 
@@ -47,7 +54,14 @@ const ChooseRole = () => {
         throw upsertError;
       }
 
-      // 4. Navigate to the appropriate dashboard
+      // Refresh the user profile in AuthContext to update the user_type
+      const updatedProfile = await refreshProfile();
+      
+      // Verify that the profile was updated with the correct role
+      if (!updatedProfile || updatedProfile.user_type !== role) {
+        throw new Error(`Failed to set role to ${role}. Current role: ${updatedProfile?.user_type || 'none'}. Please try again or contact support.`);
+      }
+
       navigate(role === "shipper" ? "/shipper/dashboard" : "/trucker/dashboard");
     } catch (err: any) {
       console.error("[ChooseRole] Error:", err);

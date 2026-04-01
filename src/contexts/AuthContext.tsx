@@ -11,7 +11,7 @@ interface AuthContextType {
   userProfile: User | null;
   loading: boolean;
   signOut: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
+  refreshProfile: () => Promise<User | null>;
   signUp: (email: string, password: string, userType: string, fullName: string, phone: string, company?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   resetPassword: (email: string) => Promise<{ error: any }>;
@@ -81,11 +81,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [getToken]);
 
-  const refreshProfile = useCallback(async () => {
+  const refreshProfile = useCallback(async (): Promise<User | null> => {
     if (user) {
       const profile = await fetchUserProfile(user);
       setUserProfile(profile);
+      return profile;
     }
+    return null;
   }, [user, fetchUserProfile]);
 
   useEffect(() => {
