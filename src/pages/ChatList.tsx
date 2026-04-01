@@ -3,7 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/lib/supabaseClient';
+import { useUser } from '@clerk/clerk-react';
+import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ interface ChatConversation {
 
 const ChatList = () => {
   const { userProfile } = useAuth();
+  const { getToken } = useUser();
   const navigate = useNavigate();
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +36,11 @@ const ChatList = () => {
 
     const fetchConversations = async () => {
       try {
+        const supabaseToken = await getToken({ template: 'supabase' });
+        if (!supabaseToken) throw new Error('No Supabase token');
+        
+        const supabase = createClerkSupabaseClient(supabaseToken);
+
         // Get all messages where user is sender or recipient
         const { data: messages, error } = await supabase
           .from('messages')
@@ -109,7 +116,7 @@ const ChatList = () => {
     };
 
     fetchConversations();
-  }, [userProfile]);
+  }, [userProfile, getToken]);
 
   const getRequestTitle = (conv: ChatConversation) => {
     // Try to get trip info from the request
