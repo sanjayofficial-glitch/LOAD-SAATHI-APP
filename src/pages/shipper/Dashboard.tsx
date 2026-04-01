@@ -3,8 +3,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAuth as useClerkAuth } from '@clerk/clerk-react';
-import { createClerkSupabaseClient } from '@/utils/supabaseClient';
+import { useSupabase } from '@/hooks/useSupabase';
+import { Request } from '@/types';
+import { Button } from '@/components/ui/button';
+<dyad-write path="src/pages/shipper/Dashboard.tsx" description="Refactoring ShipperDashboard to use useSupabase hook">
+"use client";
+
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { useSupabase } from '@/hooks/useSupabase';
 import { Request } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,11 +32,10 @@ import {
   PlusSquare,
   Star as StarIcon
 } from 'lucide-react';
-import Star from '@/components/Star';
 
 const ShipperDashboard = () => {
   const { userProfile } = useAuth();
-  const { getToken } = useClerkAuth();
+  const { getAuthenticatedClient } = useSupabase();
   const queryClient = useQueryClient();
   
   const [reviewTarget, setReviewTarget] = useState<{
@@ -41,10 +48,7 @@ const ShipperDashboard = () => {
   const { data: requests = [], isLoading } = useQuery({
     queryKey: ['shipper-requests', userProfile?.id],
     queryFn: async () => {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
-      
-      const supabase = createClerkSupabaseClient(supabaseToken);
+      const supabase = await getAuthenticatedClient();
       
       const { data: requestData, error: requestError } = await supabase
         .from('requests')
@@ -94,11 +98,7 @@ const ShipperDashboard = () => {
   const { data: reviews = [] } = useQuery({
     queryKey: ['shipper-reviews', userProfile?.id],
     queryFn: async () => {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
-      
-      const supabase = createClerkSupabaseClient(supabaseToken);
-      
+      const supabase = await getAuthenticatedClient();
       const { data, error } = await supabase
         .from('reviews')
         .select('*')
@@ -108,13 +108,6 @@ const ShipperDashboard = () => {
     },
     enabled: !!userProfile?.id,
   });
-
-  useEffect(() => {
-    if (!userProfile?.id) return;
-
-    // Note: Real-time subscriptions would need the Clerk token as well
-    // For now, we'll rely on query invalidation
-  }, [userProfile?.id, queryClient]);
 
   const pendingCount = useMemo(() => requests.filter(r => r.status === 'pending').length, [requests]);
   const acceptedCount = useMemo(() => requests.filter(r => r.status === 'accepted').length, [requests]);

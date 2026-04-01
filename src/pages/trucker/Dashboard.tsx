@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAuth as useClerkAuth } from '@clerk/clerk-react';
-import { createClerkSupabaseClient } from '@/utils/supabaseClient';
+import { useSupabase } from '@/hooks/useSupabase';
 import { Trip, Request } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,23 +21,19 @@ import {
   Plus,
   Eye,
   Users,
-  Loader2
+  Loader2,
+  Star as StarIcon
 } from 'lucide-react';
-import Star from '@/components/Star';
 
 const TruckerDashboard = () => {
-  const { userProfile, refreshProfile } = useAuth();
-  const { getToken } = useClerkAuth();
+  const { userProfile } = useAuth();
+  const { getAuthenticatedClient } = useSupabase();
   const queryClient = useQueryClient();
 
   const { data: trips = [], isLoading: tripsLoading } = useQuery({
     queryKey: ['trucker-trips', userProfile?.id],
     queryFn: async () => {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
-      
-      const supabase = createClerkSupabaseClient(supabaseToken);
-      
+      const supabase = await getAuthenticatedClient();
       const { data, error } = await supabase
         .from('trips')
         .select('*')
@@ -50,21 +45,15 @@ const TruckerDashboard = () => {
     enabled: !!userProfile?.id,
   });
 
-  // We include trip IDs in the query key so it re-fetches when trips change
   const tripIdsKey = useMemo(() => trips.map(t => t.id).sort().join(','), [trips]);
 
   const { data: requests = [], isLoading: requestsLoading } = useQuery({
     queryKey: ['trucker-requests', userProfile?.id, tripIdsKey],
     queryFn: async () => {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
-      
-      const supabase = createClerkSupabaseClient(supabaseToken);
-      
+      const supabase = await getAuthenticatedClient();
       const tripIds = trips.map(t => t.id);
       if (tripIds.length === 0) return [];
       
-      // 1. Fetch requests
       const { data: requestData, error: requestError } = await supabase
         .from('requests')
         .select('*')
@@ -74,7 +63,6 @@ const TruckerDashboard = () => {
       if (requestError) throw requestError;
       if (!requestData || requestData.length === 0) return [];
 
-      // 2. Fetch related shippers
       const shipperIds = [...new Set(requestData.map(r => r.shipper_id))];
       const { data: userData, error: userError } = await supabase
         .from('users')
@@ -103,11 +91,7 @@ const TruckerDashboard = () => {
   const { data: reviews = [] } = useQuery({
     queryKey: ['trucker-reviews', userProfile?.id],
     queryFn: async () => {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
-      
-      const supabase = createClerkSupabaseClient(supabaseToken);
-      
+      const supabase = await getAuthenticatedClient();
       const { data, error } = await supabase
         .from('reviews')
         .select('*')
@@ -119,13 +103,6 @@ const TruckerDashboard = () => {
     enabled: !!userProfile?.id,
   });
 
-  useEffect(() => {
-    if (!userProfile?.id) return;
-
-    // Note: Real-time subscriptions would need the Clerk token as well
-    // For now, we'll rely on query invalidation
-  }, [userProfile?.id, queryClient, refreshProfile]);
-
   const handleAcceptRequest = useCallback(async (request: Request) => {
     if (!request.trip) return;
 
@@ -135,27 +112,14 @@ const TruckerDashboard = () => {
       return;
     }
 
-    // Optimistic Update
-    queryClient.setQueryData(['trucker-requests', userProfile?.id, tripIdsKey], (old: Request[] | undefined) => {
-      return old?.map(r => r.id === request.id ? { ...r, status: 'accepted' } : r);
-    });
-
     try {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
-      
-      const supabase = createClerkSupabaseClient(supabaseToken);
-      
+      const supabase = await getAuthenticatedClient();
       const { error: requestError } = await supabase
         .from('requests')
         .update({ status: 'accepted' })
         .eq('id', request.id);
 
-      if (requestError) {
-        showError('Failed to accept request');
-        queryClient.invalidateQueries({ queryKey: ['trucker-requests'] });
-        return;
-      }
+      if (requestError) throw requestError;
 
       await supabase
         .from('trips')
@@ -167,38 +131,24 @@ const TruckerDashboard = () => {
       queryClient.invalidateQueries({ queryKey: ['trucker-trips'] });
     } catch (err: any) {
       showError(err.message || 'Failed to accept request');
-      queryClient.invalidateQueries({ queryKey: ['trucker-requests'] });
     }
-  }, [queryClient, userProfile?.id, tripIdsKey, getToken]);
+  }, [getAuthenticatedClient, queryClient]);
 
   const handleDeclineRequest = useCallback(async (requestId: string) => {
-    // Optimistic Update
-    queryClient.setQueryData(['trucker-requests', userProfile?.id, tripIdsKey], (old: Request[] | undefined) => {
-      return old?.map(r => r.id === requestId ? { ...r, status: 'declined' } : r);
-    });
-
     try {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
-      
-      const supabase = createClerkSupabaseClient(supabaseToken);
-      
+      const supabase = await getAuthenticatedClient();
       const { error } = await supabase
         .from('requests')
         .update({ status: 'declined' })
         .eq('id', requestId);
 
-      if (error) {
-        showError('Failed to decline');
-        queryClient.invalidateQueries({ queryKey: ['trucker-requests'] });
-      } else {
-        showSuccess('Request declined');
-      }
+      if (error) throw error;
+      showSuccess('Request declined');
+      queryClient.invalidateQueries({ queryKey: ['trucker-requests'] });
     } catch (err: any) {
       showError(err.message || 'Failed to decline request');
-      queryClient.invalidateQueries({ queryKey: ['trucker-requests'] });
     }
-  }, [queryClient, userProfile?.id, tripIdsKey, getToken]);
+  }, [getAuthenticatedClient, queryClient]);
 
   const pendingRequests = useMemo(() => requests.filter(r => r.status === 'pending'), [requests]);
   const acceptedRequests = useMemo(() => requests.filter(r => r.status === 'accepted'), [requests]);
@@ -248,7 +198,7 @@ const TruckerDashboard = () => {
         <Card className="border-yellow-100 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Rating</CardTitle>
-            <Star filled className="h-4 w-4 text-yellow-600" />
+            <StarIcon className="h-4 w-4 text-yellow-600 fill-current" />
           </CardHeader>
           <CardContent><div className="text-2xl font-bold">{userProfile?.rating?.toFixed(1) || '0.0'}</div></CardContent>
         </Card>
@@ -353,7 +303,7 @@ const TruckerDashboard = () => {
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Average Rating</span>
                 <div className="flex items-center">
-                  <Star filled className="h-4 w-4 text-yellow-500 mr-1" />
+                  <StarIcon className="h-4 w-4 text-yellow-500 mr-1 fill-current" />
                   <span className="font-bold">{userProfile?.rating?.toFixed(1) || '0.0'}</span>
                 </div>
               </div>
