@@ -14,7 +14,8 @@ const AuthSync = () => {
 
     const handleAuthSync = async () => {
       try {
-        const supabaseToken = await user.getToken({ template: "supabase" });
+        // Use any cast to avoid TypeScript error with getToken
+        const supabaseToken = await (user as any).getToken?.({ template: "supabase" });
         if (!supabaseToken) {
           console.error("[AuthSync] Failed to get Supabase token");
           return;
