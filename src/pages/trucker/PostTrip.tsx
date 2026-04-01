@@ -185,26 +185,6 @@ const PostTrip = () => {
 
             <Button 
               type="submit" 
-              className="w-fullthink
-The previous response was cut off at the end of the `PostTrip.tsx` file. I need to complete that file and then provide the concise summary and chat summary as required by the system instructions.
-
-Looking at the previous output:
-```tsx
-            <Button 
-              type="submit" 
-              className="w-full
-```
-
-I need to finish the `Button` tag, the `form`, `CardContent`, `Card`, `div`, and the component export. Then I need to provide the one-sentence summary and the `<dyad-chat-summary>` tag.
-
-Wait, I also mentioned adding security policies to the `users` table in the text but didn't actually provide the SQL or the `dyad-write` for it (though I can't run SQL directly, I should have provided the instructions or the code changes). However, the user said "Continue exactly where you left off".
-
-Actually, looking at the previous response, I was in the middle of a `<dyad-write>` block for `src/pages/trucker/PostTrip.tsx`.
-
-Let's complete the file.
-
-```tsx
-              type="submit" 
               className="w-full bg-orange-600 hover:bg-orange-700 h-12 text-lg font-bold shadow-md transition-all hover:shadow-lg" 
               disabled={loading}
             >
