@@ -4,20 +4,20 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { ClerkAuthProvider, useClerk } from "@/contexts/ClerkContext";
 import Layout from "@/components/Layout";
 import { Truck, Loader2 } from "lucide-react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
-// Eager load core pages for faster transitions
+// Eager load core pages
 import Index from "./pages/Index";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import TruckerDashboard from "./pages/trucker/Dashboard";
 import ShipperDashboard from "./pages/shipper/Dashboard";
 
 // Lazy load secondary pages
 const NotFound = lazy(() => import("./pages/NotFound"));
-const Register = lazy(() => import("./pages/Register"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const UpdatePassword = lazy(() => import("./pages/UpdatePassword"));
 const PostTrip = lazy(() => import("./pages/trucker/PostTrip"));
@@ -30,7 +30,6 @@ const Profile = lazy(() => import("./pages/Profile"));
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
 const Chat = lazy(() => import("./pages/Chat"));
 const ChatList = lazy(() => import("./pages/ChatList"));
-const TestAuth = lazy(() => import("./pages/TestAuth"));
 const PostShipments = lazy(() => import("./pages/shipper/PostShipments"));
 const EditShipment = lazy(() => import("./pages/shipper/EditShipment"));
 const BrowseShipments = lazy(() => import("./pages/trucker/BrowseShipments"));
@@ -40,8 +39,8 @@ const MyShipmentRequests = lazy(() => import("./pages/trucker/MyShipmentRequests
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      gcTime: 1000 * 60 * 30, // 30 minutes
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 30,
       retry: 1,
       refetchOnWindowFocus: false,
     },
@@ -58,16 +57,15 @@ const LoadingFallback = () => (
 );
 
 const ProtectedRoute = ({ children, allowedTypes }: { children: React.ReactNode, allowedTypes?: ('trucker' | 'shipper')[] }) => {
-  const { userProfile, loading } = useAuth();
+  const { userProfile, loading, isSignedIn } = useClerk();
 
   if (loading) return <LoadingFallback />;
 
-  if (!userProfile) {
+  if (!isSignedIn || !userProfile) {
     return <Navigate to="/login" replace />;
   }
 
   if (allowedTypes && !allowedTypes.includes(userProfile.user_type)) {
-    // Redirect to their own dashboard if they try to access a page not meant for their role
     return <Navigate to={userProfile.user_type === 'trucker' ? '/trucker/dashboard' : '/shipper/dashboard'} replace />;
   }
 
@@ -80,7 +78,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <SpeedInsights />
-      <AuthProvider>
+      <ClerkAuthProvider>
         <BrowserRouter>
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
@@ -89,7 +87,6 @@ const App = () => (
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/update-password" element={<UpdatePassword />} />
-              <Route path="/test-auth" element={<TestAuth />} />
               
               {/* Trucker Routes */}
               <Route path="/trucker/dashboard" element={
@@ -176,16 +173,11 @@ const App = () => (
                   <Profile />
                 </ProtectedRoute>
               } />
-              <Route path="/admin" element={
-                <ProtectedRoute allowedTypes={['trucker']}>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              } />              
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
         </BrowserRouter>
-      </AuthProvider>
+      </ClerkAuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
