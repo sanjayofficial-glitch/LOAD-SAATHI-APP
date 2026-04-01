@@ -1,13 +1,22 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>dyad-generated-app</title>
-  </head>
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import { ClerkProvider } from "@clerk/clerk-react";
+import App from "./App";
+import "./index.css";
 
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>
+const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
+if (!publishableKey) {
+  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY in .env");
+}
+
+ReactDOM.createRoot(document.getElementById("root")!).render(
+React.StrictMode>
+    <ClerkProvider publishableKey={publishableKey}>
+BrowserRouter>
+        <App />
+      </BrowserRouter>
+ClerkProvider>
+  </React.StrictMode>
+);
