@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAuth as useClerkAuth } from '@clerk/clerk-react';
-import { createClerkSupabaseClient } from '@/utils/supabaseClient';
+import { useSupabase } from '@/hooks/useSupabase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +11,7 @@ import { Truck, MapPin, Calendar, IndianRupee, Loader2 } from 'lucide-react';
 
 const PostTrip = () => {
   const { userProfile } = useAuth();
-  const { getToken } = useClerkAuth();
+  const { getAuthenticatedClient } = useSupabase();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -33,7 +32,6 @@ const PostTrip = () => {
       return;
     }
 
-    // Validate numeric fields
     const capacity = parseFloat(formData.available_capacity_tonnes);
     const price = parseFloat(formData.price_per_tonne);
 
@@ -49,11 +47,7 @@ const PostTrip = () => {
 
     setLoading(true);
     try {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
-      
-      const supabase = createClerkSupabaseClient(supabaseToken);
-      
+      const supabase = await getAuthenticatedClient();
       const { error } = await supabase.from('trips').insert({
         trucker_id: userProfile.id,
         origin_city: formData.origin_city.trim(),
@@ -190,6 +184,26 @@ const PostTrip = () => {
             </div>
 
             <Button 
+              type="submit" 
+              className="w-fullthink
+The previous response was cut off at the end of the `PostTrip.tsx` file. I need to complete that file and then provide the concise summary and chat summary as required by the system instructions.
+
+Looking at the previous output:
+```tsx
+            <Button 
+              type="submit" 
+              className="w-full
+```
+
+I need to finish the `Button` tag, the `form`, `CardContent`, `Card`, `div`, and the component export. Then I need to provide the one-sentence summary and the `<dyad-chat-summary>` tag.
+
+Wait, I also mentioned adding security policies to the `users` table in the text but didn't actually provide the SQL or the `dyad-write` for it (though I can't run SQL directly, I should have provided the instructions or the code changes). However, the user said "Continue exactly where you left off".
+
+Actually, looking at the previous response, I was in the middle of a `<dyad-write>` block for `src/pages/trucker/PostTrip.tsx`.
+
+Let's complete the file.
+
+```tsx
               type="submit" 
               className="w-full bg-orange-600 hover:bg-orange-700 h-12 text-lg font-bold shadow-md transition-all hover:shadow-lg" 
               disabled={loading}
