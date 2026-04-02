@@ -1,20 +1,27 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useUser, useSession } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Truck, Package } from "lucide-react";
 import { createClerkSupabaseClient } from "@/utils/supabaseClient";
-import { showError } from "@/utils/toast";
+import { showError, showSuccess } from "@/utils/toast";
 import { useAuth } from "@/contexts/AuthContext";
 
 const ChooseRole = () => {
   const { user, isLoaded } = useUser();
   const { session } = useSession();
   const navigate = useNavigate();
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, userProfile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-redirect if role is already chosen
+  useEffect(() => {
+    if (isLoaded && userProfile?.user_type) {
+      navigate(userProfile.user_type === "shipper" ? "/shipper/dashboard" : "/trucker/dashboard", { replace: true });
+    }
+  }, [isLoaded, userProfile, navigate]);
 
   const handleRoleSelection = async (role: "shipper" | "trucker") => {
     if (!isLoaded || !user || !session) return;
@@ -30,7 +37,6 @@ const ChooseRole = () => {
 
       const supabase = createClerkSupabaseClient(supabaseToken);
 
-      // Prepare user data with ALL required fields from the users table
       const userData = {
         id: user.id,
         email: user.primaryEmailAddress?.emailAddress || "",
@@ -46,22 +52,12 @@ const ChooseRole = () => {
 
       const { error: upsertError } = await supabase
         .from("users")
-        .upsert(userData, {
-          onConflict: 'id'
-        });
+        .upsert(userData, { onConflict: 'id' });
 
-      if (upsertError) {
-        throw upsertError;
-      }
+      if (upsertError) throw upsertError;
 
-      // Refresh the user profile in AuthContext to update the user_type
-      const updatedProfile = await refreshProfile();
-
-      // Verify that the profile was updated with the correct role
-      if (!updatedProfile || updatedProfile.user_type !== role) {
-        throw new Error(`Failed to set role to ${role}. Current role: ${updatedProfile?.user_type || 'none'}. Please try again or contact support.`);
-      }
-
+      await refreshProfile();
+      showSuccess(`Welcome! You are now registered as a ${role === 'shipper' ? 'Shipper' : 'Trucker'}.`);
       navigate(role === "shipper" ? "/shipper/dashboard" : "/trucker/dashboard");
     } catch (err: any) {
       console.error("[ChooseRole] Error:", err);
