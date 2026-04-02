@@ -3,10 +3,13 @@
 import React, { useState, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
+import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { 
   Package, 
   MapPin, 
@@ -25,6 +28,14 @@ import { showError, showSuccess } from '@/utils/toast';
 import { useQuery } from '@tanstack/react-query';
 import { parseNaturalLanguageSearch } from '@/lib/gemini';
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 const INDIAN_CITIES = [
   'Delhi', 'Mumbai', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Ahmedabad', 'Pune', 'Surat', 'Kanpur',
@@ -36,6 +47,7 @@ const INDIAN_CITIES = [
 
 const BrowseShipments = () => {
   const { userProfile } = useAuth();
+  const { getToken } = useClerkAuth();
   const [aiQuery, setAiQuery] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -48,6 +60,13 @@ const BrowseShipments = () => {
     maxBudget: '',
     date: ''
   });
+
+  // Request Dialog State
+  const [selectedShipment, setSelectedShipment] = useState<any>(null);
+  const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
+  const [requestMessage, setRequestMessage] = useState('');
+  const [requestPrice, setRequestPrice] = useState('');
+  const [sendingRequest, setSendingRequest] = useState(false);
 
   const { data: shipments = [], isLoading: loading } = useQuery({
     queryKey: ['shipments', 'pending'],
@@ -165,8 +184,42 @@ const BrowseShipments = () => {
     });
   };
 
-  const handleContactShipper = async (shipmentId: string) => {
-    showSuccess('Interest expressed! The shipper will be notified.');
+  const openRequestDialog = (shipment: any) => {
+    setSelectedShipment(shipment);
+    setIsRequestDialogOpen(true);
+  };
+
+  const submitRequest = async () => {
+    if (!selectedShipment || !userProfile) return;
+    setSendingRequest(true);
+    try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('No Supabase token');
+      
+      const supabaseClient = createClerkSupabaseClient(supabaseToken);
+
+      const { error } = await supabaseClient
+        .from('shipment_requests')
+        .insert({
+          shipment_id: selectedShipment.id,
+          trucker_id: userProfile.id,
+          shipper_id: selectedShipment.shipper_id,
+          message: requestMessage.trim(),
+          proposed_price_per_tonne: requestPrice ? parseFloat(requestPrice) : null,
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      showSuccess('Request sent! The shipper will be notified.');
+      setIsRequestDialogOpen(false);
+      setRequestMessage('');
+      setRequestPrice('');
+    } catch (err: any) {
+      showError(err.message || 'Failed to send request');
+    } finally {
+      setSendingRequest(false);
+    }
   };
 
   if (loading) return (
@@ -431,9 +484,9 @@ const BrowseShipments = () => {
                           <div className="space-y-3">
                             <Button 
                               className="w-full bg-orange-600 hover:bg-orange-700 shadow-md"
-                              onClick={() => handleContactShipper(shipment.id)}
+                              onClick={() => openRequestDialog(shipment)}
                             >
-                              Contact Shipper
+                              Send Request
                               <ArrowRightIcon className="ml-2 h-4 w-4" />
                             </Button>
                             <p className="text-xs text-gray-500 text-center">
@@ -450,6 +503,53 @@ const BrowseShipments = () => {
           </div>
         </div>
       </div>
+
+      {/* Request Dialog */}
+      <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Send Booking Request</DialogTitle>
+            <DialogDescription>
+              Express interest in carrying {selectedShipment?.goods_description} from {selectedShipment?.origin_city} to {selectedShipment?.destination_city}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Proposed Price per Tonne (₹)</label>
+              <Input 
+                type="number" 
+                value={requestPrice} 
+                onChange={(e) => setRequestPrice(e.target.value)} 
+                placeholder="e.g. 2500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Message to Shipper</label>
+              <Textarea 
+                value={requestMessage} 
+                onChange={(e) => setRequestMessage(e.target.value)} 
+                placeholder="e.g. I have a 12-wheeler available on this route..."
+                className="h-24"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRequestDialogOpen(false)} disabled={sendingRequest}>Cancel</Button>
+            <Button 
+              onClick={submitRequest} 
+              className="bg-orange-600 hover:bg-orange-700"
+              disabled={sendingRequest}
+            >
+              {sendingRequest ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : 'Send Request'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

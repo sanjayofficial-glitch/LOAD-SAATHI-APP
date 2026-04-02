@@ -101,6 +101,7 @@ const TripDetail = () => {
         .insert({
           trip_id: id,
           shipper_id: userProfile.id,
+          receiver_id: trip.trucker_id, // Ensures notification goes ONLY to this trucker
           goods_description: description.trim(),
           weight_tonnes: requestedWeight,
           status: 'pending'
