@@ -35,6 +35,7 @@ const MyShipments = () => {
   const { userProfile } = useAuth();
   const { getToken } = useClerkAuth();
   const [shipments, setShipments] = useState<any[]>([]);
+  const [requestCounts, setRequestCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   const fetchShipments = async () => {
@@ -46,16 +47,36 @@ const MyShipments = () => {
       
       const supabase = createClerkSupabaseClient(supabaseToken);
 
-      const { data, error } = await supabase
+      // Fetch shipments
+      const { data: shipmentsData, error: shipmentsError } = await supabase
         .from('shipments')
         .select('*')
         .eq('shipper_id', userProfile.id)
         .order('created_at', { ascending: false });
       
-      if (error) {
-        showError('Failed to fetch shipments');
-      } else if (data) {
-        setShipments(data);
+      if (shipmentsError) throw shipmentsError;
+      
+      if (shipmentsData) {
+        setShipments(shipmentsData);
+        
+        // Fetch request counts for these shipments
+        const shipmentIds = shipmentsData.map(s => s.id);
+        const { data: requestsData, error: requestsError } = await supabase
+          .from('requests')
+          .select('shipment_id')
+          .in('shipment_id', shipmentIds);
+        
+        if (requestsError) throw requestsError;
+        
+        // Count requests per shipment
+        const counts: Record<string, number> = {};
+        shipmentIds.forEach(id => counts[id] = 0);
+        requestsData?.forEach(req => {
+          if (req.shipment_id) {
+            counts[req.shipment_id] = (counts[req.shipment_id] || 0) + 1;
+          }
+        });
+        setRequestCounts(counts);
       }
     } catch (err: any) {
       showError(err.message || 'Failed to fetch shipments');
@@ -127,7 +148,7 @@ const MyShipments = () => {
       ) : (
         <div className="grid gap-6">
           {shipments.map(shipment => {
-            const requestCount: number = 0;
+            const requestCount = requestCounts[shipment.id] || 0;
             
             return (
               <Card key={shipment.id} className="overflow-hidden border-blue-100 hover:shadow-md transition-shadow">
