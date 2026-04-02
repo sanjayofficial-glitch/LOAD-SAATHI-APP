@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuth as useClerkAuth } from '@clerk/clerk-react';
@@ -8,7 +8,6 @@ import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Truck, 
@@ -79,6 +78,8 @@ const TruckerHistory = () => {
         return <CheckCircle className="h-4 w-4 text-green-600" />;
       case 'pending':
         return <Clock className="h-4 w-4 text-yellow-600" />;
+      case 'active':
+        return <TrendingUp className="h-4 w-4 text-blue-600" />;
       case 'failed':
         return <AlertCircle className="h-4 w-4 text-red-600" />;
       default:
@@ -90,6 +91,7 @@ const TruckerHistory = () => {
     const statusConfig = {
       completed: { variant: 'default' as const, className: 'bg-green-100 text-green-800' },
       pending: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800' },
+      active: { variant: 'default' as const, className: 'bg-blue-100 text-blue-800' },
       failed: { variant: 'destructive' as const, className: 'bg-red-100 text-red-800' },
       cancelled: { variant: 'outline' as const, className: 'bg-gray-100 text-gray-800' }
     };
