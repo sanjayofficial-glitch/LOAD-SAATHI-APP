@@ -21,64 +21,63 @@ const TruckerDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      if (!userProfile?.id) return;
-      try {
-        const supabaseToken = await getToken({ template: 'supabase' });
-        if (!supabaseToken) throw new Error('No Supabase token');
-        const supabase = createClerkSupabaseClient(supabaseToken);
+  const loadStats = async () => {
+    if (!userProfile?.id) return;
+    try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('No Supabase token');
+      const supabase = createClerkSupabaseClient(supabaseToken);
 
-        // Active trips
-        const { count: activeTrips } = await supabase.from('trips').select('*', { count: 'exact', head: true }).eq('trucker_id', userProfile.id).eq('status', 'active');
-        
-        // Completed trips
-        const { count: completedTrips } = await supabase.from('trips').select('*', { count: 'exact', head: true }).eq('trucker_id', userProfile.id).eq('status', 'completed');
-        
-        // Pending requests
-        const { data: myTrips } = await supabase.from('trips').select('id').eq('trucker_id', userProfile.id).eq('status', 'active');
-        const tripIds = myTrips?.map(t => t.id) || [];
-        let pendingRequests = 0;
-        if (tripIds.length > 0) {
-          const { count } = await supabase.from('requests').select('*', { count: 'exact', head: true }).in('trip_id', tripIds).eq('status', 'pending');
-          pendingRequests = count || 0;
-        }
-
-        // Total earnings from completed trips
-        const { data: completedTripsData } = await supabase
-          .from('trips')
-          .select('price_per_tonne, requests!inner(weight_tonnes)')
-          .eq('trucker_id', userProfile.id)
-          .eq('status', 'completed');
-
-        const totalEarnings = completedTripsData?.reduce((sum, trip) => {
-          const request = trip.requests[0];
-          return sum + (request ? trip.price_per_tonne * request.weight_tonnes : 0);
-        }, 0) || 0;
-
-        // Upcoming trips
-        const { data: upcomingTrips } = await supabase
-          .from('trips')
-          .select('origin_city, destination_city, departure_date, price_per_tonne, vehicle_type')
-          .eq('trucker_id', userProfile.id)
-          .eq('status', 'active')
-          .order('departure_date', { ascending: true })
-          .limit(3);
-
-        setStats({ 
-          activeTrips: activeTrips || 0, 
-          pendingRequests, 
-          completedTrips: completedTrips || 0,
-          totalEarnings,
-          upcomingTrips: upcomingTrips || []
-        });
-      } catch (err: any) {
-        showError('Failed to load dashboard stats');
-      } finally {
-        setLoading(false);
+      // Active trips
+      const { count: activeTrips } = await supabase.from('trips').select('*', { count: 'exact', head: true }).eq('trucker_id', userProfile.id).eq('status', 'active');
+      
+      // Completed trips
+      const { count: completedTrips } = await supabase.from('trips').select('*', { count: 'exact', head: true }).eq('trucker_id', userProfile.id).eq('status', 'completed');
+            // Pending requests
+      const { data: myTrips } = await supabase.from('trips').select('id').eq('trucker_id', userProfile.id).eq('status', 'active');
+      const tripIds = myTrips?.map(t => t.id) || [];
+      let pendingRequests = 0;
+      if (tripIds.length > 0) {
+        const { count } = await supabase.from('requests').select('*', { count: 'exact', head: true }).in('trip_id', tripIds).eq('status', 'pending');
+        pendingRequests = count || 0;
       }
-    };
-    fetchStats();
+
+      // Total earnings from completed trips
+      const { data: completedTripsData } = await supabase        .from('trips')
+        .select('price_per_tonne, requests!inner(weight_tonnes)')
+        .eq('trucker_id', userProfile.id)
+        .eq('status', 'completed');
+
+      const totalEarnings = completedTripsData?.reduce((sum, trip) => {
+        const request = trip.requests[0];
+        return sum + (request ? trip.price_per_tonne * request.weight_tonnes : 0);
+      }, 0) || 0;
+
+      // Upcoming trips
+      const { data: upcomingTrips } = await supabase
+        .from('trips')
+        .select('origin_city, destination_city, departure_date, price_per_tonne, vehicle_type')
+        .eq('trucker_id', userProfile.id)
+        .eq('status', 'active')
+        .order('departure_date', { ascending: true })
+        .limit(3);
+
+      setStats({ 
+        activeTrips: activeTrips || 0, 
+        pendingRequests, 
+        completedTrips: completedTrips || 0,
+        totalEarnings,
+        upcomingTrips: upcomingTrips || []
+      });
+    } catch (err: any) {
+      showError('Failed to load dashboard stats');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStats();
   }, [userProfile, getToken]);
 
   const handleCompleteTrip = async (tripId: string) => {
@@ -94,7 +93,7 @@ const TruckerDashboard = () => {
 
       if (error) throw error;
       showSuccess('Trip marked as completed!');
-      fetchStats();
+      loadStats();
     } catch (err: any) {
       showError('Failed to complete trip');
     }
@@ -221,8 +220,7 @@ const TruckerDashboard = () => {
                       ₹{trip.price_per_tonne.toLocaleString()}/t
                     </span>
                     <Button 
-                      size="sm" 
-                      variant="outline"
+                      size="sm"                       variant="outline"
                       onClick={() => handleCompleteTrip(trip.id)}
                       className="border-green-200 text-green-700 hover:bg-green-50"
                     >

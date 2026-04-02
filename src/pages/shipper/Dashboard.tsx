@@ -21,58 +21,58 @@ const ShipperDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
 
+  const loadStats = async () => {
+    if (!userProfile?.id) return;
+    try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('No Supabase token');
+      const supabase = createClerkSupabaseClient(supabaseToken);
+
+      // Active shipments
+      const { count: activeShipments } = await supabase.from('shipments').select('*', { count: 'exact', head: true }).eq('shipper_id', userProfile.id).eq('status', 'pending');
+      
+      // Completed shipments
+      const { count: completedShipments } = await supabase.from('shipments').select('*', { count: 'exact', head: true }).eq('shipper_id', userProfile.id).eq('status', 'completed');
+      
+      // Pending requests
+      const { count: pendingRequests } = await supabase.from('requests').select('*', { count: 'exact', head: true }).eq('shipper_id', userProfile.id).eq('status', 'pending');
+
+      // Total spent from completed shipments      const { data: completedShipmentsData } = await supabase
+        .from('shipments')
+        .select('budget_per_tonne, requests!inner(weight_tonnes)')
+        .eq('shipper_id', userProfile.id)
+        .eq('status', 'completed');
+
+      const totalSpent = completedShipmentsData?.reduce((sum, shipment) => {
+        const request = shipment.requests[0];
+        return sum + (request ? shipment.budget_per_tonne * request.weight_tonnes : 0);
+      }, 0) || 0;
+
+      // Upcoming shipments
+      const { data: upcomingShipments } = await supabase
+        .from('shipments')
+        .select('origin_city, destination_city, departure_date, goods_description, weight_tonnes')
+        .eq('shipper_id', userProfile.id)
+        .eq('status', 'pending')
+        .order('departure_date', { ascending: true })
+        .limit(3);
+
+      setStats({ 
+        activeShipments: activeShipments || 0, 
+        pendingRequests: pendingRequests || 0, 
+        completedShipments: completedShipments || 0,
+        totalSpent,
+        upcomingShipments: upcomingShipments || []
+      });
+    } catch (err: any) {
+      showError('Failed to load dashboard stats');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchStats = async () => {
-      if (!userProfile?.id) return;
-      try {
-        const supabaseToken = await getToken({ template: 'supabase' });
-        if (!supabaseToken) throw new Error('No Supabase token');
-        const supabase = createClerkSupabaseClient(supabaseToken);
-
-        // Active shipments
-        const { count: activeShipments } = await supabase.from('shipments').select('*', { count: 'exact', head: true }).eq('shipper_id', userProfile.id).eq('status', 'pending');
-        
-        // Completed shipments
-        const { count: completedShipments } = await supabase.from('shipments').select('*', { count: 'exact', head: true }).eq('shipper_id', userProfile.id).eq('status', 'completed');
-        
-        // Pending requests
-        const { count: pendingRequests } = await supabase.from('requests').select('*', { count: 'exact', head: true }).eq('shipper_id', userProfile.id).eq('status', 'pending');
-
-        // Total spent from completed shipments
-        const { data: completedShipmentsData } = await supabase
-          .from('shipments')
-          .select('budget_per_tonne, requests!inner(weight_tonnes)')
-          .eq('shipper_id', userProfile.id)
-          .eq('status', 'completed');
-
-        const totalSpent = completedShipmentsData?.reduce((sum, shipment) => {
-          const request = shipment.requests[0];
-          return sum + (request ? shipment.budget_per_tonne * request.weight_tonnes : 0);
-        }, 0) || 0;
-
-        // Upcoming shipments
-        const { data: upcomingShipments } = await supabase
-          .from('shipments')
-          .select('origin_city, destination_city, departure_date, goods_description, weight_tonnes')
-          .eq('shipper_id', userProfile.id)
-          .eq('status', 'pending')
-          .order('departure_date', { ascending: true })
-          .limit(3);
-
-        setStats({ 
-          activeShipments: activeShipments || 0, 
-          pendingRequests: pendingRequests || 0, 
-          completedShipments: completedShipments || 0,
-          totalSpent,
-          upcomingShipments: upcomingShipments || []
-        });
-      } catch (err: any) {
-        showError('Failed to load dashboard stats');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchStats();
+    loadStats();
   }, [userProfile, getToken]);
 
   const handleCancelShipment = async (shipmentId: string) => {
@@ -88,7 +88,7 @@ const ShipperDashboard = () => {
 
       if (error) throw error;
       showSuccess('Shipment cancelled successfully!');
-      fetchStats();
+      loadStats();
     } catch (err: any) {
       showError('Failed to cancel shipment');
     }
@@ -222,8 +222,7 @@ const ShipperDashboard = () => {
                       onClick={() => handleCancelShipment(shipment.id)}
                       className="border-red-200 text-red-700 hover:bg-red-50"
                     >
-                      Cancel
-                    </Button>
+                      Cancel                    </Button>
                   </div>
                 </div>
               ))}
