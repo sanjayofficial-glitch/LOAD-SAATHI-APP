@@ -7,7 +7,7 @@ import { Loader2 } from 'lucide-react';
 
 interface RoleProtectedRouteProps {
   children: React.ReactNode;
-  allowedRole: 'shipper' | 'trucker';
+  allowedRole?: 'shipper' | 'trucker' | 'both';
 }
 
 const RoleProtectedRoute = ({ children, allowedRole }: RoleProtectedRouteProps) => {
@@ -25,8 +25,7 @@ const RoleProtectedRoute = ({ children, allowedRole }: RoleProtectedRouteProps) 
     return <Navigate to="/choose-role" replace />;
   }
 
-  if (userProfile.user_type !== allowedRole) {
-    // Redirect to their correct dashboard if they try to access the wrong one
+  if (allowedRole && allowedRole !== 'both' && userProfile.user_type !== allowedRole) {
     const targetPath = userProfile.user_type === 'shipper' ? '/shipper/dashboard' : '/trucker/dashboard';
     return <Navigate to={targetPath} replace />;
   }
