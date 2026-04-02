@@ -19,6 +19,7 @@ import {
   Phone
 } from 'lucide-react';
 import { showError } from '@/utils/toast';
+import { supabase } from '@/lib/supabaseClient';
 
 const MyShipmentRequests = () => {
   const { userProfile } = useAuth();
@@ -80,8 +81,42 @@ const MyShipmentRequests = () => {
   }, [userProfile?.id, getAuthenticatedClient]);
 
   useEffect(() => {
+    if (!userProfile?.id) return;
+
     fetchRequests();
-  }, [fetchRequests]);
+
+    // Subscribe to real-time updates for requests
+    const channel = supabase
+      .channel(`requests:${userProfile.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'requests',
+          filter: `shipper_id=eq.${userProfile.id}`,
+        },
+        (payload) => {
+          const updatedRequest = payload.new as any;
+          setRequests(prev => {
+            const index = prev.findIndex(r => r.id === updatedRequest.id);
+            if (index !== -1) {
+              return [
+                ...prev.slice(0, index),
+                { ...prev[index], status: updatedRequest.status },
+                ...prev.slice(index + 1)
+              ];
+            }
+            return prev;
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userProfile?.id, fetchRequests]);
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[400px]">
@@ -122,19 +157,19 @@ const MyShipmentRequests = () => {
                     <div className="flex-1 space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center text-xl font-bold text-gray-900">
-                          {trip.origin_city} <ArrowRight className="h-4 w-4 mx-2 text-gray-400" /> {trip.destination_city}
+                          {trip.origin_city} <ArrowRight className="h-4 w-4 text-gray-400" /> {trip.destination_city}
                         </div>
                         <Badge className={
-                          request.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 
-                          request.status === 'accepted' ? 'bg-green-100 text-green-700' : 
-                          'bg-red-100 text-red-700'
+                          request.status === 'pending' ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-100' : 
+                          request.status === 'accepted' ? 'bg-green-100 text-green-700 hover:bg-green-100' : 
+                          'bg-red-100 text-red-700 hover:bg-red-100'
                         }>
                           {request.status.toUpperCase()}
                         </Badge>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                        <div className="flex items-center text-gray-600">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-600">
+                        <div className="flex items-center">
                           <Calendar className="h-4 w-4 mr-2 text-orange-600" />
                           Ready by: {new Date(trip.departure_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                         </div>
