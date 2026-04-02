@@ -10,7 +10,6 @@ import {
   AlertCircle,
   Calendar,
   RefreshCw,
-  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,10 +30,9 @@ const TruckerHistory = () => {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Query the trucker_history view
-  const { data: activities = [], isLoading } = useQuery({
-    queryKey: ["truckerHistory", filters.activityType, filters.status],
-    queryFn: async () => {
+  // Query the trucker_history view  const { data: activities = [], isLoading } = useQuery(
+    ["truckerHistory", filters.activityType, filters.status],
+    async () => {
       const { data, error } = await supabase
         .from("trucker_history")
         .select("*")
@@ -43,8 +41,8 @@ const TruckerHistory = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user,
-  });
+    { enabled: !!user }
+  );
 
   // Filter activities based on current filters
   const filteredActivities = useCallback(() => {
@@ -152,8 +150,7 @@ const TruckerHistory = () => {
             </div>
           ) : (
             filteredActivities().map((activity) => (
-              <Card
-                key={activity.id}
+              <Card                key={activity.id}
                 className="border border-gray-100 rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => handleItemClick(activity)}
               >
