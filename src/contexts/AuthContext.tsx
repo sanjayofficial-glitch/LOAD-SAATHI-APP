@@ -24,7 +24,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoaded: clerkLoaded } = useUser();
   const { session } = useSession();
-  const { signOut: clerkSignOut, getToken } = useClerk();
+  const clerk = useClerk();
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (!user) return;
     
     try {
-      const supabaseToken = await getToken({ template: 'supabase' });
+      const supabaseToken = await clerk.session?.getToken({ template: 'supabase' });
       if (!supabaseToken) return;
       
       const supabaseClient = createClerkSupabaseClient(supabaseToken);
@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       try {
-        const supabaseToken = await getToken({ template: 'supabase' });
+        const supabaseToken = await clerk.session?.getToken({ template: 'supabase' });
         if (!supabaseToken) {
           setUserProfile(null);
           setLoading(false);
@@ -88,10 +88,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     loadUserProfile();
-  }, [clerkLoaded, user, getToken]);
+  }, [clerkLoaded, user, clerk]);
 
   const signOut = async () => {
-    await clerkSignOut();
+    await clerk.signOut();
     setUserProfile(null);
   };
 
