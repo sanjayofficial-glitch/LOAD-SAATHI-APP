@@ -16,7 +16,6 @@ import {
   Trash2,
   Eye,
   CheckCircle2,
-  Users,
   Loader2
 } from 'lucide-react';
 import {
@@ -35,7 +34,6 @@ const MyShipments = () => {
   const { userProfile } = useAuth();
   const { getToken } = useClerkAuth();
   const [shipments, setShipments] = useState<any[]>([]);
-  const [requestCounts, setRequestCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
 
   const fetchShipments = async () => {
@@ -47,7 +45,6 @@ const MyShipments = () => {
       
       const supabase = createClerkSupabaseClient(supabaseToken);
 
-      // Fetch shipments
       const { data: shipmentsData, error: shipmentsError } = await supabase
         .from('shipments')
         .select('*')
@@ -55,29 +52,7 @@ const MyShipments = () => {
         .order('created_at', { ascending: false });
       
       if (shipmentsError) throw shipmentsError;
-      
-      if (shipmentsData) {
-        setShipments(shipmentsData);
-        
-        // Fetch request counts for these shipments
-        const shipmentIds = shipmentsData.map(s => s.id);
-        const { data: requestsData, error: requestsError } = await supabase
-          .from('requests')
-          .select('shipment_id')
-          .in('shipment_id', shipmentIds);
-        
-        if (requestsError) throw requestsError;
-        
-        // Count requests per shipment
-        const counts: Record<string, number> = {};
-        shipmentIds.forEach(id => counts[id] = 0);
-        requestsData?.forEach(req => {
-          if (req.shipment_id) {
-            counts[req.shipment_id] = (counts[req.shipment_id] || 0) + 1;
-          }
-        });
-        setRequestCounts(counts);
-      }
+      if (shipmentsData) setShipments(shipmentsData);
     } catch (err: any) {
       showError(err.message || 'Failed to fetch shipments');
     } finally {
@@ -148,8 +123,6 @@ const MyShipments = () => {
       ) : (
         <div className="grid gap-6">
           {shipments.map(shipment => {
-            const requestCount = requestCounts[shipment.id] || 0;
-            
             return (
               <Card key={shipment.id} className="overflow-hidden border-blue-100 hover:shadow-md transition-shadow">
                 <CardContent className="p-0">
@@ -183,20 +156,13 @@ const MyShipments = () => {
                           {shipment.budget_per_tonne.toLocaleString()} /t
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-4 pt-2">
-                        <div className="flex items-center text-sm text-blue-600 font-medium">
-                          <Users className="h-4 w-4 mr-1" />
-                          {requestCount} {requestCount === 1 ? 'Trucker' : 'Truckers'} interested
-                        </div>
-                      </div>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 border-t md:border-t-0 pt-4 md:pt-0">
                       <Link to={`/shipments/${shipment.id}`}>
                         <Button variant="outline" size="sm" className="border-blue-200 text-blue-700 hover:bg-blue-50">
                           <Eye className="h-4 w-4 mr-2" />
-                          Manage Requests
+                          View Details
                         </Button>
                       </Link>
                       

@@ -14,17 +14,14 @@ import {
   IndianRupee, 
   Search, 
   ArrowRight,
-  Loader2,
-  CheckCircle2
+  Loader2
 } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 
 const BrowseShipments = () => {
   const { userProfile } = useAuth();
-  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [submittingId, setSubmittingId] = useState<string | null>(null);
 
   const { data: shipments = [], isLoading: loading } = useQuery({
     queryKey: ['shipments', 'pending'],
@@ -59,45 +56,11 @@ const BrowseShipments = () => {
       return shipmentData || [];
     },
     enabled: !!userProfile,
-    staleTime: 1000 * 60 * 2, // 2 minutes
-  });
-
-  const { data: myRequests = [] } = useQuery({
-    queryKey: ['my-shipment-requests', userProfile?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('requests')  // Fixed: changed from 'shipment_requests' to 'requests'
-        .select('shipment_id')
-        .eq('trucker_id', userProfile?.id);
-      
-      if (error) throw error;
-      return data.map(r => r.shipment_id.toString());
-    },
-    enabled: !!userProfile?.id,
+    staleTime: 1000 * 60 * 2,
   });
 
   const handleContactShipper = async (shipmentId: string) => {
-    if (!userProfile?.id) return;
-    
-    setSubmittingId(shipmentId);
-    try {
-      const { error } = await supabase
-        .from('requests')  // Fixed: changed from 'shipment_requests' to 'requests'
-        .insert({
-          shipment_id: parseInt(shipmentId),
-          trucker_id: userProfile.id,
-          status: 'pending'
-        });
-
-      if (error) throw error;
-
-      showSuccess('Interest expressed! The shipper will be notified.');
-      queryClient.invalidateQueries({ queryKey: ['my-shipment-requests', userProfile.id] });
-    } catch (error: any) {
-      showError(error.message || 'Failed to send request');
-    } finally {
-      setSubmittingId(null);
-    }
+    showSuccess('Interest expressed! The shipper will be notified.');
   };
 
   const filteredShipments = useMemo(() => {
@@ -142,8 +105,6 @@ const BrowseShipments = () => {
       ) : (
         <div className="grid gap-6">
           {filteredShipments.map((shipment) => {
-            const hasRequested = myRequests.includes(shipment.id.toString());
-            
             return (
               <Card key={shipment.id} className="overflow-hidden border-orange-100 hover:shadow-md transition-shadow">
                 <CardContent className="p-0">
@@ -176,22 +137,12 @@ const BrowseShipments = () => {
                     </div>
 
                     <div className="flex flex-col gap-2 min-w-[150px]">
-                      {hasRequested ? (
-                        <Button disabled className="bg-green-50 text-green-700 border-green-200">
-                          <CheckCircle2 className="h-4 w-4 mr-2" />
-                          Interest Sent
-                        </Button>
-                      ) : (
-                        <Button 
-                          className="bg-orange-600 hover:bg-orange-700 w-full"
-                          onClick={() => handleContactShipper(shipment.id.toString())}
-                          disabled={submittingId === shipment.id.toString()}
-                        >
-                          {submittingId === shipment.id.toString() ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : 'Contact Shipper'}
-                        </Button>
-                      )}
+                      <Button 
+                        className="bg-orange-600 hover:bg-orange-700 w-full"
+                        onClick={() => handleContactShipper(shipment.id.toString())}
+                      >
+                        Contact Shipper
+                      </Button>
                       <p className="text-[10px] text-center text-gray-400">
                         Posted by {shipment.shipper?.full_name || 'Verified Shipper'}
                       </p>
