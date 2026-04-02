@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowLeft, Send, Loader2, User as UserIcon } from 'lucide-react';
 import { showError } from '@/utils/toast';
+import { supabase } from '@/lib/supabaseClient';
 
 const Chat = () => {
   const { requestId } = useParams<{ requestId: string }>();
@@ -26,7 +27,6 @@ const Chat = () => {
   const [sending, setSending] = useState(false);
   const [recipient, setRecipient] = useState<{ id: string; full_name: string } | null>(null);
   
-  const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -43,10 +43,10 @@ const Chat = () => {
         const supabaseToken = await getToken({ template: 'supabase' });
         if (!supabaseToken) throw new Error('No Supabase token');
         
-        const supabase = createClerkSupabaseClient(supabaseToken);
+        const supabaseClient = createClerkSupabaseClient(supabaseToken);
 
         // 1. Fetch request details to identify the other participant
-        const { data: request, error: reqError } = await supabase
+        const { data: request, error: reqError } = await supabaseClient
           .from('requests')
           .select('*, trip:trips(*, trucker:users(*)), shipper:users(*)')
           .eq('id', requestId)
@@ -68,12 +68,10 @@ const Chat = () => {
         // 4. Subscribe to real-time updates
         channel = subscribeToMessages(requestId, (msg) => {
           setMessages((prev) => {
-            // Prevent duplicate messages
             if (prev.some((m) => m.id === msg.id)) return prev;
             return [...prev, msg];
           });
           
-          // Mark incoming message as read if it's for us
           if (msg.recipient_id === userProfile.id) {
             markMessagesAsRead(requestId, userProfile.id);
           }
@@ -91,7 +89,7 @@ const Chat = () => {
 
     return () => {
       if (channel) {
-        // Cleanup channel
+        supabase.removeChannel(channel);
       }
     };
   }, [requestId, userProfile, navigate, getToken]);
@@ -103,9 +101,8 @@ const Chat = () => {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Guard clauses for a robust experience
     if (!recipient || !requestId) {
-      showError('Chat session not ready yet. Please wait a moment.');
+      showError('Chat session not ready yet.');
       return;
     }
     
@@ -122,7 +119,6 @@ const Chat = () => {
         userId: userProfile.id,
       });
       
-      // Optimistically add message if not already added by subscription
       setMessages((prev) => {
         if (prev.some((m) => m.id === sentMsg.id)) return prev;
         return [...prev, sentMsg];
@@ -130,7 +126,6 @@ const Chat = () => {
       
       setNewMessage('');
     } catch (err: any) {
-      console.error('[ChatPage] Error sending message:', err);
       showError(err.message || 'Failed to send message');
     } finally {
       setSending(false);
@@ -248,9 +243,7 @@ const Chat = () => {
                 disabled={sending || !newMessage.trim()}
               >
                 {sending ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  </>
+                  <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <Send className="h-5 w-5" />
                 )}
