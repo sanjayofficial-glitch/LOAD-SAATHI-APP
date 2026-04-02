@@ -23,7 +23,8 @@ import {
   Users,
   Loader2,
   Star as StarIcon,
-  IndianRupee
+  IndianRupee,
+  History
 } from 'lucide-react';
 
 const TruckerDashboard = () => {
@@ -288,6 +289,7 @@ const TruckerDashboard = () => {
             <CardContent className="space-y-3">
               <Link to="/trucker/post-trip"><Button className="w-full justify-start bg-orange-600 hover:bg-orange-700 shadow-sm hover:shadow-md transition-all"><Plus className="h-4 w-4 mr-2" /> Post New Trip</Button></Link>
               <Link to="/trucker/my-trips"><Button className="w-full justify-start" variant="outline"><Eye className="h-4 w-4 mr-2" /> View All Trips</Button></Link>
+              <Link to="/trucker/history"><Button className="w-full justify-start" variant="outline"><History className="h-4 w-4 mr-2" /> View History</Button></Link>
               <Link to="/profile"><Button className="w-full justify-start" variant="outline"><Users className="h-4 w-4 mr-2" /> Edit Profile</Button></Link>
             </CardContent>
           </Card>

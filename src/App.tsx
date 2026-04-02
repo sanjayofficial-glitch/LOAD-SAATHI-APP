@@ -24,6 +24,7 @@ const MyTrips = lazy(() => import("./pages/trucker/MyTrips"));
 const EditTrip = lazy(() => import("./pages/trucker/EditTrip"));
 const BrowseShipments = lazy(() => import("./pages/trucker/BrowseShipments"));
 const MyShipmentRequests = lazy(() => import("./pages/trucker/MyShipmentRequests"));
+const TruckerHistory = lazy(() => import("./pages/TruckerHistory"));
 const PostShipments = lazy(() => import("./pages/shipper/PostShipments"));
 const MyShipments = lazy(() => import("./pages/shipper/MyShipments"));
 const EditShipment = lazy(() => import("./pages/shipper/EditShipment"));
@@ -33,6 +34,7 @@ const TripDetail = lazy(() => import("./pages/TripDetail"));
 const Profile = lazy(() => import("./pages/Profile"));
 const ChatList = lazy(() => import("./pages/ChatList"));
 const Chat = lazy(() => import("./pages/Chat"));
+const ShipperHistory = lazy(() => import("./pages/ShipperHistory"));
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -91,6 +93,7 @@ const App = () => {
               <Route path="/shipper/edit-shipment/:id" element={<SignedIn><RoleProtectedRoute allowedRole="shipper"><Layout><EditShipment /></Layout></RoleProtectedRoute></SignedIn>} />
               <Route path="/shipments/:id" element={<SignedIn><RoleProtectedRoute allowedRole="shipper"><Layout><ShipmentDetail /></Layout></RoleProtectedRoute></SignedIn>} />
               <Route path="/browse-trucks" element={<SignedIn><RoleProtectedRoute allowedRole="shipper"><Layout><BrowseTrips /></Layout></RoleProtectedRoute></SignedIn>} />
+              <Route path="/shipper/history" element={<SignedIn><RoleProtectedRoute allowedRole="shipper"><Layout><ShipperHistory /></Layout></RoleProtectedRoute></SignedIn>} />
               
               {/* Trucker Protected Routes */}
               <Route path="/trucker/dashboard" element={<SignedIn><RoleProtectedRoute allowedRole="trucker"><Layout><TruckerDashboard /></Layout></RoleProtectedRoute></SignedIn>} />
@@ -99,6 +102,7 @@ const App = () => {
               <Route path="/trucker/edit-trip/:id" element={<SignedIn><RoleProtectedRoute allowedRole="trucker"><Layout><EditTrip /></Layout></RoleProtectedRoute></SignedIn>} />
               <Route path="/trucker/browse-shipments" element={<SignedIn><RoleProtectedRoute allowedRole="trucker"><Layout><BrowseShipments /></Layout></RoleProtectedRoute></SignedIn>} />
               <Route path="/trucker/my-requests" element={<SignedIn><RoleProtectedRoute allowedRole="trucker"><Layout><MyShipmentRequests /></Layout></RoleProtectedRoute></SignedIn>} />
+              <Route path="/trucker/history" element={<SignedIn><RoleProtectedRoute allowedRole="trucker"><Layout><TruckerHistory /></Layout></RoleProtectedRoute></SignedIn>} />
               
               {/* Shared Protected Routes */}
               <Route path="/trips/:id" element={<SignedIn><Layout><TripDetail /></Layout></SignedIn>} />

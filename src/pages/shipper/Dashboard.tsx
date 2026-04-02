@@ -24,7 +24,8 @@ import {
   PlusSquare,
   Star as StarIcon,
   XCircle,
-  ArrowRight as ArrowRightIcon
+  ArrowRight as ArrowRightIcon,
+  History
 } from 'lucide-react';
 
 const ShipperDashboard = () => {
@@ -322,6 +323,7 @@ const ShipperDashboard = () => {
               <Link to="/shipper/post-shipment"><Button className="w-full justify-start bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow-md transition-all"><PlusSquare className="h-4 w-4 mr-2" /> Post Your Shipment</Button></Link>
               <Link to="/browse-trucks"><Button className="w-full justify-start" variant="outline"><Search className="h-4 w-4 mr-2" /> Find Available Trucks</Button></Link>
               <Link to="/shipper/my-shipments"><Button className="w-full justify-start" variant="outline"><Package className="h-4 w-4 mr-2" /> View All Shipments</Button></Link>
+              <Link to="/shipper/history"><Button className="w-full justify-start" variant="outline"><History className="h-4 w-4 mr-2" /> View History</Button></Link>
             </CardContent>
           </Card>
 
