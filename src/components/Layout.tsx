@@ -30,10 +30,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { showSuccess } from '@/utils/toast';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
-  const { userProfile, signOut, refreshProfile } = useAuth();
+  const { userProfile, signOut } = useAuth();
   const { getToken } = useClerkAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -53,7 +52,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       
       const { data } = await supabase
         .from('notifications')
-        .select('*')
+        .select('id, message, is_read, created_at')
         .eq('user_id', userProfile.id)
         .order('created_at', { ascending: false })
         .limit(10);
@@ -102,6 +101,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     navigate('/');
   };
 
+  // Prefetch data for the next page when user hovers over a link
   const prefetchData = (path: string) => {
     if (path.includes('dashboard')) {
       queryClient.prefetchQuery({ queryKey: [userProfile?.user_type === 'trucker' ? 'trucker-trips' : 'shipper-requests', userProfile?.id] });
@@ -210,12 +210,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                     <User className="mr-2 h-4 w-4" />
                     Profile
                   </DropdownMenuItem>
-                  {userProfile?.user_type === 'trucker' && (
-                    <DropdownMenuItem onClick={() => navigate('/admin')} className="cursor-pointer">
-                      <LayoutDashboard className="mr-2 h-4 w-4" />
-                      Admin Panel
-                    </DropdownMenuItem>
-                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="text-red-600 focus:text-red-600 cursor-pointer">
                     <LogOut className="mr-2 h-4 w-4" />

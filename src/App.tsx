@@ -11,14 +11,14 @@ import RoleProtectedRoute from "@/components/RoleProtectedRoute";
 import { Loader2 } from "lucide-react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
-// Eager load core pages
+// Eager load core pages for instant first paint
 import Index from "./pages/Index";
 import ChooseRole from "./pages/ChooseRole";
 import AuthSync from "./components/AuthSync";
 import TruckerDashboard from "./pages/trucker/Dashboard";
 import ShipperDashboard from "./pages/shipper/Dashboard";
 
-// Lazy load secondary pages
+// Lazy load secondary pages to reduce initial bundle size
 const PostTrip = lazy(() => import("./pages/trucker/PostTrip"));
 const MyTrips = lazy(() => import("./pages/trucker/MyTrips"));
 const EditTrip = lazy(() => import("./pages/trucker/EditTrip"));
@@ -36,7 +36,17 @@ const Chat = lazy(() => import("./pages/Chat"));
 const AdminDashboard = lazy(() => import("./pages/admin/Dashboard"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-const queryClient = new QueryClient();
+// Optimized QueryClient with caching defaults
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 30, // 30 minutes
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const LoadingFallback = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">

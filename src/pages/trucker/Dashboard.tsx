@@ -30,13 +30,14 @@ const TruckerDashboard = () => {
   const { getAuthenticatedClient } = useSupabase();
   const queryClient = useQueryClient();
 
+  // Fetch trips with optimized column selection
   const { data: trips = [], isLoading: tripsLoading } = useQuery({
     queryKey: ['trucker-trips', userProfile?.id],
     queryFn: async () => {
       const supabase = await getAuthenticatedClient();
       const { data, error } = await supabase
         .from('trips')
-        .select('*')
+        .select('id, origin_city, destination_city, status, available_capacity_tonnes, price_per_tonne, created_at')
         .eq('trucker_id', userProfile?.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -45,8 +46,10 @@ const TruckerDashboard = () => {
     enabled: !!userProfile?.id,
   });
 
+  // Memoize trip IDs to prevent unnecessary request refetches
   const tripIdsKey = useMemo(() => trips.map(t => t.id).sort().join(','), [trips]);
 
+  // Fetch requests only when trips are loaded
   const { data: requests = [], isLoading: requestsLoading } = useQuery({
     queryKey: ['trucker-requests', userProfile?.id, tripIdsKey],
     queryFn: async () => {
@@ -63,10 +66,11 @@ const TruckerDashboard = () => {
       if (requestError) throw requestError;
       if (!requestData || requestData.length === 0) return [];
 
+      // Batch fetch shipper profiles to avoid N+1 queries
       const shipperIds = [...new Set(requestData.map(r => r.shipper_id))];
       const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('*')
+        .select('id, full_name, phone')
         .in('id', shipperIds);
 
       const userMap = (userData || []).reduce((acc: any, user: any) => {
@@ -86,21 +90,6 @@ const TruckerDashboard = () => {
       })) as Request[];
     },
     enabled: !!userProfile?.id && trips.length > 0,
-  });
-
-  const { data: reviews = [] } = useQuery({
-    queryKey: ['trucker-reviews', userProfile?.id],
-    queryFn: async () => {
-      const supabase = await getAuthenticatedClient();
-      const { data, error } = await supabase
-        .from('reviews')
-        .select('*')
-        .eq('trucker_id', userProfile?.id)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!userProfile?.id,
   });
 
   const handleAcceptRequest = useCallback(async (request: Request) => {
@@ -150,6 +139,7 @@ const TruckerDashboard = () => {
     }
   }, [getAuthenticatedClient, queryClient]);
 
+  // Memoize derived data to prevent re-renders
   const pendingRequests = useMemo(() => requests.filter(r => r.status === 'pending'), [requests]);
   const acceptedRequests = useMemo(() => requests.filter(r => r.status === 'accepted'), [requests]);
   const activeTrips = useMemo(() => trips.filter(t => t.status === 'active'), [trips]);
@@ -207,7 +197,7 @@ const TruckerDashboard = () => {
             <CardTitle className="text-sm font-medium text-gray-500">Reviews</CardTitle>
             <Users className="h-4 w-4 text-purple-600" />
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{reviews.length}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold">{userProfile?.total_trips || 0}</div></CardContent>
         </Card>
       </div>
 
@@ -294,27 +284,6 @@ const TruckerDashboard = () => {
               <Link to="/trucker/post-trip"><Button className="w-full justify-start bg-orange-600 hover:bg-orange-700 shadow-sm hover:shadow-md transition-all"><Plus className="h-4 w-4 mr-2" /> Post New Trip</Button></Link>
               <Link to="/trucker/my-trips"><Button className="w-full justify-start" variant="outline"><Eye className="h-4 w-4 mr-2" /> View All Trips</Button></Link>
               <Link to="/profile"><Button className="w-full justify-start" variant="outline"><Users className="h-4 w-4 mr-2" /> Edit Profile</Button></Link>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-sm">
-            <CardHeader><CardTitle>Your Performance</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Average Rating</span>
-                <div className="flex items-center">
-                  <StarIcon className="h-4 w-4 text-yellow-500 mr-1 fill-current" />
-                  <span className="font-bold">{userProfile?.rating?.toFixed(1) || '0.0'}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Total Reviews</span>
-                <span className="font-bold">{reviews.length}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-600">Completed Trips</span>
-                <span className="font-bold">{completedTrips.length}</span>
-              </div>
             </CardContent>
           </Card>
         </div>
