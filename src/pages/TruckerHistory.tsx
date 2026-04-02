@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Calendar,
   RefreshCw,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,7 +31,8 @@ const TruckerHistory = () => {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Query the trucker_history view  const { data: activities = [], isLoading } = useQuery({
+  // Query the trucker_history view
+  const { data: activities = [], isLoading } = useQuery({
     queryKey: ["truckerHistory", filters.activityType, filters.status],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -111,7 +113,7 @@ const TruckerHistory = () => {
                 setFilters((f) => ({
                   ...f,
                   activityType: e.target.value,
-                })
+                }))
               }
             />
           </div>
@@ -131,10 +133,9 @@ const TruckerHistory = () => {
                 setFilters((f) => ({
                   ...f,
                   status: e.target.value,
-                })
+                }))
               }
-              />
-            </Input>
+            />
           </div>
         </div>
       </div>
@@ -188,8 +189,8 @@ const TruckerHistory = () => {
                         {activity.status}
                       </Badge>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </CardContent>
               </Card>
             ))
           )}
@@ -217,13 +218,13 @@ function renderActivityIcon(type: string) {
 function getBadgeVariant(status: string) {
   switch (status) {
     case "completed":
-      return "success";
-    case "accepted":
       return "default";
+    case "accepted":
+      return "secondary";
     case "rejected":
       return "destructive";
     default:
-      return "default";
+      return "outline";
   }
 }
 

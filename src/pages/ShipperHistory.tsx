@@ -16,7 +16,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { showError, showSuccess } from "@/utils/toast";
@@ -31,7 +30,8 @@ const ShipperHistory = () => {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Query the shipper_history view  const { data: activities = [], isLoading } = useQuery({
+  // Query the shipper_history view
+  const { data: activities = [], isLoading } = useQuery({
     queryKey: ["shipperHistory", filters.activityType, filters.status],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -100,7 +100,8 @@ const ShipperHistory = () => {
           {/* Activity Type Filter */}
           <div className="border rounded-lg p-3">
             <Label htmlFor="activityType" className="block text-sm font-medium text-gray-700 mb-1">
-              Activity Type            </Label>
+              Activity Type
+            </Label>
             <Input
               id="activityType"
               type="text"
@@ -177,8 +178,8 @@ const ShipperHistory = () => {
                         {activity.status}
                       </Badge>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </CardContent>
               </Card>
             ))
           )}
@@ -206,13 +207,13 @@ function renderActivityIcon(type: string) {
 function getBadgeVariant(status: string) {
   switch (status) {
     case "completed":
-      return "success";
-    case "accepted":
       return "default";
+    case "accepted":
+      return "secondary";
     case "rejected":
       return "destructive";
     default:
-      return "default";
+      return "outline";
   }
 }
 
