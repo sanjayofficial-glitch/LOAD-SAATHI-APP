@@ -4,16 +4,14 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Truck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { showError } from '@/utils/toast';
 
 const NotFound = () => {
   const navigate = useNavigate();
   
-  // Optional: redirect to home after a short delay if user doesn't click any link
   React.useEffect(() => {
     const timeout = setTimeout(() => {
       navigate('/', { replace: true });
-    }, 10000); // 10 seconds    
+    }, 10000);    
     return () => clearTimeout(timeout);
   }, [navigate]);
 
@@ -27,24 +25,22 @@ const NotFound = () => {
         </p>
         
         <div className="space-y-4">
-          <Button 
-            to="/" 
-            className="bg-orange-600 hover:bg-orange-700 px-6 py-3 rounded-lg font-medium transition-colors"
-          >
-            Go Home
-          </Button>
+          <Link to="/">
+            <Button className="bg-orange-600 hover:bg-orange-700 px-6 py-3 rounded-lg font-medium transition-colors">
+              Go Home
+            </Button>
+          </Link>
           
-          <Button 
-            to="/dashboard" 
-            className="bg-gray-200 hover:bg-gray-300 px-6 py-3 rounded-lg text-gray-800"
-          >
-            Browse Dashboard
-          </Button>
+          <Link to="/login">
+            <Button variant="outline" className="px-6 py-3 rounded-lg">
+              Go to Login
+            </Button>
+          </Link>
         </div>
         
         <p className="text-sm text-gray-500 mt-6">
           If you typed the URL manually, please check for typos or go back to the 
-          <Button to="/" className="underline hover:text-orange-600">homepage</Button>.
+          <Link to="/" className="text-orange-600 hover:underline ml-1">homepage</Link>.
         </p>
       </div>
     </div>
