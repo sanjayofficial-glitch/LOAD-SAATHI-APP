@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ArrowLeft, Send, Loader2, User as UserIcon } from 'lucide-react';
 import { showError } from '@/utils/toast';
+import { supabase } from '@/lib/supabaseClient';
 
 const Chat = () => {
   const { requestId } = useParams<{ requestId: string }>();
@@ -36,14 +37,13 @@ const Chat = () => {
     if (!requestId || !userProfile) return;
 
     let channel: any;
-    let supabaseClient: any;
 
     const initChat = async () => {
       try {
         const supabaseToken = await getToken({ template: 'supabase' });
         if (!supabaseToken) throw new Error('No Supabase token');
         
-        supabaseClient = createClerkSupabaseClient(supabaseToken);
+        const supabaseClient = createClerkSupabaseClient(supabaseToken);
 
         // 1. Fetch request details to identify the other participant
         const { data: request, error: reqError } = await supabaseClient
@@ -58,14 +58,14 @@ const Chat = () => {
         const otherUser = isTrucker ? request.shipper : request.trip.trucker;
         setRecipient(otherUser);
 
-        // 2. Fetch existing messages using authenticated client
-        const initialMessages = await fetchMessages(requestId, supabaseClient);
+        // 2. Fetch existing messages
+        const initialMessages = await fetchMessages(requestId);
         setMessages(initialMessages);
         
         // 3. Mark messages as read
-        await markMessagesAsRead(requestId, userProfile.id, supabaseClient);
+        markMessagesAsRead(requestId, userProfile.id);
 
-        // 4. Subscribe to real-time updates using authenticated client
+        // 4. Subscribe to real-time updates
         channel = subscribeToMessages(requestId, (msg) => {
           setMessages((prev) => {
             if (prev.some((m) => m.id === msg.id)) return prev;
@@ -73,9 +73,9 @@ const Chat = () => {
           });
           
           if (msg.recipient_id === userProfile.id) {
-            markMessagesAsRead(requestId, userProfile.id, supabaseClient);
+            markMessagesAsRead(requestId, userProfile.id);
           }
-        }, supabaseClient);
+        });
 
         setLoading(false);
       } catch (err: any) {
@@ -88,8 +88,8 @@ const Chat = () => {
     initChat();
 
     return () => {
-      if (channel && supabaseClient) {
-        supabaseClient.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
       }
     };
   }, [requestId, userProfile, navigate, getToken]);

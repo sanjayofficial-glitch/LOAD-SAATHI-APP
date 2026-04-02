@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSupabase } from '@/hooks/useSupabase';
+import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,7 +12,6 @@ import { Truck, MapPin, Calendar, IndianRupee, Loader2, ArrowLeft } from 'lucide
 const EditTrip = () => {
   const { id } = useParams();
   const { userProfile } = useAuth();
-  const { getAuthenticatedClient } = useSupabase();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -28,42 +27,36 @@ const EditTrip = () => {
 
   useEffect(() => {
     const fetchTrip = async () => {
-      try {
-        const supabase = await getAuthenticatedClient();
-        const { data, error } = await supabase
-          .from('trips')
-          .select('*')
-          .eq('id', id)
-          .single();
+      const { data, error } = await supabase
+        .from('trips')
+        .select('*')
+        .eq('id', id)
+        .single();
 
-        if (error) {
-          showError('Failed to load trip details');
+      if (error) {
+        showError('Failed to load trip details');
+        navigate('/trucker/my-trips');
+      } else if (data) {
+        if (data.trucker_id !== userProfile?.id) {
+          showError('You do not have permission to edit this trip');
           navigate('/trucker/my-trips');
-        } else if (data) {
-          if (data.trucker_id !== userProfile?.id) {
-            showError('You do not have permission to edit this trip');
-            navigate('/trucker/my-trips');
-            return;
-          }
-          setFormData({
-            origin_city: data.origin_city,
-            destination_city: data.destination_city,
-            departure_date: data.departure_date,
-            available_capacity_tonnes: data.available_capacity_tonnes.toString(),
-            price_per_tonne: data.price_per_tonne.toString(),
-            vehicle_type: data.vehicle_type,
-            vehicle_number: data.vehicle_number
-          });
+          return;
         }
-        setLoading(false);
-      } catch (err: any) {
-        showError('An unexpected error occurred');
-        setLoading(false);
+        setFormData({
+          origin_city: data.origin_city,
+          destination_city: data.destination_city,
+          departure_date: data.departure_date,
+          available_capacity_tonnes: data.available_capacity_tonnes.toString(),
+          price_per_tonne: data.price_per_tonne.toString(),
+          vehicle_type: data.vehicle_type,
+          vehicle_number: data.vehicle_number
+        });
       }
+      setLoading(false);
     };
 
     if (userProfile) fetchTrip();
-  }, [id, userProfile, navigate, getAuthenticatedClient]);
+  }, [id, userProfile, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,7 +76,6 @@ const EditTrip = () => {
 
     setSaving(true);
     try {
-      const supabase = await getAuthenticatedClient();
       const { error } = await supabase
         .from('trips')
         .update({
