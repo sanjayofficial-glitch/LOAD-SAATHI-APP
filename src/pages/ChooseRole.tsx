@@ -18,7 +18,7 @@ const ChooseRole = () => {
 
   const handleRoleSelection = async (role: "shipper" | "trucker") => {
     if (!isLoaded || !user || !session) return;
-    
+
     setLoading(true);
     setError(null);
 
@@ -56,7 +56,7 @@ const ChooseRole = () => {
 
       // Refresh the user profile in AuthContext to update the user_type
       const updatedProfile = await refreshProfile();
-      
+
       // Verify that the profile was updated with the correct role
       if (!updatedProfile || updatedProfile.user_type !== role) {
         throw new Error(`Failed to set role to ${role}. Current role: ${updatedProfile?.user_type || 'none'}. Please try again or contact support.`);
@@ -74,7 +74,7 @@ const ChooseRole = () => {
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
         <div className="text-center">
           <Loader2 className="h-10 w-10 text-orange-600 animate-spin mx-auto mb-4" />
           <p className="text-gray-600">Loading...</p>
@@ -84,7 +84,7 @@ const ChooseRole = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-blue-50 px-4">
+    <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-blue-50 px-4">
       <div className="max-w-2xl w-full bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
         <div className="text-center mb-10">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome to LoadSaathi!</h1>
