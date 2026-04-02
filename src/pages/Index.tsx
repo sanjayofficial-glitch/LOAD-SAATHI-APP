@@ -1,31 +1,45 @@
+"use client";
+
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Truck, Package, CheckCircle, ArrowRight } from 'lucide-react';
+import { Truck, Package, CheckCircle, ArrowRight, MapPin, Calendar, IndianRupee } from 'lucide-react';
 import { useUser } from '@clerk/clerk-react';
+import { supabase } from '@/integrations/supabase/client';
 import IndexSkeleton from '@/components/IndexSkeleton';
+import { Trip } from '@/types';
 
 const Index = () => {
   const { isLoaded, isSignedIn, user } = useUser();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
+  const [recentTrips, setRecentTrips] = useState<Trip[]>([]);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 500);
-    return () => clearTimeout(timer);
+    const fetchRecentTrips = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('trips')
+          .select('*')
+          .eq('status', 'active')
+          .order('created_at', { ascending: false })
+          .limit(3);
+        
+        if (!error && data) {
+          setRecentTrips(data as unknown as Trip[]);
+        }
+      } catch (err) {
+        console.error("Error fetching trips for landing page:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRecentTrips();
   }, []);
 
   useEffect(() => {
     if (!isLoaded) return;
     
-    const isRecovery = window.location.hash.includes('type=recovery') || 
-                       window.location.search.includes('type=recovery') ||
-                       window.location.search.includes('code=');
-    
-    if (isRecovery) {
-      console.log("[Index] Recovery flow detected, skipping dashboard redirect.");
-      return;
-    }
-
     if (isSignedIn && user) {
       navigate('/auth-sync');
     }
@@ -68,6 +82,37 @@ const Index = () => {
             </Link>
           </div>
         </section>
+
+        {recentTrips.length > 0 && (
+          <section className="container mx-auto px-4 py-12">
+            <h2 className="text-2xl font-bold text-center mb-8 text-gray-900">Recently Posted Trips</h2>
+            <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+              {recentTrips.map((trip) => (
+                <div key={trip.id} className="bg-white p-6 rounded-xl shadow-sm border border-orange-100 hover:shadow-md transition-shadow">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center text-orange-600 font-bold">
+                      <MapPin className="h-4 w-4 mr-1" /> {trip.origin_city}
+                    </div>
+                    <ArrowRight className="h-4 w-4 text-gray-300" />
+                    <div className="flex items-center text-blue-600 font-bold">
+                      <MapPin className="h-4 w-4 mr-1" /> {trip.destination_city}
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-sm text-gray-600 mb-4">
+                    <div className="flex items-center"><Calendar className="h-4 w-4 mr-2" /> {new Date(trip.departure_date).toLocaleDateString()}</div>
+                    <div className="flex items-center"><Truck className="h-4 w-4 mr-2" /> {trip.vehicle_type}</div>
+                  </div>
+                  <div className="flex items-center justify-between pt-4 border-t">
+                    <div className="text-lg font-bold text-orange-600 flex items-center">
+                      <IndianRupee className="h-4 w-4" /> {trip.price_per_tonne}/t
+                    </div>
+                    <Link to="/login" className="text-sm font-medium text-blue-600 hover:underline">View Details</Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="bg-white py-16 shadow-sm">
           <div className="container mx-auto px-4">

@@ -22,7 +22,8 @@ import {
   Eye,
   Users,
   Loader2,
-  Star as StarIcon
+  Star as StarIcon,
+  IndianRupee
 } from 'lucide-react';
 
 const TruckerDashboard = () => {
@@ -144,6 +145,10 @@ const TruckerDashboard = () => {
   const acceptedRequests = useMemo(() => requests.filter(r => r.status === 'accepted'), [requests]);
   const activeTrips = useMemo(() => trips.filter(t => t.status === 'active'), [trips]);
   const completedTrips = useMemo(() => trips.filter(t => t.status === 'completed'), [trips]);
+  
+  const potentialEarnings = useMemo(() => 
+    acceptedRequests.reduce((sum, r) => sum + (r.weight_tonnes * (r.trip?.price_per_tonne || 0)), 0),
+  [acceptedRequests]);
 
   if (tripsLoading && trips.length === 0) {
     return <DashboardSkeleton />;
@@ -180,10 +185,10 @@ const TruckerDashboard = () => {
         </Card>
         <Card className="border-green-100 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium text-gray-500">Potential Earnings</CardTitle>
+            <IndianRupee className="h-4 w-4 text-green-600" />
           </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{completedTrips.length}</div></CardContent>
+          <CardContent><div className="text-2xl font-bold">₹{potentialEarnings.toLocaleString()}</div></CardContent>
         </Card>
         <Card className="border-yellow-100 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
