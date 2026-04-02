@@ -46,9 +46,9 @@ const ShipmentDetail = () => {
       if (shipmentError) throw shipmentError;
       setShipment(shipmentData);
 
-      // 2. Fetch requests for this shipment (without join)
+      // 2. Fetch requests for this shipment (using correct table name 'requests')
       const { data: requestData, error: requestError } = await supabase
-        .from('shipment_requests')
+        .from('requests')
         .select('*')
         .eq('shipment_id', id)
         .order('created_at', { ascending: false });
@@ -98,7 +98,7 @@ const ShipmentDetail = () => {
     try {
       // Update request status
       const { error: requestError } = await supabase
-        .from('shipment_requests')
+        .from('requests')
         .update({ status })
         .eq('id', requestId);
 
@@ -115,7 +115,7 @@ const ShipmentDetail = () => {
         
         // Decline all other pending requests for this shipment
         await supabase
-          .from('shipment_requests')
+          .from('requests')
           .update({ status: 'declined' })
           .eq('shipment_id', id)
           .eq('status', 'pending')

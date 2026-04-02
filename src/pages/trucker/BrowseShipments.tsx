@@ -66,7 +66,7 @@ const BrowseShipments = () => {
     queryKey: ['my-shipment-requests', userProfile?.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('shipment_requests')
+        .from('requests')  // Fixed: changed from 'shipment_requests' to 'requests'
         .select('shipment_id')
         .eq('trucker_id', userProfile?.id);
       
@@ -82,7 +82,7 @@ const BrowseShipments = () => {
     setSubmittingId(shipmentId);
     try {
       const { error } = await supabase
-        .from('shipment_requests')
+        .from('requests')  // Fixed: changed from 'shipment_requests' to 'requests'
         .insert({
           shipment_id: parseInt(shipmentId),
           trucker_id: userProfile.id,
