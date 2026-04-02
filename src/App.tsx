@@ -1,21 +1,21 @@
 "use client";
 
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from '@/components/ui/toaster';
-import { RoleProtectedRoute } from '@/components/RoleProtectedRoute';
-import Index from '@/pages/Index';
-import Login from '@/pages/Login';
-import ChooseRole from '@/pages/ChooseRole';
-import ShipperDashboard from '@/pages/shipper/Dashboard';
-import TruckerDashboard from '@/pages/trucker/Dashboard';
-import PostTrip from '@/pages/trucker/PostTrip';
-import BrowseShipments from '@/pages/trucker/BrowseShipments';
-import MyTrips from '@/pages/trucker/MyTrips';
-import MyRequests from '@/pages/trucker/MyRequests';
-import TruckerHistory from '@/pages/TruckerHistory';
-import ShipperHistory from '@/pages/ShipperHistory';
-import Profile from '@/pages/Profile';
-import NotFound from '@/pages/NotFound';
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "@/components/ui/toaster";
+import RoleProtectedRoute from "@/components/RoleProtectedRoute";
+import Index from "@/pages/Index";
+import Login from "@/pages/Login";
+import ChooseRole from "@/pages/ChooseRole";
+import ShipperDashboard from "@/pages/shipper/Dashboard";
+import TruckerDashboard from "@/pages/trucker/Dashboard";
+import PostTrip from "@/pages/trucker/PostTrip";
+import BrowseShipments from "@/pages/trucker/BrowseShipments";
+import MyTrips from "@/pages/trucker/MyTrips";
+import MyRequests from "@/pages/trucker/MyShipmentRequests";
+import TruckerHistory from "@/pages/TruckerHistory";
+import ShipperHistory from "@/pages/ShipperHistory";
+import Profile from "@/pages/Profile";
+import NotFound from "@/pages/NotFound";
 
 function App() {
   return (
