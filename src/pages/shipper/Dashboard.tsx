@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useCallback, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSupabase } from '@/hooks/useSupabase';
@@ -21,7 +21,10 @@ import {
   Loader2,
   Search,
   PlusSquare,
-  Star as StarIcon
+  Star as StarIcon,
+  XCircle,
+  Loader3,
+  ArrowRight as ArrowRightIcon
 } from 'lucide-react';
 
 const ShipperDashboard = () => {
@@ -108,6 +111,44 @@ const ShipperDashboard = () => {
   [requests]);
 
   const reviewedTripIds = useMemo(() => new Set(reviews.map(r => r.trip_id)), [reviews]);
+
+  const handleAcceptRequest = useCallback(async (requestId: string) => {
+    try {
+      const supabase = await getAuthenticatedClient();
+      const { error } = await supabase
+        .from('requests')
+        .update({ status: 'accepted' })
+        .eq('id', requestId);
+
+      if (error) {
+        throw error;
+      } else {
+        showSuccess('Request accepted! You can now contact the trucker.');
+        queryClient.invalidateQueries({ queryKey: ['shipper-requests'] });
+      }
+    } catch (err: any) {
+      showError(err.message || 'Failed to accept request');
+    }
+  }, [getAuthenticatedClient, queryClient]);
+
+  const handleRejectRequest = useCallback(async (requestId: string) => {
+    try {
+      const supabase = await getAuthenticatedClient();
+      const { error } = await supabase
+        .from('requests')
+        .update({ status: 'declined' })
+        .eq('id', requestId);
+
+      if (error) {
+        throw error;
+      } else {
+        showSuccess('Request declined');
+        queryClient.invalidateQueries({ queryKey: ['shipper-requests'] });
+      }
+    } catch (err: any) {
+      showError(err.message || 'Failed to decline request');
+    }
+  }, [getAuthenticatedClient, queryClient]);
 
   if (isLoading && requests.length === 0) {
     return <DashboardSkeleton />;
@@ -213,6 +254,25 @@ const ShipperDashboard = () => {
                         <div className="flex justify-between items-center pt-3 border-t">
                           <div className="text-xs text-gray-400">Requested: {new Date(request.created_at).toLocaleDateString('en-IN')}</div>
                           <div className="flex items-center space-x-2">
+                            {request.status === 'pending' && (
+                              <>
+                                <Button 
+                                  size="sm" 
+                                  variant="ghost" 
+                                  onClick={() => handleRejectRequest(request.id)}
+                                  className="text-red-600 hover:bg-red-50"
+                                >
+                                  <XCircle className="h-4 w-4 mr-1" /> Reject
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => handleAcceptRequest(request.id)}
+                                  className="bg-green-600 hover:bg-green-700"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" /> Accept
+                                </Button>
+                              </>
+                            )}
                             {canReview && (
                               <Button 
                                 size="sm" 
@@ -238,7 +298,7 @@ const ShipperDashboard = () => {
                                   </Button>
                                 </Link>
                                 <a href={`tel:${request.trip.trucker.phone}`}>
-                                  <Button size="sm" className="bg-green-600 hover:bg-green-700 shadow-sm">
+                                  <Button size="sm" className="bg-green-600 hover:bg-green-700">
                                     <Phone className="h-4 w-4 mr-1" /> Call
                                   </Button>
                                 </a>
