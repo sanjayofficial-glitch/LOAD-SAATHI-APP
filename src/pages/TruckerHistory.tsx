@@ -21,6 +21,16 @@ import { supabase } from "@/lib/supabaseClient";
 import { useQuery } from "@tanstack/react-query";
 import { showError, showSuccess } from "@/utils/toast";
 
+interface ActivityItem {
+  id: string;
+  activity_type: string;
+  status: string;
+  created_at: string;
+  counterparty_name?: string;
+  trip_details?: any;
+  shipment_details?: any;
+}
+
 const TruckerHistory = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -32,23 +42,25 @@ const TruckerHistory = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Query the trucker_history view
-  const { data: activities = [], isLoading } = useQuery(
-    ["truckerHistory", filters.activityType, filters.status],
-    async () => {
+  const { data: activities = [], isLoading } = useQuery({
+    queryKey: ["truckerHistory", filters.activityType, filters.status],
+    queryFn: async () => {
+      if (!user) return [];
       const { data, error } = await supabase
         .from("trucker_history")
         .select("*")
-        .eq("user_id", user?.id);
+        .eq("user_id", user.id);
 
       if (error) throw error;
-      return data || [];
+      return (data as ActivityItem[]) || [];
     },
-    { enabled: !!user }
-  );
+    enabled: !!user,
+  });
 
-  // Filter activities based on current filters  const filteredActivities = useCallback(() => {
+  // Filter activities based on current filters
+  const filteredActivities = useCallback(() => {
     if (!activities) return [];
-    return activities.filter((activity) => {
+    return activities.filter((activity: ActivityItem) => {
       if (filters.activityType && activity.activity_type !== filters.activityType)
         return false;
       if (filters.status && activity.status !== filters.status) return false;
@@ -56,7 +68,8 @@ const TruckerHistory = () => {
     });
   }, [activities, filters]);
 
-  // Handle item click  const handleItemClick = (item: any) => {
+  // Handle item click
+  const handleItemClick = (item: ActivityItem) => {
     setSelectedItem(item);
     setIsModalOpen(true);
   };

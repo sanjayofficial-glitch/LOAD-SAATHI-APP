@@ -20,6 +20,16 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabaseClient";
 import { showError, showSuccess } from "@/utils/toast";
 
+interface ActivityItem {
+  id: string;
+  activity_type: string;
+  status: string;
+  created_at: string;
+  counterparty_name?: string;
+  trip_details?: any;
+  shipment_details?: any;
+}
+
 const ShipperHistory = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -31,24 +41,25 @@ const ShipperHistory = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Query the shipper_history view
-  const { data: activities = [], isLoading } = useQuery(
-    ["shipperHistory", filters.activityType, filters.status],
-    async () => {
+  const { data: activities = [], isLoading } = useQuery({
+    queryKey: ["shipperHistory", filters.activityType, filters.status],
+    queryFn: async () => {
+      if (!user) return [];
       const { data, error } = await supabase
         .from("shipper_history")
         .select("*")
-        .eq("user_id", user?.id);
+        .eq("user_id", user.id);
 
       if (error) throw error;
-      return data || [];
+      return (data as ActivityItem[]) || [];
     },
-    { enabled: !!user }
-  );
+    enabled: !!user,
+  });
 
   // Filter activities based on current filters
   const filteredActivities = useCallback(() => {
     if (!activities) return [];
-    return activities.filter((activity) => {
+    return activities.filter((activity: ActivityItem) => {
       if (filters.activityType && activity.activity_type !== filters.activityType)
         return false;
       if (filters.status && activity.status !== filters.status) return false;
@@ -57,7 +68,7 @@ const ShipperHistory = () => {
   }, [activities, filters]);
 
   // Handle item click
-  const handleItemClick = (item: any) => {
+  const handleItemClick = (item: ActivityItem) => {
     setSelectedItem(item);
     setIsModalOpen(true);
   };
@@ -77,7 +88,8 @@ const ShipperHistory = () => {
             My Activity History
           </h1>
           <div className="flex items-center space-x-4">
-            <Badge              variant="default"
+            <Badge
+              variant="default"
               className="bg-gray-100 text-gray-700 px-2 py-1 rounded"
             >
               {user?.user_type === "shipper"
