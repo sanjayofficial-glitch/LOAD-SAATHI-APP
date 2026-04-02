@@ -29,21 +29,34 @@ const ShipperDashboard = () => {
       const supabase = createClerkSupabaseClient(supabaseToken);
 
       // Active shipments
-      const { count: activeShipments } = await supabase.from('shipments').select('*', { count: 'exact', head: true }).eq('shipper_id', userProfile.id).eq('status', 'pending');
+      const { count: activeShipments } = await supabase
+        .from('shipments')
+        .select('*', { count: 'exact', head: true })
+        .eq('shipper_id', userProfile.id)
+        .eq('status', 'pending');
       
       // Completed shipments
-      const { count: completedShipments } = await supabase.from('shipments').select('*', { count: 'exact', head: true }).eq('shipper_id', userProfile.id).eq('status', 'completed');
+      const { count: completedShipments } = await supabase
+        .from('shipments')
+        .select('*', { count: 'exact', head: true })
+        .eq('shipper_id', userProfile.id)
+        .eq('status', 'completed');
       
       // Pending requests
-      const { count: pendingRequests } = await supabase.from('requests').select('*', { count: 'exact', head: true }).eq('shipper_id', userProfile.id).eq('status', 'pending');
+      const { count: pendingRequests } = await supabase
+        .from('requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('shipper_id', userProfile.id)
+        .eq('status', 'pending');
 
-      // Total spent from completed shipments      const { data: completedShipmentsData } = await supabase
+      // Total spent from completed shipments
+      const { data: completedShipmentsData } = await supabase
         .from('shipments')
         .select('budget_per_tonne, requests!inner(weight_tonnes)')
         .eq('shipper_id', userProfile.id)
         .eq('status', 'completed');
 
-      const totalSpent = completedShipmentsData?.reduce((sum, shipment) => {
+      const totalSpent = completedShipmentsData?.reduce((sum, shipment: any) => {
         const request = shipment.requests[0];
         return sum + (request ? shipment.budget_per_tonne * request.weight_tonnes : 0);
       }, 0) || 0;
@@ -188,7 +201,7 @@ const ShipperDashboard = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {stats.upcomingShipments.map((shipment, index) => (
+              {stats.upcomingShipments.map((shipment: any, index: number) => (
                 <div key={index} className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
                   <div className="flex items-center space-x-4">
                     <div className="bg-blue-100 p-2 rounded-full">
@@ -222,7 +235,8 @@ const ShipperDashboard = () => {
                       onClick={() => handleCancelShipment(shipment.id)}
                       className="border-red-200 text-red-700 hover:bg-red-50"
                     >
-                      Cancel                    </Button>
+                      Cancel
+                    </Button>
                   </div>
                 </div>
               ))}
