@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/lib/supabaseClient";
 import { useQuery } from "@tanstack/react-query";
 import { showError, showSuccess } from "@/utils/toast";
@@ -78,6 +79,14 @@ const TruckerHistory = () => {
     <div className="flex items-center justify-center min-h-[400px]">
       <span className="text-orange-600 animate-spin">Loading history...</span>
     </div>
+  );
+
+  // Separate activities into pending and completed
+  const pendingActivities = filteredActivities().filter(
+    (activity) => activity.status !== "completed"
+  );
+  const completedActivities = filteredActivities().filter(
+    (activity) => activity.status === "completed"
   );
 
   return (
@@ -146,61 +155,122 @@ const TruckerHistory = () => {
         </div>
       </div>
 
-      {/* Activity List */}
+      {/* Activity Tabs */}
       <div className="container mx-auto px-4 py-4">
-        <div className="space-y-4">
-          {filteredActivities().length === 0 ? (
-            <div className="text-center py-12">
-              <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-                <AlertCircle className="h-8 w-8 text-gray-400" />
+        <Tabs defaultValue="pending" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-4">
+            <TabsTrigger value="pending">Pending ({pendingActivities.length})</TabsTrigger>
+            <TabsTrigger value="completed">Completed ({completedActivities.length})</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="pending" className="space-y-4">
+            {pendingActivities.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                  <AlertCircle className="h-8 w-8 text-gray-400" />
+                </div>
+                <p className="text-gray-500">No pending activities</p>
               </div>
-              <p className="text-gray-500">No activity history found</p>
-            </div>
-          ) : (
-            filteredActivities().map((activity) => (
-              <Card
-                key={activity.id}
-                className="border border-gray-100 rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                onClick={() => handleItemClick(activity)}
-              >
-                <CardContent className="p-4 flex flex-col">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-full flex items-center justify-center border border-gray-200">
-                        {renderActivityIcon(activity.activity_type)}
+            ) : (
+              pendingActivities.map((activity) => (
+                <Card
+                  key={activity.id}
+                  className="border border-gray-100 rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => handleItemClick(activity)}
+                >
+                  <CardContent className="p-4 flex flex-col">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center border border-gray-200">
+                          {renderActivityIcon(activity.activity_type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-600 font-medium">
+                            {activity.activity_type.replace("_", " ")}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(activity.created_at).toLocaleDateString("en-IN", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-600 font-medium">
-                          {activity.activity_type.replace("_", " ")}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {new Date(activity.created_at).toLocaleDateString("en-IN", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
+                      <div className="mt-2 flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-900">
+                          {activity.counterparty_name || "N/A"}
+                        </span>
+                        <Badge
+                          variant={getBadgeVariant(activity.status)}
+                          className="ml-2"
+                        >
+                          {activity.status}
+                        </Badge>
                       </div>
                     </div>
-                    <div className="mt-2 flex justify-between items-center">
-                      <span className="text-sm font-medium text-gray-900">
-                        {activity.counterparty_name || "N/A"}
-                      </span>
-                      <Badge
-                        variant={getBadgeVariant(activity.status)}
-                        className="ml-2"
-                      >
-                        {activity.status}
-                      </Badge>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+
+          <TabsContent value="completed" className="space-y-4">
+            {completedActivities.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
+                  <CheckCircle className="h-8 w-8 text-gray-400" />
+                </div>
+                <p className="text-gray-500">No completed activities</p>
+              </div>
+            ) : (
+              completedActivities.map((activity) => (
+                <Card
+                  key={activity.id}
+                  className="border border-gray-100 rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => handleItemClick(activity)}
+                >
+                  <CardContent className="p-4 flex flex-col">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center border border-gray-200">
+                          {renderActivityIcon(activity.activity_type)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-600 font-medium">
+                            {activity.activity_type.replace("_", " ")}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {new Date(activity.created_at).toLocaleDateString("en-IN", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-2 flex justify-between items-center">
+                        <span className="text-sm font-medium text-gray-900">
+                          {activity.counterparty_name || "N/A"}
+                        </span>
+                        <Badge
+                          variant={getBadgeVariant(activity.status)}
+                          className="ml-2"
+                        >
+                          {activity.status}
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
