@@ -26,7 +26,8 @@ import {
   Loader2,
   CheckCircle2,
   MessageSquare,
-  RefreshCw
+  RefreshCw,
+  ShieldCheck
 } from 'lucide-react';
 import Star from '@/components/Star';
 
@@ -39,6 +40,7 @@ const Profile = () => {
   const [companyName, setCompanyName] = useState(userProfile?.company_name || '');
   const [loading, setLoading] = useState(false);
   const [switchingRole, setSwitchingRole] = useState(false);
+  const [verifying, setVerifying] = useState(false);
   const [stats, setStats] = useState({ count: 0, rating: 0 });
   const [statsLoading, setStatsLoading] = useState(true);
   const [reviews, setReviews] = useState<any[]>([]);
@@ -144,6 +146,30 @@ const Profile = () => {
     }
   };
 
+  const handleVerify = async () => {
+    setVerifying(true);
+    try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('Authentication error');
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
+      
+      const { error } = await supabase
+        .from('users')
+        .update({ is_verified: true })
+        .eq('id', userProfile?.id);
+
+      if (error) throw error;
+
+      showSuccess('Account verified successfully!');
+      await refreshProfile();
+    } catch (err: any) {
+      showError(err.message || 'Failed to verify account');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   const handleSwitchRole = async () => {
     const newRole = userProfile?.user_type === 'shipper' ? 'trucker' : 'shipper';
     const confirmMessage = `Are you sure you want to switch to a ${newRole} account? This will change your dashboard and available features.`;
@@ -195,15 +221,28 @@ const Profile = () => {
             </div>
           </div>
         </div>
-        <Button 
-          variant="outline" 
-          onClick={handleSwitchRole}
-          disabled={switchingRole}
-          className="border-orange-200 text-orange-700 hover:bg-orange-50"
-        >
-          {switchingRole ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-          Switch to {userProfile?.user_type === 'shipper' ? 'Trucker' : 'Shipper'}
-        </Button>
+        <div className="flex gap-2">
+          {!userProfile?.is_verified && (
+            <Button 
+              variant="outline" 
+              onClick={handleVerify}
+              disabled={verifying}
+              className="border-green-200 text-green-700 hover:bg-green-50"
+            >
+              {verifying ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+              Verify Account
+            </Button>
+          )}
+          <Button 
+            variant="outline" 
+            onClick={handleSwitchRole}
+            disabled={switchingRole}
+            className="border-orange-200 text-orange-700 hover:bg-orange-50"
+          >
+            {switchingRole ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+            Switch Role
+          </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">

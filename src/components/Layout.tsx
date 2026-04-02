@@ -8,6 +8,7 @@ import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { Notification } from '@/types';
 import { Button } from '@/components/ui/button';
 import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabaseClient';
 import { 
   Truck, 
   Bell, 
@@ -48,9 +49,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       const supabaseToken = await getToken({ template: 'supabase' });
       if (!supabaseToken) return;
       
-      const supabase = createClerkSupabaseClient(supabaseToken);
+      const supabaseClient = createClerkSupabaseClient(supabaseToken);
       
-      const { data } = await supabase
+      const { data } = await supabaseClient
         .from('notifications')
         .select('id, message, is_read, created_at')
         .eq('user_id', userProfile.id)
@@ -67,10 +68,33 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   }, [userProfile?.id, getToken]);
 
   useEffect(() => {
-    if (userProfile) {
-      fetchNotifications();
-    }
-  }, [userProfile, fetchNotifications]);
+    if (!userProfile?.id) return;
+
+    fetchNotifications();
+
+    // Subscribe to real-time notifications
+    const channel = supabase
+      .channel(`notifications:${userProfile.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userProfile.id}`,
+        },
+        (payload) => {
+          const newNotif = payload.new as Notification;
+          setNotifications(prev => [newNotif, ...prev].slice(0, 10));
+          setUnreadCount(prev => prev + 1);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userProfile?.id, fetchNotifications]);
 
   const markAsRead = async () => {
     if (unreadCount === 0 || !userProfile?.id) return;
@@ -79,9 +103,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       const supabaseToken = await getToken({ template: 'supabase' });
       if (!supabaseToken) return;
       
-      const supabase = createClerkSupabaseClient(supabaseToken);
+      const supabaseClient = createClerkSupabaseClient(supabaseToken);
       
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from('notifications')
         .update({ is_read: true })
         .eq('user_id', userProfile.id)
@@ -101,7 +125,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     navigate('/');
   };
 
-  // Prefetch data for the next page when user hovers over a link
   const prefetchData = (path: string) => {
     if (path.includes('dashboard')) {
       queryClient.prefetchQuery({ queryKey: [userProfile?.user_type === 'trucker' ? 'trucker-trips' : 'shipper-requests', userProfile?.id] });

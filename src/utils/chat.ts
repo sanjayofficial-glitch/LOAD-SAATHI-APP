@@ -1,6 +1,7 @@
 import { toast } from "sonner";
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Message } from '@/types/chat';
+import { supabase } from '@/lib/supabaseClient';
 
 export const showSuccess = (message: string) => {
   toast.success(message);
@@ -40,9 +41,9 @@ export const sendMessage = async (payload: {
       throw new Error('Failed to get Supabase token');
     }
 
-    const supabase = createClerkSupabaseClient(supabaseToken);
+    const supabaseClient = createClerkSupabaseClient(supabaseToken);
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('messages')
       .insert({
         sender_id: userId,
@@ -70,10 +71,6 @@ export const sendMessage = async (payload: {
  */
 export const fetchMessages = async (requestId: string): Promise<Message[]> => {
   try {
-    // This function should be called with a Supabase client instance
-    // For now, we'll use the anonymous client for reading
-    const { supabase } = await import('@/lib/supabaseClient');
-    
     const { data, error } = await supabase
       .from('messages')
       .select('*')
@@ -96,9 +93,6 @@ export const fetchMessages = async (requestId: string): Promise<Message[]> => {
  */
 export const markMessagesAsRead = async (requestId: string, userId: string): Promise<void> => {
   try {
-    // This function should be called with a Supabase client instance
-    const { supabase } = await import('@/lib/supabaseClient');
-    
     await supabase
       .from('messages')
       .update({ is_read: true })
@@ -115,12 +109,8 @@ export const markMessagesAsRead = async (requestId: string, userId: string): Pro
  */
 export const subscribeToMessages = (
   requestId: string,
-  onNewMessage: (message: Message) => void,
-  _channel: any = undefined,
-  _options?: any
+  onNewMessage: (message: Message) => void
 ): any => {
-  const { supabase } = require('@/lib/supabaseClient');
-  
   const channel = supabase
     .channel(`chat:${requestId}`)
     .on(
