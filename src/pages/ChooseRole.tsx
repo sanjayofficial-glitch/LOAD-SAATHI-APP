@@ -16,12 +16,19 @@ const ChooseRole = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (isLoaded && !user) {
+      navigate("/register", { replace: true });
+    }
+  }, [isLoaded, user, navigate]);
+
   // Auto-redirect if role is already chosen
   useEffect(() => {
-    if (isLoaded && userProfile?.user_type) {
+    if (isLoaded && user && userProfile?.user_type) {
       navigate(userProfile.user_type === "shipper" ? "/shipper/dashboard" : "/trucker/dashboard", { replace: true });
     }
-  }, [isLoaded, userProfile, navigate]);
+  }, [isLoaded, user, userProfile, navigate]);
 
   const handleRoleSelection = async (role: "shipper" | "trucker") => {
     if (!isLoaded || !user || !session) return;
@@ -68,12 +75,12 @@ const ChooseRole = () => {
     }
   };
 
-  if (!isLoaded) {
+  if (!isLoaded || !user) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-gray-50 px-4">
         <div className="text-center">
           <Loader2 className="h-10 w-10 text-orange-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600">Loading...</p>
+          <p className="text-gray-600">Verifying account...</p>
         </div>
       </div>
     );
