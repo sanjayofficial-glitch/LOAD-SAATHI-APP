@@ -28,6 +28,7 @@ const ChooseRole = () => {
 
       const supabase = createClerkSupabaseClient(supabaseToken);
       
+      // Use upsert to handle both new and existing users
       const { error: upsertError } = await supabase
         .from('users')
         .upsert({
@@ -39,7 +40,7 @@ const ChooseRole = () => {
           is_verified: false,
           rating: 0,
           total_trips: 0,
-          created_at: user.createdAt || new Date().toISOString()
+          created_at: user.createdAt ? new Date(user.createdAt).toISOString() : new Date().toISOString()
         }, { onConflict: 'id' });
 
       if (upsertError) throw upsertError;
@@ -48,7 +49,11 @@ const ChooseRole = () => {
       await refreshProfile();
 
       showSuccess(`Welcome ${role === 'shipper' ? 'Shipper' : 'Trucker'}!`);
-      navigate(role === 'shipper' ? '/shipper/dashboard' : '/trucker/dashboard', { replace: true });
+      
+      // Use a small delay to ensure state is updated before navigation
+      setTimeout(() => {
+        navigate(role === 'shipper' ? '/shipper/dashboard' : '/trucker/dashboard', { replace: true });
+      }, 100);
     } catch (err: any) {
       console.error("[ChooseRole] Error:", err);
       setError(err.message || "Failed to set role");

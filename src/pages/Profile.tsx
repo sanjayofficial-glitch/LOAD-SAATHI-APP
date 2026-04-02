@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { showSuccess, showError } from '@/utils/toast';
+import { useNavigate } from 'react-router-dom';
 import { 
   User, 
   Phone, 
@@ -24,17 +25,20 @@ import {
   Lock,
   Loader2,
   CheckCircle2,
-  MessageSquare
+  MessageSquare,
+  RefreshCw
 } from 'lucide-react';
 import Star from '@/components/Star';
 
 const Profile = () => {
   const { userProfile, refreshProfile } = useAuth();
   const { getToken } = useClerkAuth();
+  const navigate = useNavigate();
   const [fullName, setFullName] = useState(userProfile?.full_name || '');
   const [phone, setPhone] = useState(userProfile?.phone || '');
   const [companyName, setCompanyName] = useState(userProfile?.company_name || '');
   const [loading, setLoading] = useState(false);
+  const [switchingRole, setSwitchingRole] = useState(false);
   const [stats, setStats] = useState({ count: 0, rating: 0 });
   const [statsLoading, setStatsLoading] = useState(true);
   const [reviews, setReviews] = useState<any[]>([]);
@@ -140,6 +144,36 @@ const Profile = () => {
     }
   };
 
+  const handleSwitchRole = async () => {
+    const newRole = userProfile?.user_type === 'shipper' ? 'trucker' : 'shipper';
+    const confirmMessage = `Are you sure you want to switch to a ${newRole} account? This will change your dashboard and available features.`;
+    
+    if (!window.confirm(confirmMessage)) return;
+
+    setSwitchingRole(true);
+    try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('Authentication error');
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
+      
+      const { error } = await supabase
+        .from('users')
+        .update({ user_type: newRole })
+        .eq('id', userProfile?.id);
+
+      if (error) throw error;
+
+      showSuccess(`Successfully switched to ${newRole} role!`);
+      await refreshProfile();
+      navigate(newRole === 'shipper' ? '/shipper/dashboard' : '/trucker/dashboard');
+    } catch (err: any) {
+      showError(err.message || 'Failed to switch role');
+    } finally {
+      setSwitchingRole(false);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
@@ -161,6 +195,15 @@ const Profile = () => {
             </div>
           </div>
         </div>
+        <Button 
+          variant="outline" 
+          onClick={handleSwitchRole}
+          disabled={switchingRole}
+          className="border-orange-200 text-orange-700 hover:bg-orange-50"
+        >
+          {switchingRole ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+          Switch to {userProfile?.user_type === 'shipper' ? 'Trucker' : 'Shipper'}
+        </Button>
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
