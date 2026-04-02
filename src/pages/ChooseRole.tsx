@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useSession } from '@clerk/clerk-react';
 import { Loader2, User, Truck, CheckCircle2 } from 'lucide-react';
@@ -11,10 +11,18 @@ import { showSuccess, showError } from '@/utils/toast';
 const ChooseRole = () => {
   const { user, isLoaded } = useUser();
   const { session } = useSession();
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, userProfile } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Redirect if user already has a role
+  useEffect(() => {
+    if (userProfile?.user_type) {
+      const targetPath = userProfile.user_type === 'shipper' ? '/shipper/dashboard' : '/trucker/dashboard';
+      navigate(targetPath, { replace: true });
+    }
+  }, [userProfile, navigate]);
 
   const handleRoleSelection = async (role: "shipper" | "trucker") => {
     if (!user || !session) return;
