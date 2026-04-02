@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import DashboardSkeleton from '@/components/DashboardSkeleton';
 import ReviewDialog from '@/components/ReviewDialog';
+import { showSuccess, showError } from '@/utils/toast';
 import { 
   Package, 
   Clock, 
@@ -23,7 +24,6 @@ import {
   PlusSquare,
   Star as StarIcon,
   XCircle,
-  Loader3,
   ArrowRight as ArrowRightIcon
 } from 'lucide-react';
 
