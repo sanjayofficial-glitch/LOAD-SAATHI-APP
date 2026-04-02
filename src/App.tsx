@@ -7,6 +7,7 @@ import { Routes, Route } from "react-router-dom";
 import { SignIn, SignUp, SignedIn, SignedOut } from "@clerk/clerk-react";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Layout from "@/components/Layout";
+import RoleProtectedRoute from "@/components/RoleProtectedRoute";
 import { Loader2 } from "lucide-react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 
@@ -73,21 +74,23 @@ const App = () => {
               <Route path="/choose-role" element={<ChooseRole />} />
               <Route path="/auth-sync" element={<AuthSync />} />
               
-              {/* Protected Routes */}
-              <Route path="/shipper/dashboard" element={<SignedIn><Layout><ShipperDashboard /></Layout></SignedIn>} />
-              <Route path="/shipper/post-shipment" element={<SignedIn><Layout><PostShipments /></Layout></SignedIn>} />
-              <Route path="/shipper/my-shipments" element={<SignedIn><Layout><MyShipments /></Layout></SignedIn>} />
-              <Route path="/shipper/edit-shipment/:id" element={<SignedIn><Layout><EditShipment /></Layout></SignedIn>} />
-              <Route path="/shipments/:id" element={<SignedIn><Layout><ShipmentDetail /></Layout></SignedIn>} />
+              {/* Shipper Protected Routes */}
+              <Route path="/shipper/dashboard" element={<SignedIn><RoleProtectedRoute allowedRole="shipper"><Layout><ShipperDashboard /></Layout></RoleProtectedRoute></SignedIn>} />
+              <Route path="/shipper/post-shipment" element={<SignedIn><RoleProtectedRoute allowedRole="shipper"><Layout><PostShipments /></Layout></RoleProtectedRoute></SignedIn>} />
+              <Route path="/shipper/my-shipments" element={<SignedIn><RoleProtectedRoute allowedRole="shipper"><Layout><MyShipments /></Layout></RoleProtectedRoute></SignedIn>} />
+              <Route path="/shipper/edit-shipment/:id" element={<SignedIn><RoleProtectedRoute allowedRole="shipper"><Layout><EditShipment /></Layout></RoleProtectedRoute></SignedIn>} />
+              <Route path="/shipments/:id" element={<SignedIn><RoleProtectedRoute allowedRole="shipper"><Layout><ShipmentDetail /></Layout></RoleProtectedRoute></SignedIn>} />
+              <Route path="/browse-trucks" element={<SignedIn><RoleProtectedRoute allowedRole="shipper"><Layout><BrowseTrips /></Layout></RoleProtectedRoute></SignedIn>} />
               
-              <Route path="/trucker/dashboard" element={<SignedIn><Layout><TruckerDashboard /></Layout></SignedIn>} />
-              <Route path="/trucker/post-trip" element={<SignedIn><Layout><PostTrip /></Layout></SignedIn>} />
-              <Route path="/trucker/my-trips" element={<SignedIn><Layout><MyTrips /></Layout></SignedIn>} />
-              <Route path="/trucker/edit-trip/:id" element={<SignedIn><Layout><EditTrip /></Layout></SignedIn>} />
-              <Route path="/trucker/browse-shipments" element={<SignedIn><Layout><BrowseShipments /></Layout></SignedIn>} />
-              <Route path="/trucker/my-requests" element={<SignedIn><Layout><MyShipmentRequests /></Layout></SignedIn>} />
+              {/* Trucker Protected Routes */}
+              <Route path="/trucker/dashboard" element={<SignedIn><RoleProtectedRoute allowedRole="trucker"><Layout><TruckerDashboard /></Layout></RoleProtectedRoute></SignedIn>} />
+              <Route path="/trucker/post-trip" element={<SignedIn><RoleProtectedRoute allowedRole="trucker"><Layout><PostTrip /></Layout></RoleProtectedRoute></SignedIn>} />
+              <Route path="/trucker/my-trips" element={<SignedIn><RoleProtectedRoute allowedRole="trucker"><Layout><MyTrips /></Layout></RoleProtectedRoute></SignedIn>} />
+              <Route path="/trucker/edit-trip/:id" element={<SignedIn><RoleProtectedRoute allowedRole="trucker"><Layout><EditTrip /></Layout></RoleProtectedRoute></SignedIn>} />
+              <Route path="/trucker/browse-shipments" element={<SignedIn><RoleProtectedRoute allowedRole="trucker"><Layout><BrowseShipments /></Layout></RoleProtectedRoute></SignedIn>} />
+              <Route path="/trucker/my-requests" element={<SignedIn><RoleProtectedRoute allowedRole="trucker"><Layout><MyShipmentRequests /></Layout></RoleProtectedRoute></SignedIn>} />
               
-              <Route path="/browse-trucks" element={<SignedIn><Layout><BrowseTrips /></Layout></SignedIn>} />
+              {/* Shared Protected Routes */}
               <Route path="/trips/:id" element={<SignedIn><Layout><TripDetail /></Layout></SignedIn>} />
               <Route path="/profile" element={<SignedIn><Layout><Profile /></Layout></SignedIn>} />
               <Route path="/messages" element={<SignedIn><Layout><ChatList /></Layout></SignedIn>} />
