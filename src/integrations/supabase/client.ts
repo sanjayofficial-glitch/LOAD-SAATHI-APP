@@ -1,7 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = "https://grtuwjxwutwqfdbpehfc.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdydHV3anh3dXR3cWZkYnBlaGZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQyMDE4NzAsImV4cCI6MjA4OTc3Nzg3MH0.dj_XqLvDJQGA0V1WgoTKx8b598WN3ceJy7fN19GMwos";
+// Use environment variables for Supabase credentials
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://grtuwjxwutwqfdbpehfc.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+// Validate that credentials are set
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  console.warn('Supabase credentials not set in environment variables. Using fallback values.');
+}
 
 // This client is for anonymous/public access only
 // For authenticated requests, use createClerkSupabaseClient from @/utils/supabaseClient

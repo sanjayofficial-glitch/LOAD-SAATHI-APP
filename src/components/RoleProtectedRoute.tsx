@@ -34,7 +34,8 @@ const RoleProtectedRoute = ({ children, allowedRole }: RoleProtectedRouteProps) 
     return <Navigate to={targetPath} replace />;
   }
 
-  // All checks passed – render the protected component  return <>{children}</>;
+  // All checks passed – render the protected component
+  return <>{children}</>;
 };
 
 export default RoleProtectedRoute;

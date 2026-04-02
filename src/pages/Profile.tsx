@@ -315,7 +315,7 @@ const Profile = () => {
                   <div className="space-y-4">
                     {reviews.map((review) => (
                       <div key={review.id} className="p-4 border rounded-lg bg-white">
-                        <div className="flex justify-between items-start mb-2">
+                        <div className="flex justify-between items-center mb-2">
                           <div className="flex items-center gap-2">
                             <div className="flex">
                               {[1, 2, 3, 4, 5].map((s) => (

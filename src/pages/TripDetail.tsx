@@ -170,7 +170,7 @@ const TripDetail = () => {
 
               <div className="bg-blue-50 p-4 rounded-lg flex items-center justify-between">
                 <div className="flex items-center">
-                  <CheckCircle className="mr-2 h-5 w-5" /> Available Capacity              </div>
+                  <CheckCircle className="mr-2 h-5 w-5" /> Available Capacity                </div>
                 <Badge className="bg-blue-600 text-white text-lg px-3 py-1">
                   {trip.available_capacity_tonnes} Tonnes
                 </Badge>
