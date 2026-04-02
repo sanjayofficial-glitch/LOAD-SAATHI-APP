@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { useUser, useSession, useClerkAuth } from '@clerk/clerk-react';
+import { useUser, useSession, useClerk } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { supabase } from '@/lib/supabaseClient';
 import { User } from '@/types';
@@ -23,8 +23,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoaded: clerkLoaded } = useUser();
-  const { signOut: clerkSignOut, getToken } = useClerkAuth();
   const { session } = useSession();
+  const { signOut: clerkSignOut, getToken } = useClerk();
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
