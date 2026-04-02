@@ -129,7 +129,7 @@ const MyShipments = () => {
         <div className="grid gap-6">
           {shipments.map(shipment => {
             // Note: Request count temporarily disabled due to missing 'shipment_requests' table in schema
-            const requestCount = 0;
+            const requestCount: number = 0;
             
             return (
               <Card key={shipment.id} className="overflow-hidden border-blue-100 hover:shadow-md transition-shadow">
