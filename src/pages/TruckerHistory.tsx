@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Calendar,
   RefreshCw,
+  MessageSquare,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,7 +31,8 @@ const TruckerHistory = () => {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Query the trucker_history view  const { data: activities = [], isLoading } = useQuery(
+  // Query the trucker_history view
+  const { data: activities = [], isLoading } = useQuery(
     ["truckerHistory", filters.activityType, filters.status],
     async () => {
       const { data, error } = await supabase
@@ -44,8 +46,7 @@ const TruckerHistory = () => {
     { enabled: !!user }
   );
 
-  // Filter activities based on current filters
-  const filteredActivities = useCallback(() => {
+  // Filter activities based on current filters  const filteredActivities = useCallback(() => {
     if (!activities) return [];
     return activities.filter((activity) => {
       if (filters.activityType && activity.activity_type !== filters.activityType)
@@ -55,12 +56,7 @@ const TruckerHistory = () => {
     });
   }, [activities, filters]);
 
-  const applyFilters = () => {
-    // Trigger re-query with new filters
-  };
-
-  // Handle item click
-  const handleItemClick = (item: any) => {
+  // Handle item click  const handleItemClick = (item: any) => {
     setSelectedItem(item);
     setIsModalOpen(true);
   };
@@ -71,7 +67,6 @@ const TruckerHistory = () => {
     </div>
   );
 
-  // Modal for full details
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header with filters */}
@@ -150,7 +145,8 @@ const TruckerHistory = () => {
             </div>
           ) : (
             filteredActivities().map((activity) => (
-              <Card                key={activity.id}
+              <Card
+                key={activity.id}
                 className="border border-gray-100 rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => handleItemClick(activity)}
               >

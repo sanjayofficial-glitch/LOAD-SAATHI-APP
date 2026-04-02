@@ -31,9 +31,9 @@ const ShipperHistory = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Query the shipper_history view
-  const { data: activities = [], isLoading } = useQuery({
-    queryKey: ["shipperHistory", filters.activityType, filters.status],
-    queryFn: async () => {
+  const { data: activities = [], isLoading } = useQuery(
+    ["shipperHistory", filters.activityType, filters.status],
+    async () => {
       const { data, error } = await supabase
         .from("shipper_history")
         .select("*")
@@ -42,8 +42,8 @@ const ShipperHistory = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user,
-  });
+    { enabled: !!user }
+  );
 
   // Filter activities based on current filters
   const filteredActivities = useCallback(() => {
@@ -55,10 +55,6 @@ const ShipperHistory = () => {
       return true;
     });
   }, [activities, filters]);
-
-  const applyFilters = () => {
-    // Trigger re-query with new filters
-  };
 
   // Handle item click
   const handleItemClick = (item: any) => {
@@ -72,7 +68,6 @@ const ShipperHistory = () => {
     </div>
   );
 
-  // Modal for full details
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header with filters */}
@@ -82,8 +77,7 @@ const ShipperHistory = () => {
             My Activity History
           </h1>
           <div className="flex items-center space-x-4">
-            <Badge
-              variant="default"
+            <Badge              variant="default"
               className="bg-gray-100 text-gray-700 px-2 py-1 rounded"
             >
               {user?.user_type === "shipper"
