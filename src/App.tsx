@@ -15,6 +15,16 @@ import MissingClerkKey from "@/components/MissingClerkKey";
 import Index from "./pages/Index";
 // ... other imports remain the same ...
 
+// Create a query client instance
+const queryClient = new QueryClient();
+
+// Define a simple loading fallback component
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center min-h-[200px]">
+    <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+  </div>
+);
+
 const App = () => {
   // Check if we have a valid Clerk publishable key
   const hasValidClerkKey = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.length;
