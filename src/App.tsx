@@ -31,7 +31,7 @@ import MyShipments from "./pages/shipper/MyShipments";
 import ShipperHistory from "./pages/ShipperHistory";
 import ShipmentDetail from "./pages/shipper/ShipmentDetail";
 import EditShipment from "./pages/shipper/EditShipment";
-import BrowseTrips from "./pages/shipper/BrowseTrips"; // <-- Added import
+import BrowseTrips from "./pages/shipper/BrowseTrips";
 
 // Trucker pages
 import TruckerDashboard from "./pages/trucker/Dashboard";
@@ -44,9 +44,10 @@ import BrowseShipments from "./pages/trucker/BrowseShipments";
 import MyShipmentRequests from "./pages/trucker/MyShipmentRequests";
 
 // Admin pages
-import AdminDashboard from "./pages/admin/Dashboard"; // <-- Keep import
+import AdminDashboard from "./pages/admin/Dashboard";
 
-// Create a query client instanceconst queryClient = new QueryClient();
+// Create a query client instance
+const queryClient = new QueryClient();
 
 // Define a simple loading fallback component
 const LoadingFallback = () => (
@@ -58,7 +59,8 @@ const LoadingFallback = () => (
 const App = () => {
   // Check if we have a valid Clerk publishable key
   const hasValidClerkKey = !!import.meta.env.VITE_CLERK_PUBLISHABLE_KEY?.length;
-    if (!hasValidClerkKey) {
+  
+  if (!hasValidClerkKey) {
     return <MissingClerkKey />;
   }
 
@@ -107,7 +109,8 @@ const App = () => {
                       <RoleProtectedRoute allowedRole="shipper">
                         <PostShipments />
                       </RoleProtectedRoute>
-                    }                   />
+                    } 
+                  />
                   <Route 
                     path="/shipper/my-shipments" 
                     element={
@@ -122,7 +125,8 @@ const App = () => {
                       <RoleProtectedRoute allowedRole="shipper">
                         <ShipperHistory />
                       </RoleProtectedRoute>
-                    }                   />
+                    } 
+                  />
                   <Route 
                     path="/shipper/edit-shipment/:id" 
                     element={
@@ -131,7 +135,9 @@ const App = () => {
                       </RoleProtectedRoute>
                     } 
                   />
-                  <Route                     path="/shipments/:id"                     element={
+                  <Route 
+                    path="/shipments/:id" 
+                    element={
                       <RoleProtectedRoute allowedRole="shipper">
                         <ShipmentDetail />
                       </RoleProtectedRoute>
@@ -141,7 +147,7 @@ const App = () => {
                     path="/browse-trucks" 
                     element={
                       <RoleProtectedRoute allowedRole="shipper">
-                        <BrowseTrips /> // <-- Use imported component
+                        <BrowseTrips />
                       </RoleProtectedRoute>
                     } 
                   />
@@ -195,7 +201,8 @@ const App = () => {
                       </RoleProtectedRoute>
                     } 
                   />
-                  <Route                     path="/trucker/browse-shipments" 
+                  <Route 
+                    path="/trucker/browse-shipments" 
                     element={
                       <RoleProtectedRoute allowedRole="trucker">
                         <BrowseShipments />
@@ -237,9 +244,10 @@ const App = () => {
                     } 
                   />
                   
-                  {/* Admin route - no role guard needed for internal admin area */}
-                  <Route                     path="/admin/dashboard" 
-                    element={<AdminDashboard />} // <-- Removed RoleProtectedRoute to avoid type error
+                  {/* Admin route */}
+                  <Route 
+                    path="/admin/dashboard" 
+                    element={<AdminDashboard />}
                   />
                   
                   {/* Catch all - 404 */}
