@@ -8,6 +8,7 @@ import { ClerkProvider, SignIn, SignUp, SignedIn, SignedOut, RedirectToSignIn } 
 import { AuthProvider } from "@/contexts/AuthContext";
 import Layout from "@/components/Layout";
 import RoleProtectedRoute from "@/components/RoleProtectedRoute";
+import AuthSync from "@/components/AuthSync";
 import { Loader2 } from "lucide-react";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import MissingClerkKey from "@/components/MissingClerkKey";
@@ -27,7 +28,7 @@ import NotFound from "./pages/NotFound";
 import ShipperDashboard from "./pages/shipper/Dashboard";
 import PostShipments from "./pages/shipper/PostShipments";
 import MyShipments from "./pages/shipper/MyShipments";
-import ShipperHistory from "./pages/shipper/ShipperHistory";
+import ShipperHistory from "./pages/ShipperHistory";
 import ShipmentDetail from "./pages/shipper/ShipmentDetail";
 import EditShipment from "./pages/shipper/EditShipment";
 
@@ -35,7 +36,7 @@ import EditShipment from "./pages/shipper/EditShipment";
 import TruckerDashboard from "./pages/trucker/Dashboard";
 import PostTrip from "./pages/trucker/PostTrip";
 import MyTrips from "./pages/trucker/MyTrips";
-import TruckerHistory from "./pages/trucker/TruckerHistory";
+import TruckerHistory from "./pages/TruckerHistory";
 import TripDetail from "./pages/TripDetail";
 import EditTrip from "./pages/trucker/EditTrip";
 import BrowseShipments from "./pages/trucker/BrowseShipments";
