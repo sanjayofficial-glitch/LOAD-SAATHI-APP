@@ -12,16 +12,15 @@ const MissingClerkKey = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
-    
-    // In a real app, you'd validate the key somehow
-    // For now, just navigate to simulate having a key
     setShowForm(false);
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
       <div className="max-w-md bg-white rounded-xl shadow-lg p-8 space-y-6">
-        <h1 className="text-2xl font-bold text-gray-900 text-center">Clerk Integration Required</h1>
+        <h1 className="text-2xl font-bold text-gray-900 text-center">
+          Clerk Integration Required
+        </h1>
         <p className="text-gray-600 text-center mb-6">
           To use LoadSaathi, you need to configure your Clerk publishable key.
           This key is used for authentication and must be set in your .env file.
@@ -52,7 +51,7 @@ const MissingClerkKey = () => {
         ) : (
           <div className="text-center">
             <div className="bg-orange-100 p-4 rounded-lg mb-4">
-              <p className="text-orange-800">⚠️</div>
+              <p className="text-orange-800">⚠️</p>
               <p className="text-lg font-medium">Clerk setup in progress...</p>
               <p className="text-sm text-gray-500">Redirecting to dashboard...</p>
             </div>
