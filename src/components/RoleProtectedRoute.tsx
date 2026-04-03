@@ -1,18 +1,19 @@
 "use client";
 
-import React from 'react';
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import React from "react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { Loader2 } from "lucide-react";
 
 interface RoleProtectedRouteProps {
   children: React.ReactNode;
-  allowedRole: 'shipper' | 'trucker';
+  allowedRole?: "shipper" | "trucker" | "both";
 }
 
 const RoleProtectedRoute = ({ children, allowedRole }: RoleProtectedRouteProps) => {
   const { userProfile, loading, isLoaded } = useAuth();
 
+  // Loading state – show a spinner while checking auth status
   if (!isLoaded || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -21,17 +22,19 @@ const RoleProtectedRoute = ({ children, allowedRole }: RoleProtectedRouteProps) 
     );
   }
 
+  // No user – redirect to role selection
   if (!userProfile) {
     return <Navigate to="/choose-role" replace />;
   }
 
-  if (userProfile.user_type !== allowedRole) {
-    // Redirect to their correct dashboard if they try to access the wrong one
-    const targetPath = userProfile.user_type === 'shipper' ? '/shipper/dashboard' : '/trucker/dashboard';
+  // If a specific role is required and the current user doesn't match, redirect
+  if (allowedRole && allowedRole !== "both" && userProfile.user_type !== allowedRole) {
+    const targetPath =
+      userProfile.user_type === "shipper" ? "/shipper/dashboard" : "/trucker/dashboard";
     return <Navigate to={targetPath} replace />;
   }
 
-  return <>{children}</>;
+  // All checks passed – render the protected component  return <>{children}</>;
 };
 
 export default RoleProtectedRoute;
