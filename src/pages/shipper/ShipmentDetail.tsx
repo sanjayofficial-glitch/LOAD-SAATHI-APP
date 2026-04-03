@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabaseClient';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
+import { createClerkSupabaseClient } from '@/utils/supabaseClient';
+import RouteMap from '@/components/RouteMap';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,15 +20,17 @@ import { showError } from '@/utils/toast';
 
 const ShipmentDetail = () => {
   const { id } = useParams();
-  const { userProfile } = useAuth();
+  const { getToken } = useClerkAuth();
   const navigate = useNavigate();
   const [shipment, setShipment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
     if (!id) return;
-    
     try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('No Supabase token');
+      const supabase = createClerkSupabaseClient(supabaseToken);
       const { data: shipmentData, error: shipmentError } = await supabase
         .from('shipments')
         .select('*')
@@ -62,6 +65,11 @@ const ShipmentDetail = () => {
       <Button variant="ghost" onClick={() => navigate(-1)} className="mb-6">
         <ArrowLeft className="mr-2 h-4 w-4" /> Back to My Shipments
       </Button>
+
+      {/* Route Map */}
+      <div className="mb-8">
+        <RouteMap originCity={shipment.origin_city} destinationCity={shipment.destination_city} height="260px" />
+      </div>
 
       <div className="grid md:grid-cols-3 gap-8">
         <div className="md:col-span-2 space-y-6">

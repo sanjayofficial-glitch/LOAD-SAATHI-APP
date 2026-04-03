@@ -4,10 +4,24 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Package, Search, Clock, TrendingUp, PlusCircle, DollarSign, Calendar, MapPin } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
+
+// Skeleton for the 4 stat cards shown while loading
+const StatCardSkeleton = () => (
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between pb-2">
+      <Skeleton className="h-4 w-28" />
+      <Skeleton className="h-4 w-4 rounded-full" />
+    </CardHeader>
+    <CardContent>
+      <Skeleton className="h-8 w-16 mt-1" />
+    </CardContent>
+  </Card>
+);
 
 const ShipperDashboard = () => {
   const { userProfile } = useAuth();
@@ -28,47 +42,33 @@ const ShipperDashboard = () => {
       if (!supabaseToken) throw new Error('No Supabase token');
       const supabase = createClerkSupabaseClient(supabaseToken);
 
-      // Active shipments
       const { count: activeShipments } = await supabase
-        .from('shipments')
-        .select('*', { count: 'exact', head: true })
-        .eq('shipper_id', userProfile.id)
-        .eq('status', 'pending');
+        .from('shipments').select('*', { count: 'exact', head: true })
+        .eq('shipper_id', userProfile.id).eq('status', 'pending');
       
-      // Completed shipments
       const { count: completedShipments } = await supabase
-        .from('shipments')
-        .select('*', { count: 'exact', head: true })
-        .eq('shipper_id', userProfile.id)
-        .eq('status', 'completed');
+        .from('shipments').select('*', { count: 'exact', head: true })
+        .eq('shipper_id', userProfile.id).eq('status', 'completed');
       
-      // Pending requests
       const { count: pendingRequests } = await supabase
-        .from('requests')
-        .select('*', { count: 'exact', head: true })
-        .eq('shipper_id', userProfile.id)
-        .eq('status', 'pending');
+        .from('requests').select('*', { count: 'exact', head: true })
+        .eq('shipper_id', userProfile.id).eq('status', 'pending');
 
-      // Total spent from completed shipments
       const { data: completedShipmentsData } = await supabase
         .from('shipments')
         .select('budget_per_tonne, requests!inner(weight_tonnes)')
-        .eq('shipper_id', userProfile.id)
-        .eq('status', 'completed');
+        .eq('shipper_id', userProfile.id).eq('status', 'completed');
 
       const totalSpent = completedShipmentsData?.reduce((sum, shipment: any) => {
         const request = shipment.requests[0];
         return sum + (request ? shipment.budget_per_tonne * request.weight_tonnes : 0);
       }, 0) || 0;
 
-      // Upcoming shipments
       const { data: upcomingShipments } = await supabase
         .from('shipments')
         .select('origin_city, destination_city, departure_date, goods_description, weight_tonnes')
-        .eq('shipper_id', userProfile.id)
-        .eq('status', 'pending')
-        .order('departure_date', { ascending: true })
-        .limit(3);
+        .eq('shipper_id', userProfile.id).eq('status', 'pending')
+        .order('departure_date', { ascending: true }).limit(3);
 
       setStats({ 
         activeShipments: activeShipments || 0, 
@@ -84,21 +84,14 @@ const ShipperDashboard = () => {
     }
   };
 
-  useEffect(() => {
-    loadStats();
-  }, [userProfile, getToken]);
+  useEffect(() => { loadStats(); }, [userProfile, getToken]);
 
   const handleCancelShipment = async (shipmentId: string) => {
     try {
       const supabaseToken = await getToken({ template: 'supabase' });
       if (!supabaseToken) throw new Error('No Supabase token');
       const supabase = createClerkSupabaseClient(supabaseToken);
-      
-      const { error } = await supabase
-        .from('shipments')
-        .update({ status: 'cancelled' })
-        .eq('id', shipmentId);
-
+      const { error } = await supabase.from('shipments').update({ status: 'cancelled' }).eq('id', shipmentId);
       if (error) throw error;
       showSuccess('Shipment cancelled successfully!');
       loadStats();
@@ -111,55 +104,58 @@ const ShipperDashboard = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Shipper Dashboard</h1>
-        <p className="text-gray-600">Welcome back, {userProfile?.full_name}! Manage your shipments and find trucks.</p>
+        <p className="text-gray-600">
+          Welcome back, {loading ? <Skeleton className="inline-block h-4 w-32 align-middle" /> : userProfile?.full_name}! Manage your shipments and find trucks.
+        </p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Active Shipments</CardTitle>
-            <Package className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{loading ? '...' : stats.activeShipments}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{loading ? '...' : stats.pendingRequests}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Completed Shipments</CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{loading ? '...' : stats.completedShipments}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
-            <DollarSign className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-600">₹{loading ? '...' : stats.totalSpent.toLocaleString()}</div>
-          </CardContent>
-        </Card>
+        {loading ? (
+          <>
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+          </>
+        ) : (
+          <>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Active Shipments</CardTitle>
+                <Package className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent><div className="text-2xl font-bold">{stats.activeShipments}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
+                <Clock className="h-4 w-4 text-yellow-600" />
+              </CardHeader>
+              <CardContent><div className="text-2xl font-bold">{stats.pendingRequests}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Completed Shipments</CardTitle>
+                <TrendingUp className="h-4 w-4 text-green-600" />
+              </CardHeader>
+              <CardContent><div className="text-2xl font-bold">{stats.completedShipments}</div></CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
+                <DollarSign className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent><div className="text-2xl font-bold text-blue-600">₹{stats.totalSpent.toLocaleString()}</div></CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Quick Actions */}
       <div className="grid md:grid-cols-2 gap-6 mb-8">
         <Card className="border-blue-100">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <Link to="/shipper/post-shipment">
               <Button className="w-full bg-blue-600 hover:bg-blue-700">
@@ -179,9 +175,7 @@ const ShipperDashboard = () => {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Recent Activity</CardTitle></CardHeader>
           <CardContent>
             <p className="text-gray-500 text-sm">Check your shipments and booking requests for the latest updates.</p>
             <div className="mt-4 space-y-2">
@@ -194,11 +188,9 @@ const ShipperDashboard = () => {
       </div>
 
       {/* Upcoming Shipments */}
-      {stats.upcomingShipments.length > 0 && (
+      {!loading && stats.upcomingShipments.length > 0 && (
         <Card className="border-blue-100">
-          <CardHeader>
-            <CardTitle>Upcoming Shipments</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Upcoming Shipments</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-4">
               {stats.upcomingShipments.map((shipment: any, index: number) => (
@@ -208,35 +200,17 @@ const ShipperDashboard = () => {
                       <Package className="h-5 w-5 text-blue-600" />
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900">
-                        {shipment.origin_city} → {shipment.destination_city}
-                      </p>
+                      <p className="font-semibold text-gray-900">{shipment.origin_city} → {shipment.destination_city}</p>
                       <div className="flex items-center space-x-4 text-sm text-gray-600">
-                        <span className="flex items-center">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          {new Date(shipment.departure_date).toLocaleDateString()}
-                        </span>
-                        <span className="flex items-center">
-                          <Package className="h-3 w-3 mr-1" />
-                          {shipment.goods_description}
-                        </span>
-                        <span className="flex items-center">
-                          <MapPin className="h-3 w-3 mr-1" />
-                          {shipment.weight_tonnes}t
-                        </span>
+                        <span className="flex items-center"><Calendar className="h-3 w-3 mr-1" />{new Date(shipment.departure_date).toLocaleDateString()}</span>
+                        <span className="flex items-center"><Package className="h-3 w-3 mr-1" />{shipment.goods_description}</span>
+                        <span className="flex items-center"><MapPin className="h-3 w-3 mr-1" />{shipment.weight_tonnes}t</span>
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
                     <Badge className="bg-yellow-100 text-yellow-700">Pending</Badge>
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => handleCancelShipment(shipment.id)}
-                      className="border-red-200 text-red-700 hover:bg-red-50"
-                    >
-                      Cancel
-                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => handleCancelShipment(shipment.id)} className="border-red-200 text-red-700 hover:bg-red-50">Cancel</Button>
                   </div>
                 </div>
               ))}

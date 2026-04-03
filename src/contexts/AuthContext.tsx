@@ -1,9 +1,9 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { useUser, useSession, useClerk } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
-import { supabase } from '@/lib/supabaseClient';
+
 import { User } from '@/types';
 
 interface AuthContextType {
@@ -95,22 +95,29 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUserProfile(null);
   };
 
-  const signUp = async (email: string, password: string, role: 'shipper' | 'trucker') => {
+  const signUp = async (_email: string, _password: string, _role: 'shipper' | 'trucker') => {
     // Clerk handles sign-up via UI components, this is for API-based sign-up if needed
     throw new Error('Use Clerk SignUp component for registration');
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (_email: string, _password: string) => {
     // Clerk handles sign-in via UI components, this is for API-based sign-in if needed
     throw new Error('Use Clerk SignIn component for authentication');
   };
 
   const resetPassword = async (email: string) => {
-    // Use Clerk's built-in password reset
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/update-password`,
-    });
-    return { error };
+    // Use Clerk's built-in password reset flow
+    // Clerk handles password reset via its <ForgotPassword> UI component or signIn.create
+    try {
+      await clerk.client?.signIn.create({
+        strategy: 'reset_password_email_code',
+        identifier: email,
+      });
+      return { error: null };
+    } catch (err: any) {
+      console.error('[AuthContext] resetPassword error:', err);
+      return { error: err };
+    }
   };
 
   const value: AuthContextType = {

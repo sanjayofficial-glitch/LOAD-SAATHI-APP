@@ -1,5 +1,3 @@
-"use client";
-
 import { SignIn } from "@clerk/clerk-react";
 
 const Login = () => {
@@ -9,8 +7,8 @@ const Login = () => {
         <SignIn
           routing="path"
           path="/login"
-          fallbackRedirectUrl="/trucker/dashboard"
-          afterSignInUrl="/trucker/dashboard"
+          fallbackRedirectUrl="/auth-sync"
+          afterSignInUrl="/auth-sync"
           signUpFallbackRedirectUrl="/register"
         />
       </div>

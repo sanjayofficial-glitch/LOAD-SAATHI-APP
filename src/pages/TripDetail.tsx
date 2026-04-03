@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { showSuccess, showError } from '@/utils/toast';
 import { MapPin, Calendar, Truck, IndianRupee, ArrowLeft, CheckCircle, AlertCircle, MessageSquare } from 'lucide-react';
 import Star from '@/components/Star';
+import RouteMap from '@/components/RouteMap';
 
 const TripDetail = () => {
   const { id } = useParams();
@@ -96,7 +97,7 @@ const TripDetail = () => {
       
       const supabase = createClerkSupabaseClient(supabaseToken);
       
-      const { data: requestData, error: insertError } = await supabase
+      const { error: insertError } = await supabase
         .from('requests')
         .insert({
           trip_id: id,
@@ -120,7 +121,7 @@ const TripDetail = () => {
     }
   };
 
-  if (loading) return <div className="p-8 text-center">Loading trip details...</div>;
+  if (loading) return <div className="p-8 text-center text-gray-500">Loading trip details...</div>;
   if (!trip) return <div className="p-8 text-center">Trip not found</div>;
 
   return (
@@ -129,6 +130,11 @@ const TripDetail = () => {
         <ArrowLeft className="mr-2 h-4 w-4" /> Back
       </Button>
       
+      {/* Route Map */}
+      <div className="mb-8">
+        <RouteMap originCity={trip.origin_city} destinationCity={trip.destination_city} height="280px" />
+      </div>
+
       <div className="grid md:grid-cols-2 gap-8">
         <div className="space-y-6">
           <Card className="border-orange-100">

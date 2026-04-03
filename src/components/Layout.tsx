@@ -137,6 +137,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { label: 'Dashboard', path: '/trucker/dashboard', icon: LayoutDashboard },
     { label: 'Post Trip', path: '/trucker/post-trip', icon: PlusSquare },
     { label: 'Find Goods', path: '/trucker/browse-shipments', icon: Search },
+    { label: 'My Trips', path: '/trucker/my-trips', icon: Package },
     { label: 'My Requests', path: '/trucker/my-requests', icon: ClipboardList },
     { label: 'Messages', path: '/messages', icon: MessageSquare },
   ] : [
