@@ -153,7 +153,7 @@ const BrowseTrips = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <Loader2 className="h-10 w-10 text-orange-600 animate-spin mx-auto mb-4" />
+          <Loader2 className="h-10 w-10 text-blue-600 animate-spin mx-auto mb-4" />
           <p className="text-gray-600 font-medium">Loading available trips...</p>
         </div>
       </div>
@@ -161,7 +161,7 @@ const BrowseTrips = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Find Available Trucks</h1>
@@ -170,24 +170,24 @@ const BrowseTrips = () => {
 
         <div className="grid lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1 space-y-6">
-            <Card className="border-orange-100 shadow-lg">
+            <Card className="border-blue-100 shadow-lg">
               <CardContent className="pt-6">
                 <div className="space-y-6">
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-2 block">AI Search</label>
                     <form onSubmit={handleAiSearch} className="relative">
                       <div className="relative">
-                        <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-orange-600" />
+                        <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-600" />
                         <input
                           type="text"
                           placeholder="e.g. '2 tonnes from Mumbai to Pune now'"
-                          className="w-full pl-10 pr-4 py-3 border border-orange-200 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                          className="w-full pl-10 pr-4 py-3 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                           value={aiQuery}
                           onChange={(e) => setAiQuery(e.target.value)}
                         />
                       </div>
                       <Button 
-                        type="submit"                         className="w-full mt-3 bg-orange-600 hover:bg-orange-700"
+                        type="submit"                         className="w-full mt-3 bg-blue-600 hover:bg-blue-700"
                         disabled={aiLoading}
                       >
                         {aiLoading ? (
@@ -219,7 +219,7 @@ const BrowseTrips = () => {
                       <label className="text-sm font-medium text-gray-700">Filters</label>
                       <button
                         onClick={() => setShowFilters(!showFilters)}
-                        className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                       >
                         {showFilters ? 'Hide' : 'Show'}
                       </button>
@@ -307,7 +307,7 @@ const BrowseTrips = () => {
                     <div className="space-y-3">
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">Total Trips</span>
-                        <span className="font-bold text-orange-600">{trips.length}</span>
+                        <span className="font-bold text-blue-600">{trips.length}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-gray-600">Filtered Results</span>
@@ -324,7 +324,7 @@ const BrowseTrips = () => {
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h2 className="text-2xl font-bold text-gray-900">
-                  Available Trips                  <Badge variant="outline" className="ml-3 bg-orange-50 text-orange-700 border-orange-200">
+                  Available Trips                  <Badge variant="outline" className="ml-3 bg-blue-50 text-blue-700 border-blue-200">
                     {filteredTrips.length} found
                   </Badge>
                 </h2>
@@ -334,7 +334,7 @@ const BrowseTrips = () => {
             </div>
 
             {filteredTrips.length === 0 ? (
-              <Card className="border-orange-100">
+              <Card className="border-blue-100">
                 <CardContent className="pt-6">
                   <div className="text-center py-12">
                     <Truck className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -342,7 +342,7 @@ const BrowseTrips = () => {
                     <p className="text-gray-600 mb-6">Try adjusting your filters or search criteria</p>
                     <Button 
                       onClick={clearFilters}
-                      className="bg-orange-600 hover:bg-orange-700"
+                      className="bg-blue-600 hover:bg-blue-700"
                     >
                       Clear All Filters
                     </Button>
@@ -352,14 +352,14 @@ const BrowseTrips = () => {
             ) : (
               <div className="grid gap-6">
                 {filteredTrips.map((trip) => (
-                  <Card key={trip.id} className="overflow-hidden border-orange-100 hover:shadow-lg transition-all duration-200">
+                  <Card key={trip.id} className="overflow-hidden border-blue-100 hover:shadow-lg transition-all duration-200">
                     <CardContent className="p-0">
                       <div className="flex flex-col lg:flex-row">
                         <div className="flex-1 p-6 space-y-4">
                           <div className="flex items-start justify-between">
                             <div className="flex items-center space-x-3">
-                              <div className="bg-orange-100 p-3 rounded-full">
-                                <Truck className="h-6 w-6 text-orange-600" />
+                              <div className="bg-blue-100 p-3 rounded-full">
+                                <Truck className="h-6 w-6 text-blue-600" />
                               </div>
                               <div>
                                 <h3 className="text-lg font-bold text-gray-900">
@@ -374,7 +374,7 @@ const BrowseTrips = () => {
 
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div className="flex items-center">
-                              <Calendar className="h-4 w-4 mr-2 text-orange-600" />
+                              <Calendar className="h-4 w-4 mr-2 text-blue-600" />
                               <div>
                                 <p className="text-gray-500 text-xs">Departure</p>
                                 <p className="font-medium">
@@ -387,19 +387,19 @@ const BrowseTrips = () => {
                               </div>
                             </div>
                             <div className="flex items-center">
-                              <MapPin className="h-4 w-4 mr-2 text-blue-600" />
+                              <MapPin className="h-4 w-4 mr-2 text-indigo-600" />
                               <div>
                                 <p className="text-gray-500 text-xs">Capacity</p>
-                                <p className="font-bold text-blue-600">{trip.available_capacity_tonnes} tonnes</p>
+                                <p className="font-bold text-indigo-600">{trip.available_capacity_tonnes} tonnes</p>
                               </div>
                             </div>
                           </div>
 
-                          <div className="bg-gradient-to-r from-orange-50 to-yellow-50 p-4 rounded-lg border border-orange-100">
+                          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg border border-blue-100">
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-xs text-orange-800 font-medium uppercase mb-1">Price per tonne</p>
-                                <div className="flex items-center text-2xl font-bold text-orange-600">
+                                <p className="text-xs text-blue-800 font-medium uppercase mb-1">Price per tonne</p>
+                                <div className="flex items-center text-2xl font-bold text-blue-600">
                                   <IndianRupee className="h-5 w-5 mr-1" />
                                   {trip.price_per_tonne.toLocaleString()}
                                 </div>
@@ -415,7 +415,7 @@ const BrowseTrips = () => {
                         <div className="lg:w-64 bg-gray-50 p-6 border-t lg:border-t-0 lg:border-l border-gray-100 flex flex-col justify-center">
                           <div className="space-y-3">
                             <Link to={`/trips/${trip.id}`} className="block">
-                              <Button className="w-full bg-orange-600 hover:bg-orange-700 shadow-md">
+                              <Button className="w-full bg-blue-600 hover:bg-blue-700 shadow-md">
                                 View Details
                                 <ArrowRightIcon className="ml-2 h-4 w-4" />
                               </Button>

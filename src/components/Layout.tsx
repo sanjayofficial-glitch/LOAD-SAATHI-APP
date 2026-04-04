@@ -148,6 +148,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { label: 'Messages', path: '/messages', icon: MessageSquare },
   ];
 
+  const isTrucker = userProfile?.user_type === 'trucker';
+  const activeClass = isTrucker 
+    ? 'bg-orange-50 text-orange-700 shadow-sm' 
+    : 'bg-blue-50 text-blue-700 shadow-sm';
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <nav className="bg-white border-b sticky top-0 z-50 shadow-sm">
@@ -160,21 +165,22 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               </Link>
               
               <div className="hidden md:flex ml-10 space-x-1">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.path}
-                    to={item.path}
-                    onMouseEnter={() => prefetchData(item.path)}
-                    className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                      location.pathname === item.path
-                        ? 'bg-orange-50 text-orange-700 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                    }`}
-                  >
-                    <item.icon className="h-4 w-4 mr-2" />
-                    {item.label}
-                  </Link>
-                ))}
+                {navItems.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onMouseEnter={() => prefetchData(item.path)}
+                      className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                        isActive ? activeClass : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4 mr-2" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
               </div>
             </div>
 
@@ -256,21 +262,22 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
         {isMenuOpen && (
           <div className="md:hidden border-t bg-white px-4 py-2 space-y-1 animate-in slide-in-from-top duration-200">
-            {navItems.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                onClick={() => setIsMenuOpen(false)}
-                className={`flex items-center px-3 py-3 rounded-md text-base font-medium ${
-                  location.pathname === item.path
-                    ? 'bg-orange-50 text-orange-700'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <item.icon className="h-5 w-5 mr-3" />
-                {item.label}
-              </Link>
-            ))}
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path;
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  onClick={() => setIsMenuOpen(false)}
+                  className={`flex items-center px-3 py-3 rounded-md text-base font-medium ${
+                    isActive ? activeClass : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  <item.icon className="h-5 w-5 mr-3" />
+                  {item.label}
+                </Link>
+              );
+            })}
           </div>
         )}
       </nav>
