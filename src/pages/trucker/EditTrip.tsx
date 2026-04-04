@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { showSuccess, showError } from '@/utils/toast';
 import { Truck, MapPin, Calendar, IndianRupee, Loader2, ArrowLeft } from 'lucide-react';
+import LocationSelector from '@/components/LocationSelector';
+import locationData from '@/data/locations.json';
 
 const EditTrip = () => {
   const { id } = useParams();
@@ -57,6 +59,13 @@ const EditTrip = () => {
 
     if (userProfile) fetchTrip();
   }, [id, userProfile, navigate]);
+
+  const handleLocationChange = (field: 'origin_city' | 'destination_city', value: { state: string; district: string; city: string }) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value.city
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,33 +132,22 @@ const EditTrip = () => {
         </CardHeader>
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="origin">Origin City</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input 
-                    id="origin"
-                    className="pl-10"
-                    value={formData.origin_city} 
-                    onChange={(e) => setFormData({...formData, origin_city: e.target.value})} 
-                    required 
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="destination">Destination City</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input 
-                    id="destination"
-                    className="pl-10"
-                    value={formData.destination_city} 
-                    onChange={(e) => setFormData({...formData, destination_city: e.target.value})} 
-                    required 
-                  />
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label className="text-gray-700 font-medium">Origin Location</Label>
+              <LocationSelector
+                label="Origin"
+                data={locationData.data}
+                onChange={(value) => handleLocationChange('origin_city', value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-gray-700 font-medium">Destination Location</Label>
+              <LocationSelector
+                label="Destination"
+                data={locationData.data}
+                onChange={(value) => handleLocationChange('destination_city', value)}
+              />
             </div>
 
             <div className="space-y-2">
@@ -190,7 +188,6 @@ const EditTrip = () => {
                     value={formData.price_per_tonne} 
                     onChange={(e) => setFormData({...formData, price_per_tonne: e.target.value})} 
                     required 
-                  />
                 </div>
               </div>
             </div>

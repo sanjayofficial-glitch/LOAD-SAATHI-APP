@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { showSuccess, showError } from '@/utils/toast';
 import { Truck, MapPin, Calendar, IndianRupee, Loader2 } from 'lucide-react';
+import LocationSelector from '@/components/LocationSelector';
+import locationData from '@/data/locations.json';
 
 const PostTrip = () => {
   const { userProfile } = useAuth();
@@ -23,6 +25,13 @@ const PostTrip = () => {
     vehicle_type: '',
     vehicle_number: ''
   });
+
+  const handleLocationChange = (field: 'origin_city' | 'destination_city', value: { state: string; district: string; city: string }) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value.city // Only save the city name to the database
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,35 +93,22 @@ const PostTrip = () => {
         </CardHeader>
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label htmlFor="origin" className="text-gray-700 font-medium">Origin City</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input 
-                    id="origin"
-                    placeholder="e.g. Jaipur"
-                    className="pl-10"
-                    value={formData.origin_city} 
-                    onChange={(e) => setFormData({...formData, origin_city: e.target.value})} 
-                    required 
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="destination" className="text-gray-700 font-medium">Destination City</Label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input 
-                    id="destination"
-                    placeholder="e.g. Delhi"
-                    className="pl-10"
-                    value={formData.destination_city} 
-                    onChange={(e) => setFormData({...formData, destination_city: e.target.value})} 
-                    required 
-                  />
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label className="text-gray-700 font-medium">Origin Location</Label>
+              <LocationSelector
+                label="Origin"
+                data={locationData.data}
+                onChange={(value) => handleLocationChange('origin_city', value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-gray-700 font-medium">Destination Location</Label>
+              <LocationSelector
+                label="Destination"
+                data={locationData.data}
+                onChange={(value) => handleLocationChange('destination_city', value)}
+              />
             </div>
 
             <div className="space-y-2">
@@ -197,7 +193,7 @@ const PostTrip = () => {
             </Button>
           </form>
         </CardContent>
-      </Card>
+ </Card>
     </div>
   );
 };
