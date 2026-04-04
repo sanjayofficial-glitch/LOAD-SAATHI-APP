@@ -36,14 +36,12 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import locationData from '@/data/locations.json';
 
-const INDIAN_CITIES = [
-  'Delhi', 'Mumbai', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Ahmedabad', 'Pune', 'Surat', 'Kanpur',
-  'Jaipur', 'Lucknow', 'Nagpur', 'Coimbatore', 'Gurgaon', 'Visakhapatnam', 'Indore', 'Thane', 'Noida', 'Ghaziabad',
-  'Jammu', 'Gwalior', 'Chandigarh', 'Mysore', 'Amritsar', 'Vadodara', 'Patna', 'Jabalpur', 'Ludhiana', 'Agra', 
-  'Nashik', 'Faridabad', 'Meerut', 'Rajkot', 'Kochi', 'Jalandhar', 'Moradabad', 'Tiruchirappalli', 'Solapur', 
-  'Jamshedpur', 'Kalyan-Dombivli', 'Bhilai', 'Ranchi', 'Amravati', 'Durgapur'
-];
+// Extract all unique cities from the location data
+const ALL_CITIES = Object.values(locationData.data).flatMap(state => 
+  Object.values(state).flat()
+);
 
 const BrowseShipments = () => {
   const { userProfile } = useAuth();
@@ -307,7 +305,7 @@ const BrowseShipments = () => {
                             onChange={(e) => setFilters({...filters, origin: e.target.value})}
                           >
                             <option value="">Any</option>
-                            {INDIAN_CITIES.map(city => (
+                            {ALL_CITIES.map(city => (
                               <option key={city} value={city}>{city}</option>
                             ))}
                           </select>
@@ -321,7 +319,7 @@ const BrowseShipments = () => {
                             onChange={(e) => setFilters({...filters, destination: e.target.value})}
                           >
                             <option value="">Any</option>
-                            {INDIAN_CITIES.map(city => (
+                            {ALL_CITIES.map(city => (
                               <option key={city} value={city}>{city}</option>
                             ))}
                           </select>
