@@ -1,5 +1,4 @@
-import React from 'react';
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuth as useClerkAuth } from '@clerk/clerk-react';
@@ -8,35 +7,52 @@ import { Trip } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { 
-  Search, 
+  Package, 
   MapPin,   Calendar, 
   IndianRupee, 
-  Truck,
+  Search, 
+  ArrowRight as ArrowRightIcon,
+  Loader2,
+  Sparkles,
   Filter,
   X,
-  Sparkles,
-  Loader2,
-  ArrowRight as ArrowRightIcon,
-  AlertCircle
+  AlertCircle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTrigger,
 } from 'lucide-react';
-import { parseNaturalLanguageSearch } from '@/lib/gemini';
-import { showSuccess, showError } from '@/utils/toast';
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { showError, showSuccess } from '@/utils/toast';
 import { useQuery } from '@tanstack/react-query';
+import { parseNaturalLanguageSearch } from '@/lib/gemini';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import locationData from '@/data/locations.json';
 
-const INDIAN_CITIES = [
-  'Delhi', 'Mumbai', 'Bangalore', 'Chennai', 'Hyderabad', 'Kolkata', 'Ahmedabad', 'Pune', 'Surat', 'Kanpur',
-  'Jaipur', 'Lucknow', 'Nagpur', 'Coimbatore', 'Gurgaon', 'Visakhapatnam', 'Indore', 'Thane', 'Noida', 'Ghaziabad',
-  'Jammu', 'Gwalior', 'Chandigarh', 'Mysore', 'Amritsar', 'Gurgaon', 'Vadodara', 'Patna', 'Jabalpur', 'Ghaziabad',
-  'Ludhiana', 'Agra', 'Nashik', 'Faridabad', 'Meerut', 'Rajkot', 'Kochi', 'Jalandhar', 'Moradabad', 'Mysore',
-  'Tiruchirappalli', 'Solapur', 'Jamshedpur', 'Kalyan-Dombivli', 'Bhilai', 'Ranchi', 'Amravati', 'Durgapur', 'Nashik', 'Jammu'
-];
+const INDIAN_STATES = Object.keys(locationData.data);
 
 const BrowseTrips = () => {
   const { userProfile } = useAuth();
   const { getToken } = useClerkAuth();
   const [aiQuery, setAiQuery] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [apiKeyMissing, setApiKeyMissing] = useState(false);
+  
   const [filters, setFilters] = useState({
     origin: '',
     destination: '',
@@ -44,9 +60,13 @@ const BrowseTrips = () => {
     maxPrice: '',
     date: ''
   });
-  const [showFilters, setShowFilters] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [apiKeyMissing, setApiKeyMissing] = useState(false);
+
+  // Request Dialog State
+  const [selectedTrip, setSelectedTrip] = useState<any>(null);
+  const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
+  const [requestMessage, setRequestMessage] = useState('');
+  const [requestPrice, setRequestPrice] = useState('');
+  const [sendingRequest, setSendingRequest] = useState(false);
 
   const { data: trips = [], isLoading: loading } = useQuery({
     queryKey: ['trips', 'active'],
@@ -66,7 +86,7 @@ const BrowseTrips = () => {
       return data as unknown as Trip[];
     },
     enabled: !!userProfile,
-    staleTime: 1000 * 60 * 2, // 2 minutes
+    staleTime: 1000 * 60 * 2,
   });
 
   const handleAiSearch = async (e: React.FormEvent) => {
@@ -149,16 +169,52 @@ const BrowseTrips = () => {
     });
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <Loader2 className="h-10 w-10 text-blue-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 font-medium">Loading available trips...</p>
-        </div>
+  const openRequestDialog = (trip: any) => {
+    setSelectedTrip(trip);
+    setIsRequestDialogOpen(true);
+  };
+
+  const submitRequest = async () => {
+    if (!selectedTrip || !userProfile) return;
+    setSendingRequest(true);
+    try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('No Supabase token');
+      
+      const supabaseClient = createClerkSupabaseClient(supabaseToken);
+
+      const { error } = await supabaseClient
+        .from('shipment_requests')
+        .insert({
+          shipment_id: selectedTrip.id,
+          trucker_id: userProfile.id,
+          shipper_id: selectedTrip.shipper_id,
+          message: requestMessage.trim(),
+          proposed_price_per_tonne: requestPrice ? parseFloat(requestPrice) : null,
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      showSuccess('Request sent! The shipper will be notified.');
+      setIsRequestDialogOpen(false);
+      setRequestMessage('');
+      setRequestPrice('');
+    } catch (err: any) {
+      showError(err.message || 'Failed to send request');
+    } finally {
+      setSendingRequest(false);
+    }
+  };
+
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <Loader2 className="h-10 w-10 text-blue-600 animate-spin mx-auto mb-4" />
+        <p className="text-gray-600 font-medium">Loading available trips...</p>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -187,7 +243,8 @@ const BrowseTrips = () => {
                         />
                       </div>
                       <Button 
-                        type="submit"                         className="w-full mt-3 bg-blue-600 hover:bg-blue-700"
+                        type="submit" 
+                        className="w-full mt-3 bg-blue-600 hover:bg-blue-700"
                         disabled={aiLoading}
                       >
                         {aiLoading ? (
@@ -216,7 +273,7 @@ const BrowseTrips = () => {
 
                   <div className="border-t pt-6">
                     <div className="flex items-center justify-between mb-4">
-                      <label className="text-sm font-medium text-gray-700">Filters</label>
+                      <label className="text-sm font-medium text-gray-700">Manual Filters</label>
                       <button
                         onClick={() => setShowFilters(!showFilters)}
                         className="text-sm text-blue-600 hover:text-blue-700 font-medium"
@@ -228,29 +285,29 @@ const BrowseTrips = () => {
                     {showFilters && (
                       <div className="space-y-4 animate-in slide-in-from-top duration-200">
                         <div>
-                          <label className="text-xs font-medium text-gray-600 mb-1 block">Origin City</label>
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">Origin State</label>
                           <select
                             className="w-full p-2 border border-gray-200 rounded-md text-sm"
                             value={filters.origin}
                             onChange={(e) => setFilters({...filters, origin: e.target.value})}
                           >
                             <option value="">Any</option>
-                            {INDIAN_CITIES.map(city => (
-                              <option key={city} value={city}>{city}</option>
+                            {INDIAN_STATES.map(state => (
+                              <option key={state} value={state}>{state}</option>
                             ))}
                           </select>
                         </div>
 
                         <div>
-                          <label className="text-xs font-medium text-gray-600 mb-1 block">Destination City</label>
+                          <label className="text-xs font-medium text-gray-600 mb-1 block">Destination State</label>
                           <select
                             className="w-full p-2 border border-gray-200 rounded-md text-sm"
                             value={filters.destination}
                             onChange={(e) => setFilters({...filters, destination: e.target.value})}
                           >
                             <option value="">Any</option>
-                            {INDIAN_CITIES.map(city => (
-                              <option key={city} value={city}>{city}</option>
+                            {INDIAN_STATES.map(state => (
+                              <option key={state} value={state}>{state}</option>
                             ))}
                           </select>
                         </div>
@@ -268,8 +325,7 @@ const BrowseTrips = () => {
 
                         <div>
                           <label className="text-xs font-medium text-gray-600 mb-1 block">Max Price per Tonne (₹)</label>
-                          <input
-                            type="number"
+                          <input                            type="number"
                             placeholder="e.g. 3000"
                             className="w-full p-2 border border-gray-200 rounded-md text-sm"
                             value={filters.maxPrice}
@@ -287,17 +343,14 @@ const BrowseTrips = () => {
                           />
                         </div>
 
-                        <div className="flex gap-2 pt-2">
-                          <Button 
-                            onClick={clearFilters}
-                            variant="outline"
-                            className="flex-1"
-                            size="sm"
-                          >
-                            <X className="h-3 w-3 mr-1" />
-                            Clear
-                          </Button>
-                        </div>
+                        <Button                           onClick={clearFilters}
+                          variant="outline"
+                          className="w-full"
+                          size="sm"
+                        >
+                          <X className="h-3 w-3 mr-1" />
+                          Clear All
+                        </Button>
                       </div>
                     )}
                   </div>
@@ -331,6 +384,7 @@ const BrowseTrips = () => {
               </div>
               <div className="text-sm text-gray-500">
                 Sorted by: Newest first              </div>
+              </div>
             </div>
 
             {filteredTrips.length === 0 ? (
@@ -359,7 +413,7 @@ const BrowseTrips = () => {
                           <div className="flex items-start justify-between">
                             <div className="flex items-center space-x-3">
                               <div className="bg-blue-100 p-3 rounded-full">
-                                <Truck className="h-6 w-6 text-blue-600" />
+                                <Package className="h-6 w-6 text-blue-600" />
                               </div>
                               <div>
                                 <h3 className="text-lg font-bold text-gray-900">
@@ -434,6 +488,52 @@ const BrowseTrips = () => {
           </div>
         </div>
       </div>
+
+      {/* Request Dialog */}
+      <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Send Booking Request</DialogTitle>
+            <DialogDescription>
+              Express interest in carrying {selectedTrip?.goods_description} from {selectedTrip?.origin_city} to {selectedTrip?.destination_city}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Proposed Price per Tonne (₹)</label>
+              <Input 
+                type="number" 
+                value={requestPrice} 
+                onChange={(e) => setRequestPrice(e.target.value)} 
+                placeholder="e.g. 2500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Message to Shipper</label>
+              <Textarea 
+                value={requestMessage} 
+                onChange={(e) => setRequestMessage(e.target.value)} 
+                placeholder="e.g. I have a 12-wheeler available on this route..."
+                className="h-24"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsRequestDialogOpen(false)} disabled={sendingRequest}>Cancel</Button>
+            <Button 
+              onClick={submitRequest} 
+              className="bg-blue-600 hover:bg-blue-700"
+              disabled={sendingRequest}
+            >
+              {sendingRequest ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending...
+                </>               ) : 'Send Request'}              
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
