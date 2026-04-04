@@ -20,14 +20,7 @@ import {
   Filter,
   X,
   AlertCircle,
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTrigger,
+  Truck
 } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
 import { useQuery } from '@tanstack/react-query';
@@ -325,7 +318,8 @@ const BrowseTrips = () => {
 
                         <div>
                           <label className="text-xs font-medium text-gray-600 mb-1 block">Max Price per Tonne (₹)</label>
-                          <input                            type="number"
+                          <input
+                            type="number"
                             placeholder="e.g. 3000"
                             className="w-full p-2 border border-gray-200 rounded-md text-sm"
                             value={filters.maxPrice}
@@ -343,7 +337,8 @@ const BrowseTrips = () => {
                           />
                         </div>
 
-                        <Button                           onClick={clearFilters}
+                        <Button 
+                          onClick={clearFilters}
                           variant="outline"
                           className="w-full"
                           size="sm"
@@ -384,7 +379,6 @@ const BrowseTrips = () => {
               </div>
               <div className="text-sm text-gray-500">
                 Sorted by: Newest first              </div>
-              </div>
             </div>
 
             {filteredTrips.length === 0 ? (
@@ -413,7 +407,7 @@ const BrowseTrips = () => {
                           <div className="flex items-start justify-between">
                             <div className="flex items-center space-x-3">
                               <div className="bg-blue-100 p-3 rounded-full">
-                                <Package className="h-6 w-6 text-blue-600" />
+                                <Truck className="h-6 w-6 text-blue-600" />
                               </div>
                               <div>
                                 <h3 className="text-lg font-bold text-gray-900">
@@ -529,7 +523,8 @@ const BrowseTrips = () => {
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Sending...
-                </>               ) : 'Send Request'}              
+                </>
+              ) : 'Send Request'}
             </Button>
           </DialogFooter>
         </DialogContent>

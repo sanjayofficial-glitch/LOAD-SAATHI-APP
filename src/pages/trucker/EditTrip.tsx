@@ -188,6 +188,7 @@ const EditTrip = () => {
                     value={formData.price_per_tonne} 
                     onChange={(e) => setFormData({...formData, price_per_tonne: e.target.value})} 
                     required 
+                  />
                 </div>
               </div>
             </div>
