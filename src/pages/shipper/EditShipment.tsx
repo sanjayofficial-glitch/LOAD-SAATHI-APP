@@ -12,7 +12,7 @@ import LocationSelector from '@/components/LocationSelector';
 import locationData from '@/data/locations.json';
 
 const EditShipment = () => {
-  const { id } = useParams();
+  const { shipmentId } = useParams();
   const { userProfile } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -30,10 +30,12 @@ const EditShipment = () => {
 
   useEffect(() => {
     const fetchShipment = async () => {
+      if (!shipmentId) return;
+      
       const { data, error } = await supabase
         .from('shipments')
         .select('*')
-        .eq('id', id)
+        .eq('id', shipmentId)
         .single();
 
       if (error) {
@@ -59,8 +61,8 @@ const EditShipment = () => {
       setLoading(false);
     };
 
-    if (userProfile) fetchShipment();
-  }, [id, userProfile, navigate]);
+    if (userProfile && shipmentId) fetchShipment();
+  }, [shipmentId, userProfile, navigate]);
 
   const handleLocationChange = (field: 'origin_city' | 'destination_city', value: { state: string; district: string; city: string }) => {
     setFormData(prev => ({
@@ -99,7 +101,7 @@ const EditShipment = () => {
           delivery_address: formData.delivery_address.trim(),
           budget_per_tonne: budget,
         })
-        .eq('id', id);
+        .eq('id', shipmentId);
 
       if (error) {
         showError(error.message);

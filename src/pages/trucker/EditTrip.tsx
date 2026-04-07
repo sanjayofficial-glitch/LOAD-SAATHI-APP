@@ -12,7 +12,7 @@ import LocationSelector from '@/components/LocationSelector';
 import locationData from '@/data/locations.json';
 
 const EditTrip = () => {
-  const { id } = useParams();
+  const { tripId } = useParams();
   const { userProfile } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -29,10 +29,12 @@ const EditTrip = () => {
 
   useEffect(() => {
     const fetchTrip = async () => {
+      if (!tripId) return;
+      
       const { data, error } = await supabase
         .from('trips')
         .select('*')
-        .eq('id', id)
+        .eq('id', tripId)
         .single();
 
       if (error) {
@@ -57,8 +59,8 @@ const EditTrip = () => {
       setLoading(false);
     };
 
-    if (userProfile) fetchTrip();
-  }, [id, userProfile, navigate]);
+    if (userProfile && tripId) fetchTrip();
+  }, [tripId, userProfile, navigate]);
 
   const handleLocationChange = (field: 'origin_city' | 'destination_city', value: { state: string; district: string; city: string }) => {
     setFormData(prev => ({
@@ -96,7 +98,7 @@ const EditTrip = () => {
           vehicle_type: formData.vehicle_type.trim(),
           vehicle_number: formData.vehicle_number.trim(),
         })
-        .eq('id', id);
+        .eq('id', tripId);
 
       if (error) {
         showError(error.message);

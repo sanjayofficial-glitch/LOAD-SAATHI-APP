@@ -185,7 +185,7 @@ const MyTrips = () => {
                     
                     {trip.status === 'active' && (
                       <>
-                        <Link to={`/trucker/edit-trip/${trip.id}`}>
+                        <Link to={`/trucker/trips/${trip.id}/edit`}>
                           <Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50">
                             <Edit className="h-4 w-4 mr-2" />
                             Edit

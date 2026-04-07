@@ -159,7 +159,7 @@ const MyShipments = () => {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-2 border-t md:border-t-0 pt-4 md:pt-0">
-                      <Link to={`/shipments/${shipment.id}`}>
+                      <Link to={`/shipper/shipments/${shipment.id}`}>
                         <Button variant="outline" size="sm" className="border-blue-200 text-blue-700 hover:bg-blue-50">
                           <Eye className="h-4 w-4 mr-2" />
                           View Details
@@ -168,7 +168,7 @@ const MyShipments = () => {
                       
                       {shipment.status === 'pending' && (
                         <>
-                          <Link to={`/shipper/edit-shipment/${shipment.id}`}>
+                          <Link to={`/shipper/shipments/${shipment.id}/edit`}>
                             <Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50">
                               <Edit className="h-4 w-4 mr-2" />
                               Edit
