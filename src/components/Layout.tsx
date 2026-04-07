@@ -20,9 +20,7 @@ import {
   Search,
   Package,
   PlusSquare,
-  ClipboardList,
-  MessageSquare,
-  Send
+  MessageSquare
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -125,27 +123,17 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     navigate('/');
   };
 
-  const prefetchData = (path: string) => {
-    if (path.includes('dashboard')) {
-      queryClient.prefetchQuery({ queryKey: [userProfile?.user_type === 'trucker' ? 'trucker-trips' : 'shipper-requests', userProfile?.id] });
-    } else if (path.includes('browse-trucks')) {
-      queryClient.prefetchQuery({ queryKey: ['trips'] });
-    }
-  };
-
   const navItems = userProfile?.user_type === 'trucker' ? [
     { label: 'Dashboard', path: '/trucker/dashboard', icon: LayoutDashboard },
     { label: 'Post Trip', path: '/trucker/post-trip', icon: PlusSquare },
     { label: 'Find Goods', path: '/trucker/browse-shipments', icon: Search },
-    { label: 'My Trips', path: '/trucker/my-trips', icon: Package },
-    { label: 'My Requests', path: '/trucker/my-requests', icon: Send },
+    { label: 'My Trips & Bookings', path: '/trucker/my-trips', icon: Truck },
     { label: 'Messages', path: '/messages', icon: MessageSquare },
   ] : [
     { label: 'Dashboard', path: '/shipper/dashboard', icon: LayoutDashboard },
     { label: 'Post Shipment', path: '/shipper/post-shipment', icon: Package },
     { label: 'Find Trucks', path: '/browse-trucks', icon: Search },
-    { label: 'My Shipments', path: '/shipper/my-shipments', icon: Package },
-    { label: 'My Requests', path: '/shipper/my-requests', icon: Send },
+    { label: 'My Shipments & Requests', path: '/shipper/my-shipments', icon: Package },
     { label: 'Messages', path: '/messages', icon: MessageSquare },
   ];
 
@@ -172,7 +160,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                     <Link
                       key={item.path}
                       to={item.path}
-                      onMouseEnter={() => prefetchData(item.path)}
                       className={`flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                         isActive ? activeClass : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                       }`}

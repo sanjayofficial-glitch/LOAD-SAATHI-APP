@@ -108,7 +108,8 @@ const TripDetail = () => {
       if (insertError) throw insertError;
 
       showSuccess('Booking request sent successfully!');
-      navigate('/shipper/my-requests');
+      // Redirect to the unified hub's "Sent Requests" tab
+      navigate('/shipper/my-shipments?tab=sent');
     } catch (err: any) {
       showError(err.message || 'An unexpected error occurred');
     } finally {
