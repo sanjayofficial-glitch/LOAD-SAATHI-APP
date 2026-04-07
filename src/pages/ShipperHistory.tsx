@@ -136,8 +136,8 @@ const ShipperHistory = () => {
     });
   };
 
-  const uniqueActivityTypes = [...new Set(activities.map(a => a.activity_type))];
-  const uniqueStatuses = [...new Set(activities.map(a => a.status))];
+  const uniqueActivityTypes = [...new Set(activities.map(a => a.activity_type))].filter(Boolean);
+  const uniqueStatuses = [...new Set(activities.map(a => a.status))].filter(Boolean);
 
   if (isLoading) {
     return (
@@ -168,12 +168,15 @@ const ShipperHistory = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Activity Type</label>
-              <Select value={filters.activityType} onValueChange={(value) => setFilters(prev => ({ ...prev, activityType: value }))}>
+              <Select 
+                value={filters.activityType || "all"} 
+                onValueChange={(value) => setFilters(prev => ({ ...prev, activityType: value === "all" ? "" : value }))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="All activity types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All activity types</SelectItem>
+                  <SelectItem value="all">All activity types</SelectItem>
                   {uniqueActivityTypes.map(type => (
                     <SelectItem key={type} value={type}>{type}</SelectItem>
                   ))}
@@ -182,12 +185,15 @@ const ShipperHistory = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+              <Select 
+                value={filters.status || "all"} 
+                onValueChange={(value) => setFilters(prev => ({ ...prev, status: value === "all" ? "" : value }))}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All statuses</SelectItem>
+                  <SelectItem value="all">All statuses</SelectItem>
                   {uniqueStatuses.map(status => (
                     <SelectItem key={status} value={status}>{status}</SelectItem>
                   ))}
