@@ -1,5 +1,7 @@
+"use client";
+
 import React, { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
@@ -34,6 +36,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Label } from '@/components/ui/label';
 import locationData from '@/data/locations.json';
 
 const INDIAN_STATES = Object.keys(locationData.data);
@@ -41,6 +44,7 @@ const INDIAN_STATES = Object.keys(locationData.data);
 const BrowseTrips = () => {
   const { userProfile } = useAuth();
   const { getToken } = useClerkAuth();
+  const navigate = useNavigate();
   const [aiQuery, setAiQuery] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -57,8 +61,8 @@ const BrowseTrips = () => {
   // Request Dialog State
   const [selectedTrip, setSelectedTrip] = useState<any>(null);
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
-  const [requestMessage, setRequestMessage] = useState('');
-  const [requestPrice, setRequestPrice] = useState('');
+  const [goodsDescription, setGoodsDescription] = useState('');
+  const [weight, setWeight] = useState('');
   const [sendingRequest, setSendingRequest] = useState(false);
 
   const { data: trips = [], isLoading: loading } = useQuery({
@@ -169,6 +173,18 @@ const BrowseTrips = () => {
 
   const submitRequest = async () => {
     if (!selectedTrip || !userProfile) return;
+
+    const requestedWeight = parseFloat(weight);
+    if (isNaN(requestedWeight) || requestedWeight <= 0) {
+      showError('Please enter a valid weight');
+      return;
+    }
+
+    if (requestedWeight > selectedTrip.available_capacity_tonnes) {
+      showError(`Exceeds available capacity (${selectedTrip.available_capacity_tonnes}t)`);
+      return;
+    }
+
     setSendingRequest(true);
     try {
       const supabaseToken = await getToken({ template: 'supabase' });
@@ -177,22 +193,22 @@ const BrowseTrips = () => {
       const supabaseClient = createClerkSupabaseClient(supabaseToken);
 
       const { error } = await supabaseClient
-        .from('shipment_requests')
+        .from('requests')
         .insert({
-          shipment_id: selectedTrip.id,
-          trucker_id: userProfile.id,
-          shipper_id: selectedTrip.shipper_id,
-          message: requestMessage.trim(),
-          proposed_price_per_tonne: requestPrice ? parseFloat(requestPrice) : null,
+          trip_id: selectedTrip.id,
+          shipper_id: userProfile.id,
+          goods_description: goodsDescription.trim(),
+          weight_tonnes: requestedWeight,
           status: 'pending'
         });
 
       if (error) throw error;
 
-      showSuccess('Request sent! The shipper will be notified.');
+      showSuccess('Booking request sent successfully!');
       setIsRequestDialogOpen(false);
-      setRequestMessage('');
-      setRequestPrice('');
+      setGoodsDescription('');
+      setWeight('');
+      navigate('/shipper/my-shipments?tab=sent');
     } catch (err: any) {
       showError(err.message || 'Failed to send request');
     } finally {
@@ -462,15 +478,18 @@ const BrowseTrips = () => {
 
                         <div className="lg:w-64 bg-gray-50 p-6 border-t lg:border-t-0 lg:border-l border-gray-100 flex flex-col justify-center">
                           <div className="space-y-3">
+                            <Button 
+                              className="w-full bg-blue-600 hover:bg-blue-700 shadow-md"
+                              onClick={() => openRequestDialog(trip)}
+                            >
+                              Book Space
+                              <ArrowRightIcon className="ml-2 h-4 w-4" />
+                            </Button>
                             <Link to={`/trips/${trip.id}`} className="block">
-                              <Button className="w-full bg-blue-600 hover:bg-blue-700 shadow-md">
+                              <Button variant="outline" className="w-full border-blue-200 text-blue-700 hover:bg-blue-50">
                                 View Details
-                                <ArrowRightIcon className="ml-2 h-4 w-4" />
                               </Button>
                             </Link>
-                            <p className="text-xs text-gray-500 text-center">
-                              Tap to see full details and book space
-                            </p>
                           </div>
                         </div>
                       </div>
@@ -487,29 +506,40 @@ const BrowseTrips = () => {
       <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Send Booking Request</DialogTitle>
+            <DialogTitle>Book Truck Space</DialogTitle>
             <DialogDescription>
-              Express interest in carrying {selectedTrip?.goods_description} from {selectedTrip?.origin_city} to {selectedTrip?.destination_city}.
+              Send a booking request for the trip from {selectedTrip?.origin_city} to {selectedTrip?.destination_city}.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Proposed Price per Tonne (₹)</label>
+              <Label htmlFor="weight">Weight to Book (Tonnes)</Label>
               <Input 
+                id="weight"
                 type="number" 
-                value={requestPrice} 
-                onChange={(e) => setRequestPrice(e.target.value)} 
-                placeholder="e.g. 2500"
+                step="0.1"
+                value={weight} 
+                onChange={(e) => setWeight(e.target.value)} 
+                placeholder={`Max ${selectedTrip?.available_capacity_tonnes}t`}
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Message to Shipper</label>
+              <Label htmlFor="goods">Goods Description</Label>
               <Textarea 
-                value={requestMessage} 
-                onChange={(e) => setRequestMessage(e.target.value)} 
-                placeholder="e.g. I have a 12-wheeler available on this route..."
+                id="goods"
+                value={goodsDescription} 
+                onChange={(e) => setGoodsDescription(e.target.value)} 
+                placeholder="e.g. 50 bags of cement, electronics, etc."
                 className="h-24"
               />
+            </div>
+            <div className="bg-blue-50 p-3 rounded-lg">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-600">Estimated Cost:</span>
+                <span className="font-bold text-blue-700">
+                  ₹{((parseFloat(weight) || 0) * (selectedTrip?.price_per_tonne || 0)).toLocaleString()}
+                </span>
+              </div>
             </div>
           </div>
           <DialogFooter>
@@ -517,7 +547,7 @@ const BrowseTrips = () => {
             <Button 
               onClick={submitRequest} 
               className="bg-blue-600 hover:bg-blue-700"
-              disabled={sendingRequest}
+              disabled={sendingRequest || !weight || !goodsDescription}
             >
               {sendingRequest ? (
                 <>

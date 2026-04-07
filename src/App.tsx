@@ -30,14 +30,12 @@ const PostShipments    = lazy(() => import("@/pages/shipper/PostShipments"));
 const MyShipments      = lazy(() => import("@/pages/shipper/MyShipments"));
 const EditShipment     = lazy(() => import("@/pages/shipper/EditShipment"));
 const ShipmentDetail   = lazy(() => import("@/pages/shipper/ShipmentDetail"));
-const MySentRequests   = lazy(() => import("@/pages/shipper/MySentRequests"));
 
 // Trucker pages
 const TruckerDashboard = lazy(() => import("@/pages/trucker/Dashboard"));
 const PostTrip         = lazy(() => import("@/pages/trucker/PostTrip"));
 const BrowseShipments  = lazy(() => import("@/pages/trucker/BrowseShipments"));
 const MyTrips          = lazy(() => import("@/pages/trucker/MyTrips"));
-const MyRequests       = lazy(() => import("@/pages/trucker/MyShipmentRequests"));
 const EditTrip         = lazy(() => import("@/pages/trucker/EditTrip"));
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -74,9 +72,6 @@ function App() {
                 <Route path="/trucker/my-trips" element={
                   <RoleProtectedRoute allowedRole="trucker"><MyTrips /></RoleProtectedRoute>
                 } />
-                <Route path="/trucker/my-requests" element={
-                  <RoleProtectedRoute allowedRole="trucker"><MyRequests /></RoleProtectedRoute>
-                } />
                 <Route path="/trucker/history" element={
                   <RoleProtectedRoute allowedRole="trucker"><TruckerHistory /></RoleProtectedRoute>
                 } />
@@ -95,9 +90,6 @@ function App() {
                 } />
                 <Route path="/shipper/my-shipments" element={
                   <RoleProtectedRoute allowedRole="shipper"><MyShipments /></RoleProtectedRoute>
-                } />
-                <Route path="/shipper/my-requests" element={
-                  <RoleProtectedRoute allowedRole="shipper"><MySentRequests /></RoleProtectedRoute>
                 } />
                 <Route path="/shipper/shipments/:shipmentId/edit" element={
                   <RoleProtectedRoute allowedRole="shipper"><EditShipment /></RoleProtectedRoute>
