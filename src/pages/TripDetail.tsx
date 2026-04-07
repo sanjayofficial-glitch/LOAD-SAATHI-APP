@@ -17,7 +17,7 @@ import Star from '@/components/Star';
 import RouteMap from '@/components/RouteMap';
 
 const TripDetail = () => {
-  const { id } = useParams();
+  const { tripId } = useParams();
   const { userProfile } = useAuth();
   const { getToken } = useClerkAuth();
   const navigate = useNavigate();
@@ -36,11 +36,10 @@ const TripDetail = () => {
         
         const supabase = createClerkSupabaseClient(supabaseToken);
         
-        // Fetch Trip
         const { data: tripData, error: tripError } = await supabase
           .from('trips')
           .select('*, trucker:users(*)')
-          .eq('id', id)
+          .eq('id', tripId)
           .single();
         
         if (tripError) throw tripError;
@@ -51,7 +50,6 @@ const TripDetail = () => {
         };
         setTrip(mappedTrip as unknown as Trip);
 
-        // Fetch Reviews for this trucker
         const { data: reviewData } = await supabase
           .from('reviews')
           .select('*, shipper:users(full_name)')
@@ -68,7 +66,7 @@ const TripDetail = () => {
       }
     };
     fetchTripAndReviews();
-  }, [id, getToken]);
+  }, [tripId, getToken]);
 
   const handleRequest = async () => {
     if (!userProfile) return navigate('/login');
@@ -100,20 +98,17 @@ const TripDetail = () => {
       const { error: insertError } = await supabase
         .from('requests')
         .insert({
-          trip_id: id,
+          trip_id: tripId,
           shipper_id: userProfile.id,
-          receiver_id: trip.trucker_id, // Ensures notification goes ONLY to this trucker
           goods_description: description.trim(),
           weight_tonnes: requestedWeight,
           status: 'pending'
-        })
-        .select()
-        .single();
+        });
 
       if (insertError) throw insertError;
 
       showSuccess('Booking request sent successfully!');
-      navigate('/shipper/my-shipments');
+      navigate('/shipper/my-requests');
     } catch (err: any) {
       showError(err.message || 'An unexpected error occurred');
     } finally {
@@ -130,7 +125,6 @@ const TripDetail = () => {
         <ArrowLeft className="mr-2 h-4 w-4" /> Back
       </Button>
       
-      {/* Route Map */}
       <div className="mb-8">
         <RouteMap originCity={trip.origin_city} destinationCity={trip.destination_city} height="280px" />
       </div>

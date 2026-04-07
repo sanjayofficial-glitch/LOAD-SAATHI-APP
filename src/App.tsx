@@ -7,7 +7,7 @@ import RoleProtectedRoute from "@/components/RoleProtectedRoute";
 import Layout from "@/components/Layout";
 import { Loader2 } from "lucide-react";
 
-// Public pages — loaded eagerly (tiny, needed immediately)
+// Public pages
 import Index from "@/pages/Index";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
@@ -15,7 +15,7 @@ import ChooseRole from "@/pages/ChooseRole";
 import AuthSync from "@/components/AuthSync";
 import NotFound from "@/pages/NotFound";
 
-// Protected pages — lazy loaded (only downloaded when the user navigates there)
+// Protected pages
 const Profile        = lazy(() => import("@/pages/Profile"));
 const Chat           = lazy(() => import("@/pages/Chat"));
 const ChatList       = lazy(() => import("@/pages/ChatList"));
@@ -30,6 +30,7 @@ const PostShipments    = lazy(() => import("@/pages/shipper/PostShipments"));
 const MyShipments      = lazy(() => import("@/pages/shipper/MyShipments"));
 const EditShipment     = lazy(() => import("@/pages/shipper/EditShipment"));
 const ShipmentDetail   = lazy(() => import("@/pages/shipper/ShipmentDetail"));
+const MySentRequests   = lazy(() => import("@/pages/shipper/MySentRequests"));
 
 // Trucker pages
 const TruckerDashboard = lazy(() => import("@/pages/trucker/Dashboard"));
@@ -41,7 +42,6 @@ const EditTrip         = lazy(() => import("@/pages/trucker/EditTrip"));
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-// Loading spinner shown while a lazy page is being downloaded
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center bg-gray-50">
     <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
@@ -55,17 +55,13 @@ function App() {
         <Router>
           <Suspense fallback={<PageLoader />}>
             <Routes>
-              {/* Public Routes — no navbar */}
               <Route path="/"            element={<Index />} />
               <Route path="/login"       element={<Login />} />
               <Route path="/register"    element={<Register />} />
               <Route path="/choose-role" element={<ChooseRole />} />
               <Route path="/auth-sync"   element={<AuthSync />} />
 
-              {/* Protected Routes — all wrapped in Layout (navbar) */}
               <Route element={<Layout><Outlet /></Layout>}>
-
-                {/* --- TRUCKER SCREENS --- */}
                 <Route path="/trucker/dashboard" element={
                   <RoleProtectedRoute allowedRole="trucker"><TruckerDashboard /></RoleProtectedRoute>
                 } />
@@ -88,7 +84,6 @@ function App() {
                   <RoleProtectedRoute allowedRole="trucker"><EditTrip /></RoleProtectedRoute>
                 } />
 
-                {/* --- SHIPPER SCREENS --- */}
                 <Route path="/shipper/dashboard" element={
                   <RoleProtectedRoute allowedRole="shipper"><ShipperDashboard /></RoleProtectedRoute>
                 } />
@@ -100,6 +95,9 @@ function App() {
                 } />
                 <Route path="/shipper/my-shipments" element={
                   <RoleProtectedRoute allowedRole="shipper"><MyShipments /></RoleProtectedRoute>
+                } />
+                <Route path="/shipper/my-requests" element={
+                  <RoleProtectedRoute allowedRole="shipper"><MySentRequests /></RoleProtectedRoute>
                 } />
                 <Route path="/shipper/shipments/:shipmentId/edit" element={
                   <RoleProtectedRoute allowedRole="shipper"><EditShipment /></RoleProtectedRoute>
@@ -114,7 +112,6 @@ function App() {
                   <RoleProtectedRoute allowedRole="shipper"><TripDetail /></RoleProtectedRoute>
                 } />
 
-                {/* --- COMMON SCREENS (both roles) --- */}
                 <Route path="/profile" element={
                   <RoleProtectedRoute allowedRole="both"><Profile /></RoleProtectedRoute>
                 } />
@@ -124,10 +121,8 @@ function App() {
                 <Route path="/chat/:requestId" element={
                   <RoleProtectedRoute allowedRole="both"><Chat /></RoleProtectedRoute>
                 } />
-
               </Route>
 
-              {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuth as useClerkAuth } from '@clerk/clerk-react';
@@ -38,7 +39,6 @@ import {
 } from "@/components/ui/dialog";
 import locationData from '@/data/locations.json';
 
-// Extract all unique cities from the location data
 const ALL_CITIES = Object.values(locationData.data).flatMap(state => 
   Object.values(state).flat()
 );
@@ -46,6 +46,7 @@ const ALL_CITIES = Object.values(locationData.data).flatMap(state =>
 const BrowseShipments = () => {
   const { userProfile } = useAuth();
   const { getToken } = useClerkAuth();
+  const navigate = useNavigate();
   const [aiQuery, setAiQuery] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -59,7 +60,6 @@ const BrowseShipments = () => {
     date: ''
   });
 
-  // Request Dialog State
   const [selectedShipment, setSelectedShipment] = useState<any>(null);
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [requestMessage, setRequestMessage] = useState('');
@@ -213,6 +213,7 @@ const BrowseShipments = () => {
       setIsRequestDialogOpen(false);
       setRequestMessage('');
       setRequestPrice('');
+      navigate('/trucker/my-requests');
     } catch (err: any) {
       showError(err.message || 'Failed to send request');
     } finally {
@@ -502,7 +503,6 @@ const BrowseShipments = () => {
         </div>
       </div>
 
-      {/* Request Dialog */}
       <Dialog open={isRequestDialogOpen} onOpenChange={setIsRequestDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>

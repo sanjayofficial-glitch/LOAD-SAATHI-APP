@@ -21,7 +21,8 @@ import {
   Package,
   PlusSquare,
   ClipboardList,
-  MessageSquare
+  MessageSquare,
+  Send
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -72,7 +73,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
     fetchNotifications();
 
-    // Subscribe to real-time notifications
     const channel = supabase
       .channel(`notifications:${userProfile.id}`)
       .on(
@@ -138,13 +138,14 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { label: 'Post Trip', path: '/trucker/post-trip', icon: PlusSquare },
     { label: 'Find Goods', path: '/trucker/browse-shipments', icon: Search },
     { label: 'My Trips', path: '/trucker/my-trips', icon: Package },
-    { label: 'My Requests', path: '/trucker/my-requests', icon: ClipboardList },
+    { label: 'My Requests', path: '/trucker/my-requests', icon: Send },
     { label: 'Messages', path: '/messages', icon: MessageSquare },
   ] : [
     { label: 'Dashboard', path: '/shipper/dashboard', icon: LayoutDashboard },
     { label: 'Post Shipment', path: '/shipper/post-shipment', icon: Package },
     { label: 'Find Trucks', path: '/browse-trucks', icon: Search },
     { label: 'My Shipments', path: '/shipper/my-shipments', icon: Package },
+    { label: 'My Requests', path: '/shipper/my-requests', icon: Send },
     { label: 'Messages', path: '/messages', icon: MessageSquare },
   ];
 
