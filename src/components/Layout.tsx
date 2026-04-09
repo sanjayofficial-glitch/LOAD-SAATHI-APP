@@ -1,17 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { createClerkSupabaseClient } from '@/utils/supabaseClient';
-import { useAuth as useClerkAuth } from '@clerk/clerk-react';
-import { Notification } from '@/types';
 import { Button } from '@/components/ui/button';
-import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabaseClient';
+import NotificationBell from './NotificationBell';
 import { 
   Truck, 
-  Bell, 
   User, 
   LogOut, 
   Menu, 
@@ -33,90 +28,9 @@ import {
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const { userProfile, signOut } = useAuth();
-  const { getToken } = useClerkAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const queryClient = useQueryClient();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  const fetchNotifications = useCallback(async () => {
-    if (!userProfile?.id) return;
-    
-    try {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) return;
-      
-      const supabaseClient = createClerkSupabaseClient(supabaseToken);
-      
-      const { data } = await supabaseClient
-        .from('notifications')
-        .select('id, message, is_read, created_at')
-        .eq('user_id', userProfile.id)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      if (data) {
-        setNotifications(data as Notification[]);
-        setUnreadCount(data.filter(n => !n.is_read).length);
-      }
-    } catch (err) {
-      console.error('[Layout] Error fetching notifications:', err);
-    }
-  }, [userProfile?.id, getToken]);
-
-  useEffect(() => {
-    if (!userProfile?.id) return;
-
-    fetchNotifications();
-
-    const channel = supabase
-      .channel(`notifications:${userProfile.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userProfile.id}`,
-        },
-        (payload) => {
-          const newNotif = payload.new as Notification;
-          setNotifications(prev => [newNotif, ...prev].slice(0, 10));
-          setUnreadCount(prev => prev + 1);
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [userProfile?.id, fetchNotifications]);
-
-  const markAsRead = async () => {
-    if (unreadCount === 0 || !userProfile?.id) return;
-    
-    try {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) return;
-      
-      const supabaseClient = createClerkSupabaseClient(supabaseToken);
-      
-      const { error } = await supabaseClient
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', userProfile.id)
-        .eq('is_read', false);
-      
-      if (!error) {
-        setUnreadCount(0);
-        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-      }
-    } catch (err) {
-      console.error('[Layout] Error marking notifications as read:', err);
-    }
-  };
 
   const handleSignOut = async () => {
     await signOut();
@@ -127,13 +41,14 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     { label: 'Dashboard', path: '/trucker/dashboard', icon: LayoutDashboard },
     { label: 'Post Trip', path: '/trucker/post-trip', icon: PlusSquare },
     { label: 'Find Goods', path: '/trucker/browse-shipments', icon: Search },
-    { label: 'My Trips & Bookings', path: '/trucker/my-trips', icon: Truck },
+    { label: 'My Trips & Hub', path: '/trucker/my-trips', icon: Truck },
+    { label: 'Requests', path: '/trucker/my-requests', icon: MessageSquare },
     { label: 'Messages', path: '/messages', icon: MessageSquare },
   ] : [
     { label: 'Dashboard', path: '/shipper/dashboard', icon: LayoutDashboard },
     { label: 'Post Shipment', path: '/shipper/post-shipment', icon: Package },
     { label: 'Find Trucks', path: '/browse-trucks', icon: Search },
-    { label: 'My Shipments & Requests', path: '/shipper/my-shipments', icon: Package },
+    { label: 'My Shipments & Hub', path: '/shipper/my-shipments', icon: Package },
     { label: 'Messages', path: '/messages', icon: MessageSquare },
   ];
 
@@ -173,42 +88,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             </div>
 
             <div className="flex items-center space-x-2 sm:space-x-4">
-              <DropdownMenu onOpenChange={(open) => open && markAsRead()}>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="relative hover:bg-orange-50 transition-colors">
-                    <Bell className="h-5 w-5 text-gray-600" />
-                    {unreadCount > 0 && (
-                      <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white animate-in zoom-in">
-                        {unreadCount}
-                      </span>
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80 animate-in fade-in slide-in-from-top-2">
-                  <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <div className="max-h-80 overflow-y-auto">
-                    {notifications.length === 0 ? (
-                      <div className="p-4 text-center text-sm text-gray-500">
-                        No notifications yet
-                      </div>
-                    ) : (
-                      notifications.map((notif) => (
-                        <DropdownMenuItem key={notif.id} className="p-3 cursor-default focus:bg-gray-50">
-                          <div className="flex flex-col gap-1">
-                            <p className={`text-sm ${notif.is_read ? 'text-gray-600' : 'font-semibold text-gray-900'}`}>
-                              {notif.message}
-                            </p>
-                            <p className="text-xs text-gray-400">
-                              {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                          </div>
-                        </DropdownMenuItem>
-                      ))
-                    )}
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <NotificationBell />
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

@@ -15,6 +15,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { MapPin, Calendar, Truck, IndianRupee, ArrowLeft, CheckCircle, AlertCircle, MessageSquare } from 'lucide-react';
 import Star from '@/components/Star';
 import RouteMap from '@/components/RouteMap';
+import { sendNotification } from '@/utils/notifications';
 
 const TripDetail = () => {
   const { tripId } = useParams();
@@ -107,8 +108,15 @@ const TripDetail = () => {
 
       if (insertError) throw insertError;
 
+      // Send notification to trucker
+      await sendNotification({
+        userId: trip.trucker_id,
+        message: `${userProfile.full_name} requested ${requestedWeight}t space on your trip from ${trip.origin_city} to ${trip.destination_city}`,
+        relatedTripId: trip.id,
+        getToken: () => getToken({ template: 'supabase' })
+      });
+
       showSuccess('Booking request sent successfully!');
-      // Redirect to the unified hub's "Sent Requests" tab
       navigate('/shipper/my-shipments?tab=sent');
     } catch (err: any) {
       showError(err.message || 'An unexpected error occurred');
