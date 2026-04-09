@@ -13,10 +13,13 @@ import ShipperDashboard from "./pages/shipper/Dashboard";
 import PostTrip from "./pages/trucker/PostTrip";
 import MyTrips from "./pages/trucker/MyTrips";
 import EditTrip from "./pages/trucker/EditTrip";
+import MyRequests from "./pages/trucker/MyRequests";
+import TruckerHistory from "./pages/TruckerHistory";
 import PostShipments from "./pages/shipper/PostShipments";
 import MyShipments from "./pages/shipper/MyShipments";
 import EditShipment from "./pages/shipper/EditShipment";
 import ShipmentDetail from "./pages/shipper/ShipmentDetail";
+import ShipperHistory from "./pages/ShipperHistory";
 import BrowseTrips from "./pages/shipper/BrowseTrips";
 import BrowseShipments from "./pages/trucker/BrowseShipments";
 import TripDetail from "./pages/TripDetail";
@@ -51,6 +54,8 @@ const App = () => {
               <Route path="/trucker/my-trips" element={<RoleProtectedRoute allowedRole="trucker"><MyTrips /></RoleProtectedRoute>} />
               <Route path="/trucker/trips/:tripId/edit" element={<RoleProtectedRoute allowedRole="trucker"><EditTrip /></RoleProtectedRoute>} />
               <Route path="/trucker/browse-shipments" element={<RoleProtectedRoute allowedRole="trucker"><BrowseShipments /></RoleProtectedRoute>} />
+              <Route path="/trucker/my-requests" element={<RoleProtectedRoute allowedRole="trucker"><MyRequests /></RoleProtectedRoute>} />
+              <Route path="/trucker/history" element={<RoleProtectedRoute allowedRole="trucker"><TruckerHistory /></RoleProtectedRoute>} />
               
               {/* Shipper Routes */}
               <Route path="/shipper/dashboard" element={<RoleProtectedRoute allowedRole="shipper"><ShipperDashboard /></RoleProtectedRoute>} />
@@ -58,6 +63,7 @@ const App = () => {
               <Route path="/shipper/my-shipments" element={<RoleProtectedRoute allowedRole="shipper"><MyShipments /></RoleProtectedRoute>} />
               <Route path="/shipper/shipments/:id" element={<RoleProtectedRoute allowedRole="shipper"><ShipmentDetail /></RoleProtectedRoute>} />
               <Route path="/shipper/shipments/:shipmentId/edit" element={<RoleProtectedRoute allowedRole="shipper"><EditShipment /></RoleProtectedRoute>} />
+              <Route path="/shipper/history" element={<RoleProtectedRoute allowedRole="shipper"><ShipperHistory /></RoleProtectedRoute>} />
               <Route path="/browse-trucks" element={<RoleProtectedRoute allowedRole="shipper"><BrowseTrips /></RoleProtectedRoute>} />
               
               {/* Common Protected Routes */}
