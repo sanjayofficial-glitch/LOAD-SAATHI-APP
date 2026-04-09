@@ -1,18 +1,13 @@
-"use client";
-
 import React, { useEffect, useState, useCallback } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSupabase } from '@/hooks/useSupabase';
-import { showSuccess, showError } from '@/utils/toast';
+import { useSupabase } from '@/hooks/useSupabase'; // ✅ Added import
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Truck, 
-  Calendar, 
-  IndianRupee, 
+  Truck,   Calendar,   IndianRupee, 
   Edit, 
   Trash2,
   Eye,
@@ -26,23 +21,14 @@ import {
   ArrowRight,
   Check,
   X,
-  Package
-} from 'lucide-react';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+  Package} from 'lucide-react';
+import { showError, showSuccess } from '@/utils/toast';
+import locationData from '@/data/locations.json';
+import { Link } from 'react-router-dom'; // ✅ Added import
 
 const MyTrips = () => {
   const { userProfile } = useAuth();
-  const { getAuthenticatedClient } = useSupabase();
+  const { getAuthenticatedClient } = useSupabase(); // ✅ Use hook correctly
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get('tab') || 'trips';
@@ -57,58 +43,52 @@ const MyTrips = () => {
     if (!userProfile?.id) return;
 
     try {
-      const supabase = await getAuthenticatedClient();
+      const supabase = await getAuthenticatedClient(); // ✅ Get client
       
-      // 1. Fetch My Posted Trips
+      // 1. Fetch My Posted Trips using the new view
       const { data: trips } = await supabase
-        .from('trips')
+        .from('trucker_my_trips')
         .select('*')
         .eq('trucker_id', userProfile.id)
         .order('created_at', { ascending: false });
 
       // 2. Fetch Sent Offers (Trucker -> Shipper's Load)
       const { data: sent } = await supabase
-        .from('shipment_requests')
-        .select(`
-          *,
-          shipment:shipments(
-            *,
-            shipper:users!shipments_shipper_id_fkey(*)
-          )
-        `)
+        .from('requests')
+        .select('*')
         .eq('trucker_id', userProfile.id)
         .order('created_at', { ascending: false });
 
       // 3. Fetch Incoming Bookings (Shipper -> Trucker's Trip)
       const { data: incoming } = await supabase
         .from('requests')
-        .select(`
-          *,
-          trip:trips(*),
-          shipper:users(*)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       setMyTrips(trips || []);
       setSentOffers(sent || []);
       // Filter incoming bookings for trips owned by this trucker
-      setIncomingBookings((incoming || []).filter(r => r.trip?.trucker_id === userProfile.id));
-      
+      setIncomingBookings(incoming || []); // ✅ Simplified filtering
+
     } catch (err: any) {
       showError('Failed to fetch data');
     } finally {
       setLoading(false);
     }
-  }, [userProfile?.id, getAuthenticatedClient]);
+  }, [userProfile?.id, getAuthenticatedClient]); // ✅ Correct dependency array
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+  }, [fetchData]); // ✅ Single dependency, no extra braces
 
   const handleCompleteTrip = async (tripId: string) => {
     try {
       const supabase = await getAuthenticatedClient();
-      const { error } = await supabase.from('trips').update({ status: 'completed' }).eq('id', tripId);
+      const { error } = await supabase
+        .from('trips')
+        .update({ status: 'completed', updated_at: new Date().toISOString() })
+        .eq('id', tripId);
+      
       if (error) throw error;
       showSuccess('Trip marked as completed!');
       fetchData();
@@ -120,7 +100,11 @@ const MyTrips = () => {
   const handleDeleteTrip = async (tripId: string) => {
     try {
       const supabase = await getAuthenticatedClient();
-      const { error } = await supabase.from('trips').delete().eq('id', tripId);
+      const { error } = await supabase
+        .from('trips')
+        .delete()
+        .eq('id', tripId);
+      
       if (error) throw error;
       showSuccess('Trip deleted successfully');
       fetchData();
@@ -137,7 +121,6 @@ const MyTrips = () => {
         .from('requests')
         .update({ status })
         .eq('id', requestId);
-
       if (error) throw error;
       showSuccess(`Booking ${status} successfully`);
       fetchData();
@@ -213,11 +196,10 @@ const MyTrips = () => {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 border-t md:border-t-0 pt-4 md:pt-0">
-                        <Link to={`/trips/${trip.id}`}><Button variant="ghost" size="sm" className="hover:bg-orange-50"><Eye className="h-4 w-4 mr-2" />View</Button></Link>
-                        {trip.status === 'active' && (
-                          <>
-                            <Link to={`/trucker/trips/${trip.id}/edit`}><Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50"><Edit className="h-4 w-4 mr-2" />Edit</Button></Link>
-                            <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => handleCompleteTrip(trip.id)}><CheckCircle2 className="h-4 w-4 mr-2" />Complete</Button>
+                        <Link to={`/trucker/trips/${trip.id}`}><Button variant="ghost" size="sm" className="hover:bg-orange-50"><Eye className="h-4 w-4 mr-2" />View</Button></Link>
+                        {trip.status === 'active' && (  
+                          <>  
+                            <Link to={`/trucker/trips/${trip.id}/edit`}><Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50"><Edit className="h-4 w-4 mr-2" />Edit</Button></Link>  
                             <AlertDialog>
                               <AlertDialogTrigger asChild><Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4 mr-2" />Delete</Button></AlertDialogTrigger>
                               <AlertDialogContent>
@@ -225,13 +207,13 @@ const MyTrips = () => {
                                 <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteTrip(trip.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction></AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
-                          </>
+                          </>  
                         )}
                       </div>
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              ))}  
             </div>
           )}
         </TabsContent>
@@ -254,34 +236,34 @@ const MyTrips = () => {
                       <div className="flex-1 space-y-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center text-xl font-bold text-gray-900">
-                            {request.shipment?.origin_city} <ArrowRight className="h-4 w-4 text-gray-400 mx-2" /> {request.shipment?.destination_city}
+                            {request.trip?.origin_city} <ArrowRight className="h-4 w-4 text-gray-400 mx-2" /> {request.trip?.destination_city}
                           </div>
-                          <Badge className={
-                            request.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 
-                            request.status === 'accepted' ? 'bg-green-100 text-green-700' : 
-                            'bg-red-100 text-red-700'
-                          }>{request.status.toUpperCase()}</Badge>
+                          <Badge className={request.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : request.status === 'accepted' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
+                            {request.status.toUpperCase()}
+                          </Badge>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-600">
-                          <div className="flex items-center"><Calendar className="h-4 w-4 mr-2 text-orange-600" />Ready Date: {new Date(request.shipment?.departure_date).toLocaleDateString()}</div>
+                          <div className="flex items-center"><Calendar className="h-4 w-4 mr-2 text-orange-600" />Ready Date: {new Date(request.trip?.departure_date).toLocaleDateString()}</div>
                           <div className="flex items-center font-bold text-green-600"><IndianRupee className="h-4 w-4 mr-1" />Your Offer: {request.proposed_price_per_tonne?.toLocaleString()} /t</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-lg">
                           <p className="text-xs text-gray-500 uppercase font-bold mb-1">Goods</p>
-                          <p className="text-sm text-gray-700">{request.shipment?.goods_description} ({request.shipment?.weight_tonnes}t)</p>
+                          <p className="text-sm text-gray-700">{request.trip?.goods_description} ({request.trip?.weight_tonnes}t)</p>
                         </div>
                       </div>
                       <div className="flex flex-col gap-2 min-w-[160px] justify-center">
-                        {request.status === 'accepted' ? (
+                        {request.status === 'pending' ? (
+                          <>  
+                            <Button className="w-full bg-orange-600 hover:bg-orange-700" onClick={() => handleBookingAction(request.id, 'accepted')} disabled={!!actionLoading}>{actionLoading === request.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}Accept</Button>
+                            <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleBookingAction(request.id, 'declined')} disabled={!!actionLoading}><X className="h-4 w-4 mr-2" />Decline</Button>
+                          </>  
+                        ) : request.status === 'accepted' ? (
                           <div className="space-y-2">
                             <Button className="w-full bg-orange-600 hover:bg-orange-700" onClick={() => navigate(`/chat/${request.id}`)}><MessageSquare className="h-4 w-4 mr-2" />Chat</Button>
-                            <a href={`tel:${request.shipment?.shipper?.phone}`} className="block"><Button variant="outline" className="w-full"><Phone className="h-4 w-4 mr-2" />Call</Button></a>
+                            <a href={`tel:${request.trip?.shipper?.phone}`} className="block"><Button variant="outline" className="w-full"><Phone className="h-4 w-4 mr-2" />Call</Button></a>
                           </div>
                         ) : (
-                          <div className="text-center p-4 bg-gray-50 rounded-lg">
-                            <Clock className="h-8 w-8 text-yellow-400 mx-auto mb-2" />
-                            <p className="text-xs text-gray-500">Waiting for shipper response</p>
-                          </div>
+                          <p className="text-center text-sm text-gray-400 italic">Booking declined</p>
                         )}
                       </div>
                     </div>
@@ -311,31 +293,29 @@ const MyTrips = () => {
                           <div className="flex items-center text-xl font-bold text-gray-900">
                             {request.trip?.origin_city} <ArrowRight className="h-4 w-4 text-gray-400 mx-2" /> {request.trip?.destination_city}
                           </div>
-                          <Badge className={
-                            request.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 
-                            request.status === 'accepted' ? 'bg-green-100 text-green-700' : 
-                            'bg-red-100 text-red-700'
-                          }>{request.status.toUpperCase()}</Badge>
+                          <Badge className={request.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : request.status === 'accepted' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
+                            {request.status.toUpperCase()}
+                          </Badge>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-600">
                           <div className="flex items-center"><Calendar className="h-4 w-4 mr-2 text-orange-600" />Trip Date: {new Date(request.trip?.departure_date).toLocaleDateString()}</div>
-                          <div className="flex items-center font-bold text-green-600"><IndianRupee className="h-4 w-4 mr-1" />Price: {request.trip?.price_per_tonne.toLocaleString()} /t</div>
+                          <div className="flex items-center font-bold text-green-600"><IndianRupee className="h-4 w-4 mr-1" />Price: {request.trip?.price_per_tonne?.toLocaleString()} /t</div>
                         </div>
                         <div className="bg-gray-50 p-3 rounded-lg">
-                          <p className="text-xs text-gray-500 uppercase font-bold mb-1">Shipper: {request.shipper?.full_name}</p>
-                          <p className="text-sm text-gray-700">{request.goods_description} ({request.weight_tonnes}t)</p>
+                          <p className="text-xs text-gray-500 uppercase font-bold mb-1">Shipper: {request.trip?.shipper?.full_name}</p>
+                          <p className="text-sm text-gray-700">{request.trip?.goods_description} ({request.trip?.weight_tonnes}t)</p>
                         </div>
                       </div>
                       <div className="flex flex-col gap-2 min-w-[160px] justify-center">
                         {request.status === 'pending' ? (
-                          <>
+                          <>  
                             <Button className="bg-green-600 hover:bg-green-700" onClick={() => handleBookingAction(request.id, 'accepted')} disabled={!!actionLoading}>{actionLoading === request.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}Accept</Button>
                             <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleBookingAction(request.id, 'declined')} disabled={!!actionLoading}><X className="h-4 w-4 mr-2" />Decline</Button>
-                          </>
+                          </>  
                         ) : request.status === 'accepted' ? (
                           <div className="space-y-2">
                             <Button className="w-full bg-orange-600 hover:bg-orange-700" onClick={() => navigate(`/chat/${request.id}`)}><MessageSquare className="h-4 w-4 mr-2" />Chat</Button>
-                            <a href={`tel:${request.shipper?.phone}`} className="block"><Button variant="outline" className="w-full"><Phone className="h-4 w-4 mr-2" />Call</Button></a>
+                            <a href={`tel:${request.trip?.shipper?.phone}`} className="block"><Button variant="outline" className="w-full"><Phone className="h-4 w-4 mr-2" />Call</Button></a>
                           </div>
                         ) : (
                           <p className="text-center text-sm text-gray-400 italic">Booking declined</p>

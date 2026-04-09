@@ -3,11 +3,11 @@ import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { ClerkProvider } from "@clerk/clerk-react";
 import { AuthProvider } from "@/contexts/AuthContext";
-import RoleProtectedRoute from "@/components/RoleProtectedRoute";
+import { RoleProtectedRoute } from "@/components/RoleProtectedRoute"; // ✅ Fixed import
 import Layout from "@/components/Layout";
 import { Loader2 } from "lucide-react";
 
-// Public pages
+/* Public pages */
 import Index from "@/pages/Index";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
@@ -15,7 +15,7 @@ import ChooseRole from "@/pages/ChooseRole";
 import AuthSync from "@/components/AuthSync";
 import NotFound from "@/pages/NotFound";
 
-// Protected pages
+/* Protected pages */
 const Profile        = lazy(() => import("@/pages/Profile"));
 const Chat           = lazy(() => import("@/pages/Chat"));
 const ChatList       = lazy(() => import("@/pages/ChatList"));
@@ -23,7 +23,7 @@ const ShipperHistory = lazy(() => import("@/pages/ShipperHistory"));
 const TruckerHistory = lazy(() => import("@/pages/TruckerHistory"));
 const TripDetail     = lazy(() => import("@/pages/TripDetail"));
 
-// Shipper pages
+/* Shipper pages */
 const ShipperDashboard = lazy(() => import("@/pages/shipper/Dashboard"));
 const BrowseTrips      = lazy(() => import("@/pages/shipper/BrowseTrips"));
 const PostShipments    = lazy(() => import("@/pages/shipper/PostShipments"));
@@ -31,7 +31,7 @@ const MyShipments      = lazy(() => import("@/pages/shipper/MyShipments"));
 const EditShipment     = lazy(() => import("@/pages/shipper/EditShipment"));
 const ShipmentDetail   = lazy(() => import("@/pages/shipper/ShipmentDetail"));
 
-// Trucker pages
+/* Trucker pages */
 const TruckerDashboard = lazy(() => import("@/pages/trucker/Dashboard"));
 const PostTrip         = lazy(() => import("@/pages/trucker/PostTrip"));
 const BrowseShipments  = lazy(() => import("@/pages/trucker/BrowseShipments"));
@@ -103,18 +103,7 @@ function App() {
                 <Route path="/trips/:tripId" element={
                   <RoleProtectedRoute allowedRole="shipper"><TripDetail /></RoleProtectedRoute>
                 } />
-
-                <Route path="/profile" element={
-                  <RoleProtectedRoute allowedRole="both"><Profile /></RoleProtectedRoute>
-                } />
-                <Route path="/messages" element={
-                  <RoleProtectedRoute allowedRole="both"><ChatList /></RoleProtectedRoute>
-                } />
-                <Route path="/chat/:requestId" element={
-                  <RoleProtectedRoute allowedRole="both"><Chat /></RoleProtectedRoute>
-                } />
               </Route>
-
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
