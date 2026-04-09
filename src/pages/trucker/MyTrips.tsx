@@ -1,31 +1,24 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSupabase } from '@/hooks/useSupabase';
 import { showSuccess, showError } from '@/utils/toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Truck, 
+  MapPin, 
   Calendar, 
   IndianRupee, 
   Edit, 
   Trash2,
   Eye,
-  CheckCircle2,
   Loader2,
-  Inbox,
-  Clock,
-  Phone,
-  MessageSquare,
   ArrowRight,
-  Check,
-  X,
-  Package
+  Plus
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -43,57 +36,32 @@ const MyTrips = () => {
   const { userProfile } = useAuth();
   const { getAuthenticatedClient } = useSupabase();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const defaultTab = searchParams.get('tab') || 'trips';
-
-  const [myTrips, setMyTrips] = useState<any[]>([]);
-  const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
+  const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
+  const fetchTrips = useCallback(async () => {
     if (!userProfile?.id) return;
 
     try {
       const supabase = await getAuthenticatedClient();
-      
-      // 1. Fetch My Posted Trips
-      const { data: trips } = await supabase
+      const { data, error } = await supabase
         .from('trips')
         .select('*')
         .eq('trucker_id', userProfile.id)
         .order('created_at', { ascending: false });
 
-      // 2. Fetch Incoming Requests (Shipper -> My Trip)
-      const tripIds = (trips || []).map(t => t.id);
-      let requests: any[] = [];
-      
-      if (tripIds.length > 0) {
-        const { data } = await supabase
-          .from('requests')
-          .select(`
-            *,
-            trip:trips(*),
-            shipper:users(*)
-          `)
-          .in('trip_id', tripIds)
-          .order('created_at', { ascending: false });
-        requests = data || [];
-      }
-
-      setMyTrips(trips || []);
-      setIncomingRequests(requests);
-      
+      if (error) throw error;
+      setTrips(data || []);
     } catch (err: any) {
-      showError('Failed to fetch data');
+      showError('Failed to fetch your trips');
     } finally {
       setLoading(false);
     }
   }, [userProfile?.id, getAuthenticatedClient]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    fetchTrips();
+  }, [fetchTrips]);
 
   const handleDeleteTrip = async (tripId: string) => {
     try {
@@ -101,44 +69,9 @@ const MyTrips = () => {
       const { error } = await supabase.from('trips').delete().eq('id', tripId);
       if (error) throw error;
       showSuccess('Trip deleted successfully');
-      fetchData();
+      fetchTrips();
     } catch (err: any) {
       showError('Failed to delete trip');
-    }
-  };
-
-  const handleRequestAction = async (requestId: string, status: 'accepted' | 'declined') => {
-    setActionLoading(requestId);
-    try {
-      const supabase = await getAuthenticatedClient();
-      const { error } = await supabase
-        .from('requests')
-        .update({ status })
-        .eq('id', requestId);
-
-      if (error) throw error;
-      showSuccess(`Request ${status} successfully`);
-      fetchData();
-    } catch (err: any) {
-      showError('Failed to update request');
-    } finally {
-      setActionLoading(null);
-    }
-  };
-
-  const handleCompleteTrip = async (tripId: string) => {
-    try {
-      const supabase = await getAuthenticatedClient();
-      const { error } = await supabase
-        .from('trips')
-        .update({ status: 'completed' })
-        .eq('id', tripId);
-
-      if (error) throw error;
-      showSuccess('Trip marked as completed');
-      fetchData();
-    } catch (err: any) {
-      showError('Failed to complete trip');
     }
   };
 
@@ -152,145 +85,83 @@ const MyTrips = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Trucker Hub</h1>
-          <p className="text-gray-500">Manage your trips and booking requests</p>
+          <h1 className="text-3xl font-bold text-gray-900">My Trips</h1>
+          <p className="text-gray-500">Manage your posted trips and available truck space</p>
         </div>
         <Link to="/trucker/post-trip">
           <Button className="bg-orange-600 hover:bg-orange-700 shadow-md">
-            Post New Trip
+            <Plus className="mr-2 h-4 w-4" /> Post New Trip
           </Button>
         </Link>
       </div>
 
-      <Tabs defaultValue={defaultTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
-          <TabsTrigger value="trips" className="flex items-center gap-2">
-            <Truck className="h-4 w-4" />
-            My Trips {myTrips.length > 0 && <Badge className="ml-1 bg-orange-100 text-orange-700">{myTrips.length}</Badge>}
-          </TabsTrigger>
-          <TabsTrigger value="requests" className="flex items-center gap-2">
-            <Inbox className="h-4 w-4" />
-            Requests {incomingRequests.length > 0 && <Badge className="ml-1 bg-orange-100 text-orange-700">{incomingRequests.length}</Badge>}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="trips">
-          {myTrips.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
-              <Truck className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900">No trips posted yet</h3>
-              <p className="text-gray-500 mb-6">Start by posting your first trip to find loads</p>
-              <Link to="/trucker/post-trip">
-                <Button variant="outline" className="border-orange-600 text-orange-600 hover:bg-orange-50">
-                  Post Your First Trip
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="grid gap-6">
-              {myTrips.map(trip => (
-                <Card key={trip.id} className="overflow-hidden border-orange-100 hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                      <div className="flex-1 space-y-3">
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center text-xl font-bold text-gray-900">
-                            {trip.origin_city} <ArrowRight className="h-4 w-4 mx-2 text-gray-400" /> {trip.destination_city}
-                          </div>
-                          <Badge className={
-                            trip.status === 'active' ? 'bg-green-100 text-green-700' : 
-                            trip.status === 'completed' ? 'bg-blue-100 text-blue-700' :
-                            'bg-gray-100 text-gray-700'
-                          }>
-                            {trip.status.toUpperCase()}
-                          </Badge>
-                        </div>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm text-gray-500">
-                          <div className="flex items-center"><Calendar className="h-4 w-4 mr-2 text-orange-600" />{new Date(trip.departure_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
-                          <div className="flex items-center"><Truck className="h-4 w-4 mr-2 text-blue-600" />{trip.available_capacity_tonnes}t free</div>
-                          <div className="flex items-center font-semibold text-gray-900"><IndianRupee className="h-4 w-4 mr-1 text-green-600" />{trip.price_per_tonne.toLocaleString()} /t</div>
-                        </div>
+      {trips.length === 0 ? (
+        <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+          <Truck className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900">No trips posted yet</h3>
+          <p className="text-gray-500 mb-6">Start by posting your first trip to find loads</p>
+          <Link to="/trucker/post-trip">
+            <Button variant="outline" className="border-orange-600 text-orange-600 hover:bg-orange-50">
+              Post Your First Trip
+            </Button>
+          </Link>
+        </div>
+      ) : (
+        <div className="grid gap-6">
+          {trips.map(trip => (
+            <Card key={trip.id} className="overflow-hidden border-orange-100 hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center text-xl font-bold text-gray-900">
+                        {trip.origin_city} <ArrowRight className="h-4 w-4 mx-2 text-gray-400" /> {trip.destination_city}
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 border-t md:border-t-0 pt-4 md:pt-0">
-                        <Link to={`/trips/${trip.id}`}><Button variant="outline" size="sm" className="border-orange-200 text-orange-700 hover:bg-orange-50"><Eye className="h-4 w-4 mr-2" />View</Button></Link>
-                        {trip.status === 'active' && (
-                          <>
-                            <Link to={`/trucker/trips/${trip.id}/edit`}><Button variant="ghost" size="sm" className="text-orange-600 hover:bg-orange-50"><Edit className="h-4 w-4 mr-2" />Edit</Button></Link>
-                            <Button variant="ghost" size="sm" className="text-green-600 hover:bg-green-50" onClick={() => handleCompleteTrip(trip.id)}><CheckCircle2 className="h-4 w-4 mr-2" />Complete</Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild><Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50"><Trash2 className="h-4 w-4 mr-2" />Delete</Button></AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete your trip listing.</AlertDialogDescription></AlertDialogHeader>
-                                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => handleDeleteTrip(trip.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction></AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </>
-                        )}
-                      </div>
+                      <Badge className={
+                        trip.status === 'active' ? 'bg-green-100 text-green-700' : 
+                        trip.status === 'completed' ? 'bg-blue-100 text-blue-700' :
+                        'bg-gray-100 text-gray-700'
+                      }>
+                        {trip.status.toUpperCase()}
+                      </Badge>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        <TabsContent value="requests">
-          {incomingRequests.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
-              <Inbox className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900">No booking requests yet</h3>
-              <p className="text-gray-500">When shippers want to book space on your trips, they will appear here</p>
-            </div>
-          ) : (
-            <div className="grid gap-6">
-              {incomingRequests.map((request) => (
-                <Card key={request.id} className="overflow-hidden border-orange-100">
-                  <CardContent className="p-6">
-                    <div className="flex flex-col md:flex-row justify-between gap-6">
-                      <div className="flex-1 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center text-xl font-bold text-gray-900">
-                            {request.trip?.origin_city} <ArrowRight className="h-4 w-4 text-gray-400 mx-2" /> {request.trip?.destination_city}
-                          </div>
-                          <Badge className={
-                            request.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 
-                            request.status === 'accepted' ? 'bg-green-100 text-green-700' : 
-                            'bg-red-100 text-red-700'
-                          }>{request.status.toUpperCase()}</Badge>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-gray-600">
-                          <div className="flex items-center"><Calendar className="h-4 w-4 mr-2 text-orange-600" />Trip Date: {new Date(request.trip?.departure_date).toLocaleDateString()}</div>
-                          <div className="flex items-center font-bold text-green-600"><Package className="h-4 w-4 mr-2" />Load: {request.weight_tonnes}t</div>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <p className="text-xs text-gray-500 uppercase font-bold mb-1">Shipper: {request.shipper?.full_name}</p>
-                          <p className="text-sm text-gray-700">Goods: {request.goods_description}</p>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-2 min-w-[160px] justify-center">
-                        {request.status === 'pending' ? (
-                          <>
-                            <Button className="bg-green-600 hover:bg-green-700" onClick={() => handleRequestAction(request.id, 'accepted')} disabled={!!actionLoading}>{actionLoading === request.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-2" />}Accept</Button>
-                            <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => handleRequestAction(request.id, 'declined')} disabled={!!actionLoading}><X className="h-4 w-4 mr-2" />Decline</Button>
-                          </>
-                        ) : request.status === 'accepted' ? (
-                          <div className="space-y-2">
-                            <Button className="w-full bg-orange-600 hover:bg-orange-700" onClick={() => navigate(`/chat/${request.id}`)}><MessageSquare className="h-4 w-4 mr-2" />Chat</Button>
-                            <a href={`tel:${request.shipper?.phone}`} className="block"><Button variant="outline" className="w-full"><Phone className="h-4 w-4 mr-2" />Call</Button></a>
-                          </div>
-                        ) : (
-                          <p className="text-center text-sm text-gray-400 italic">Request declined</p>
-                        )}
-                      </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm text-gray-500">
+                      <div className="flex items-center"><Calendar className="h-4 w-4 mr-2 text-orange-600" />{new Date(trip.departure_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+                      <div className="flex items-center"><Truck className="h-4 w-4 mr-2 text-blue-600" />{trip.available_capacity_tonnes}t available</div>
+                      <div className="flex items-center font-semibold text-gray-900"><IndianRupee className="h-4 w-4 mr-1 text-green-600" />{trip.price_per_tonne.toLocaleString()} /t</div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 border-t md:border-t-0 pt-4 md:pt-0">
+                    <Link to={`/trips/${trip.id}`}><Button variant="outline" size="sm" className="border-orange-200 text-orange-700 hover:bg-orange-50"><Eye className="h-4 w-4 mr-2" />View</Button></Link>
+                    {trip.status === 'active' && (
+                      <>
+                        <Link to={`/trucker/trips/${trip.id}/edit`}><Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50"><Edit className="h-4 w-4 mr-2" />Edit</Button></Link>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50">
+                              <Trash2 className="h-4 w-4 mr-2" />Delete
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>This will permanently delete your trip listing.</AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDeleteTrip(trip.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
