@@ -1,17 +1,26 @@
 "use client";
 
-import { useAuth as useClerkAuth } from "@clerk/clerk-react";
+import { useSession } from "@clerk/clerk-react";
 import { createClerkSupabaseClient } from "@/utils/supabaseClient";
 import { useCallback } from "react";
 
 export const useSupabase = () => {
-  const { getToken } = useClerkAuth();
+  const { session } = useSession();
 
   const getAuthenticatedClient = useCallback(async () => {
-    const token = await getToken({ template: "supabase" });
-    if (!token) throw new Error("No authentication token found");
+    if (!session) {
+      throw new Error("No active session found");
+    }
+
+    // Using the specific JWT template name provided
+    const token = await session.getToken({ template: "supabase-hs256" });
+    
+    if (!token) {
+      throw new Error("Failed to retrieve authentication token");
+    }
+
     return createClerkSupabaseClient(token);
-  }, [getToken]);
+  }, [session]);
 
   return { getAuthenticatedClient };
 };
