@@ -1,6 +1,3 @@
-"use client";
-
-import React from "react";
 import { BrowserRouter } from "react-router-dom";
 import Layout from "./components/Layout";
 import "./globals.css";
@@ -8,7 +5,10 @@ import "./globals.css";
 const App = () => {
   return (
     <BrowserRouter>
-      <Layout />
+      <Layout>
+        <>
+        </>
+      </Layout>
     </BrowserRouter>
   );
 };
