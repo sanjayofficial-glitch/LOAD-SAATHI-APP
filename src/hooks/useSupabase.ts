@@ -12,11 +12,11 @@ export const useSupabase = () => {
       throw new Error("No active session found");
     }
 
-    // Using the specific JWT template name provided
-    const token = await session.getToken({ template: "supabase-hs256" });
+    // Using the standard 'supabase' template name
+    const token = await session.getToken({ template: "supabase" });
     
     if (!token) {
-      throw new Error("Failed to retrieve authentication token");
+      throw new Error("Failed to retrieve authentication token. Ensure you have a JWT template named 'supabase' in your Clerk dashboard.");
     }
 
     return createClerkSupabaseClient(token);
