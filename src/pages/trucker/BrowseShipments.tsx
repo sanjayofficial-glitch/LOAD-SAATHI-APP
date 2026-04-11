@@ -1,14 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
+import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { useSupabase } from '@/hooks/useSupabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   Search, 
   Calendar, 
@@ -19,7 +22,8 @@ import {
   IndianRupee,
   MapPin,
   Filter,
-  X
+  X,
+  Truck
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import {
@@ -30,15 +34,17 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { sendNotification } from '@/utils/notifications';
 
 const BrowseShipments = () => {
   const { userProfile } = useAuth();
+  const { getToken } = useClerkAuth();
   const { getAuthenticatedClient } = useSupabase();
   const navigate = useNavigate();
   
   const [shipments, setShipments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
     origin: '',
     destination: '',
@@ -55,7 +61,11 @@ const BrowseShipments = () => {
   const fetchShipments = async () => {
     setLoading(true);
     try {
-      const supabase = await getAuthenticatedClient();
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('No Supabase token');
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
+      
       const { data, error } = await supabase
         .from('shipments')
         .select('*, shipper:users(*)')
@@ -65,7 +75,7 @@ const BrowseShipments = () => {
       if (error) throw error;
       setShipments(data || []);
     } catch (err: any) {
-      showError('Failed to fetch shipments');
+      showError('Failed to load shipments');
     } finally {
       setLoading(false);
     }
@@ -73,17 +83,21 @@ const BrowseShipments = () => {
 
   useEffect(() => {
     fetchShipments();
-  }, [getAuthenticatedClient]);
+  }, [getToken]);
 
-  const filteredShipments = shipments.filter(s => {
-    const matchesSearch = s.origin_city.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         s.destination_city.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesOrigin = !filters.origin || s.origin_city.toLowerCase().includes(filters.origin.toLowerCase());
-    const matchesDest = !filters.destination || s.destination_city.toLowerCase().includes(filters.destination.toLowerCase());
-    const matchesWeight = !filters.minWeight || s.weight_tonnes >= parseFloat(filters.minWeight);
-    
-    return matchesSearch && matchesOrigin && matchesDest && matchesWeight;
-  });
+  const filteredShipments = useMemo(() => {
+    return shipments.filter(s => {
+      const search = searchTerm.toLowerCase();
+      const matchesSearch = s.origin_city.toLowerCase().includes(search) || 
+                           s.destination_city.toLowerCase().includes(search) ||
+                           s.goods_description.toLowerCase().includes(search);
+      const matchesOrigin = !filters.origin || s.origin_city.toLowerCase().includes(filters.origin.toLowerCase());
+      const matchesDest = !filters.destination || s.destination_city.toLowerCase().includes(filters.destination.toLowerCase());
+      const matchesWeight = !filters.minWeight || s.weight_tonnes >= parseFloat(filters.minWeight);
+      
+      return matchesSearch && matchesOrigin && matchesDest && matchesWeight;
+    });
+  }, [shipments, searchTerm, filters]);
 
   const openOfferDialog = (shipment: any) => {
     setSelectedShipment(shipment);
@@ -102,15 +116,17 @@ const BrowseShipments = () => {
 
     setSendingOffer(true);
     try {
-      const supabase = await getAuthenticatedClient();
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('No Supabase token');
       
-      // Create a request for the shipment
+      const supabase = createClerkSupabaseClient(supabaseToken);
+      
       const { error } = await supabase
         .from('shipment_requests')
         .insert({
           shipment_id: selectedShipment.id,
           trucker_id: userProfile.id,
-          shipper_id: selectedShipment.shipper_id, // Required by schema
+          shipper_id: selectedShipment.shipper_id,
           proposed_price_per_tonne: price,
           message: message.trim(),
           status: 'pending'
@@ -118,10 +134,18 @@ const BrowseShipments = () => {
 
       if (error) throw error;
 
+      // Send notification to shipper
+      await sendNotification({
+        userId: selectedShipment.shipper_id,
+        message: `${userProfile.full_name} offered ₹${price}/t for your ${selectedShipment.weight_tonnes}t shipment from ${selectedShipment.origin_city} to ${selectedShipment.destination_city}`,
+        getToken: () => getToken({ template: 'supabase' })
+      });
+
       showSuccess('Offer sent to shipper!');
       setIsOfferDialogOpen(false);
       setProposedPrice('');
       setMessage('');
+      navigate('/trucker/my-requests?tab=sent');
     } catch (err: any) {
       showError(err.message || 'Failed to send offer');
     } finally {
@@ -129,17 +153,11 @@ const BrowseShipments = () => {
     }
   };
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-[400px]">
-      <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
-    </div>
-  );
-
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Browse Shipments</h1>
-        <p className="text-gray-500">Find loads posted by shippers and send your offers</p>
+        <h1 className="text-3xl font-bold text-gray-900">Find Goods to Carry</h1>
+        <p className="text-gray-600">Browse available shipments posted by shippers and send your best offer</p>
       </div>
 
       <div className="grid lg:grid-cols-4 gap-8">
@@ -197,14 +215,26 @@ const BrowseShipments = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input 
-              placeholder="Search by city..." 
+              placeholder="Search by origin, destination, or goods type..." 
               className="pl-10 py-6 rounded-xl border-orange-100 focus:ring-orange-500"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
 
-          {filteredShipments.length === 0 ? (
+          {loading ? (
+            <div className="grid gap-6">
+              {[1, 2, 3].map((i) => (
+                <Card key={i}>
+                  <CardContent className="p-6 space-y-4">
+                    <Skeleton className="h-6 w-1/2" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-10 w-32" />
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : filteredShipments.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
               <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900">No shipments found</h3>

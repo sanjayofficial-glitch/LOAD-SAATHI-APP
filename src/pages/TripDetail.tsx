@@ -16,6 +16,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { MapPin, Calendar, Truck, IndianRupee, ArrowLeft, CheckCircle, AlertCircle, MessageSquare, Loader2 } from 'lucide-react';
 import Star from '@/components/Star';
 import RouteMap from '@/components/RouteMap';
+import { sendNotification } from '@/utils/notifications';
 
 const TripDetail = () => {
   const { tripId } = useParams();
@@ -47,16 +48,17 @@ const TripDetail = () => {
         
         if (tripError) throw tripError;
         
-        const mappedTrip = {
+        const truckerInfo = Array.isArray(tripData.trucker) ? tripData.trucker[0] : tripData.trucker;
+        
+        setTrip({
           ...tripData,
-          trucker: Array.isArray(tripData.trucker) ? tripData.trucker[0] : tripData.trucker
-        };
-        setTrip(mappedTrip as unknown as Trip);
+          trucker: truckerInfo
+        } as unknown as Trip);
 
         const { data: reviewData } = await supabase
           .from('reviews')
           .select('*, shipper:users(full_name)')
-          .eq('trucker_id', mappedTrip.trucker_id)
+          .eq('trucker_id', tripData.trucker_id)
           .order('created_at', { ascending: false })
           .limit(5);
         
@@ -96,14 +98,14 @@ const TripDetail = () => {
       const supabaseToken = await getToken({ template: 'supabase' });
       if (!supabaseToken) throw new Error('No Supabase token');
       
-      const supabase = createClerkSupabaseClient(supabaseToken);
+      const supabaseClient = createClerkSupabaseClient(supabaseToken);
       
-      const { error: insertError } = await supabase
+      const { error: insertError } = await supabaseClient
         .from('requests')
         .insert({
           trip_id: tripId,
           shipper_id: userProfile.id,
-          receiver_id: trip.trucker_id, // Required by schema
+          receiver_id: trip.trucker_id,
           goods_description: description.trim(),
           weight_tonnes: requestedWeight,
           pickup_address: pickupAddress.trim(),
@@ -113,9 +115,17 @@ const TripDetail = () => {
 
       if (insertError) throw insertError;
 
+      // Send notification to trucker
+      await sendNotification({
+        userId: trip.trucker_id,
+        message: `New Request: ${userProfile.full_name} wants to book ${requestedWeight}t for your ${trip.origin_city} to ${trip.destination_city} trip.`,
+        getToken: () => getToken({ template: 'supabase' })
+      });
+
       showSuccess('Booking request sent successfully!');
       navigate('/shipper/my-shipments?tab=sent');
     } catch (err: any) {
+      console.error('[handleRequest] Error:', err);
       showError(err.message || 'An unexpected error occurred');
     } finally {
       setSubmitting(false);
@@ -298,7 +308,7 @@ const TripDetail = () => {
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Estimated Cost:</span>
                   <span className="font-bold text-gray-900">
-                    ₹{((parseFloat(weight) || 0) * trip.price_per_tonne).toLocaleString()}
+                    ₹{((parseFloat(weight) || 0) * (trip.price_per_tonne || 0)).toLocaleString()}
                   </span>
                 </div>
                 <p className="text-[10px] text-gray-400 italic">

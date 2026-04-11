@@ -6,7 +6,8 @@ import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Truck, Clock, TrendingUp, PlusCircle, Search, DollarSign, Calendar, MapPin, Loader2 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Truck, Clock, TrendingUp, PlusCircle, Search, DollarSign, Calendar, MapPin, BellRing, ArrowRight, Loader2 } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
 
 const StatCardSkeleton = () => (
@@ -44,33 +45,67 @@ const TruckerDashboard = () => {
       if (!supabaseToken) throw new Error('No Supabase token');
       const supabase = createClerkSupabaseClient(supabaseToken);
 
-      const { count: activeTrips } = await supabase.from('trips').select('*', { count: 'exact', head: true }).eq('trucker_id', userProfile.id).eq('status', 'active');
-      const { count: completedTrips } = await supabase.from('trips').select('*', { count: 'exact', head: true }).eq('trucker_id', userProfile.id).eq('status', 'completed');
+      // Fetch active trips
+      const { count: activeTrips } = await supabase
+        .from('trips')
+        .select('*', { count: 'exact', head: true })
+        .eq('trucker_id', userProfile.id)
+        .eq('status', 'active');
+
+      // Fetch completed trips
+      const { count: completedTrips } = await supabase
+        .from('trips')
+        .select('*', { count: 'exact', head: true })
+        .eq('trucker_id', userProfile.id)
+        .eq('status', 'completed');
+
+      // Fetch pending requests for trucker's trips
+      const { data: myTrips } = await supabase
+        .from('trips')
+        .select('id')
+        .eq('trucker_id', userProfile.id);
       
-      const { data: myTrips } = await supabase.from('trips').select('id').eq('trucker_id', userProfile.id).eq('status', 'active');
       const tripIds = myTrips?.map(t => t.id) || [];
       
       let pendingRequests = 0;
+      
       if (tripIds.length > 0) {
-        const { count } = await supabase.from('requests').select('*', { count: 'exact', head: true }).in('trip_id', tripIds).eq('status', 'pending');
+        const { count } = await supabase
+          .from('requests')
+          .select('*', { count: 'exact', head: true })
+          .in('trip_id', tripIds)
+          .eq('status', 'pending');
         pendingRequests = count || 0;
       }
 
-      const { data: completedTripsData } = await supabase.from('trips')
+      // Calculate earnings
+      const { data: completedTripsData } = await supabase
+        .from('trips')
         .select('price_per_tonne, requests!inner(weight_tonnes)')
-        .eq('trucker_id', userProfile.id).eq('status', 'completed');
-      
+        .eq('trucker_id', userProfile.id)
+        .eq('status', 'completed');
+
       const totalEarnings = completedTripsData?.reduce((sum, trip) => {
         const request = trip.requests[0];
         return sum + (request ? trip.price_per_tonne * request.weight_tonnes : 0);
       }, 0) || 0;
 
-      const { data: upcomingTrips } = await supabase.from('trips')
+      // Fetch upcoming trips
+      const { data: upcomingTrips } = await supabase
+        .from('trips')
         .select('id, origin_city, destination_city, departure_date, price_per_tonne, vehicle_type')
-        .eq('trucker_id', userProfile.id).eq('status', 'active')
-        .order('departure_date', { ascending: true }).limit(3);
+        .eq('trucker_id', userProfile.id)
+        .eq('status', 'active')
+        .order('departure_date', { ascending: true })
+        .limit(3);
 
-      setStats({ activeTrips: activeTrips || 0, pendingRequests, completedTrips: completedTrips || 0, totalEarnings, upcomingTrips: upcomingTrips || [] });
+      setStats({ 
+        activeTrips: activeTrips || 0, 
+        pendingRequests, 
+        completedTrips: completedTrips || 0, 
+        totalEarnings, 
+        upcomingTrips: upcomingTrips || [] 
+      });
     } catch (err: any) {
       showError('Failed to load dashboard stats');
     } finally {
@@ -131,34 +166,54 @@ const TruckerDashboard = () => {
         </p>
       </div>
 
+      {/* Action Required Alert */}
+      {!loading && stats.pendingRequests > 0 && (
+        <Alert className="mb-8 border-orange-200 bg-orange-50 animate-in fade-in slide-in-from-top-4 duration-500">
+          <BellRing className="h-5 w-5 text-orange-600" />
+          <AlertTitle className="text-orange-900 font-bold">Action Required!</AlertTitle>
+          <AlertDescription className="text-orange-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <span>You have <strong>{stats.pendingRequests}</strong> new booking request(s) waiting for your approval.</span>
+            <Link to="/trucker/my-requests">
+              <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white">
+                Review Requests <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         {loading ? (
           <><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /></>
         ) : (
           <>
-            <Card>
+            <Card className="border-orange-100">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Active Trips</CardTitle>
                 <Truck className="h-4 w-4 text-orange-600" />
               </CardHeader>
               <CardContent><div className="text-2xl font-bold">{stats.activeTrips}</div></CardContent>
             </Card>
-            <Card>
+            <Card className={stats.pendingRequests > 0 ? "border-orange-500 ring-1 ring-orange-500" : "border-orange-100"}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
-                <Clock className="h-4 w-4 text-yellow-600" />
+                <Clock className={`h-4 w-4 ${stats.pendingRequests > 0 ? 'text-orange-600 animate-pulse' : 'text-yellow-600'}`} />
               </CardHeader>
-              <CardContent><div className="text-2xl font-bold">{stats.pendingRequests}</div></CardContent>
+              <CardContent>
+                <div className={`text-2xl font-bold ${stats.pendingRequests > 0 ? 'text-orange-600' : ''}`}>
+                  {stats.pendingRequests}
+                </div>
+              </CardContent>
             </Card>
-            <Card>
+            <Card className="border-orange-100">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Completed Trips</CardTitle>
                 <TrendingUp className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent><div className="text-2xl font-bold">{stats.completedTrips}</div></CardContent>
             </Card>
-            <Card>
+            <Card className="border-orange-100">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
                 <DollarSign className="h-4 w-4 text-green-600" />
