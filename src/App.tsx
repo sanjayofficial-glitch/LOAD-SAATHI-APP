@@ -27,6 +27,7 @@ import ChatList from "./pages/ChatList";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import BrowseShipments from "./pages/trucker/BrowseShipments";
+import BrowseTrips from "./pages/shipper/BrowseTrips";
 import "./globals.css";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -60,6 +61,7 @@ const App = () => {
                 <Route path="/shipper/shipments/:id" element={<RoleProtectedRoute allowedRole="shipper"><ShipmentDetail /></RoleProtectedRoute>} />
                 <Route path="/shipper/shipments/:shipmentId/edit" element={<RoleProtectedRoute allowedRole="shipper"><EditShipment /></RoleProtectedRoute>} />
                 <Route path="/shipper/history" element={<RoleProtectedRoute allowedRole="shipper"><ShipperHistory /></RoleProtectedRoute>} />
+                <Route path="/browse-trucks" element={<RoleProtectedRoute allowedRole="shipper"><BrowseTrips /></RoleProtectedRoute>} />
                 <Route path="/trips/:tripId" element={<TripDetail />} />
                 <Route path="/chat/:requestId" element={<Chat />} />
                 <Route path="/messages" element={<ChatList />} />
