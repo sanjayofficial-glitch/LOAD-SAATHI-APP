@@ -20,9 +20,9 @@ import { Notification } from '@/types';
 
 const NotificationBell = () => {
   const { userProfile } = useAuth();
-  const { getToken } = useClerkAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   const fetchNotifications = useCallback(async () => {
     if (!userProfile?.id) return;
@@ -46,12 +46,14 @@ const NotificationBell = () => {
       }
     } catch (err) {
       console.error('[NotificationBell] Error fetching notifications:', err);
+    } finally {
+      setLoading(false);
     }
-  }, [userProfile?.id, getToken]);
+  }, [userProfile?.id]);
 
   useEffect(() => {
     if (!userProfile?.id) return;
-
+    
     fetchNotifications();
 
     const channel = supabase
@@ -75,7 +77,7 @@ const NotificationBell = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userProfile?.id, fetchNotifications]);
+  }, [userProfile?.id]);
 
   const markAllAsRead = async () => {
     if (unreadCount === 0 || !userProfile?.id) return;
@@ -91,7 +93,7 @@ const NotificationBell = () => {
         .update({ is_read: true })
         .eq('user_id', userProfile.id)
         .eq('is_read', false);
-      
+
       if (!error) {
         setUnreadCount(0);
         setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
@@ -107,7 +109,7 @@ const NotificationBell = () => {
         <Button variant="ghost" size="icon" className="relative hover:bg-orange-50 transition-colors">
           <Bell className="h-5 w-5 text-gray-600" />
           {unreadCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white animate-in zoom-in">
+            <span className="absolute top-1.5 right-1.5 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white animate-pulse">
               {unreadCount}
             </span>
           )}
@@ -118,7 +120,7 @@ const NotificationBell = () => {
           <span>Notifications</span>
           {unreadCount > 0 && (
             <Badge variant="secondary" className="text-[10px]">
-              {unreadCount} New
+              {unreadCount}
             </Badge>
           )}
         </DropdownMenuLabel>
@@ -138,7 +140,7 @@ const NotificationBell = () => {
                       <CheckCircle className="h-3 w-3 text-green-600" />
                     ) : (
                       <AlertCircle className="h-3 w-3 text-orange-600" />
-                    )}
+                    )} 
                   </div>
                   <div className="flex flex-col gap-1">
                     <p className={`text-sm leading-tight ${notif.is_read ? 'text-gray-600' : 'font-semibold text-gray-900'}`}>
@@ -150,7 +152,7 @@ const NotificationBell = () => {
                   </div>
                 </div>
               </DropdownMenuItem>
-            ))
+            ))}
           )}
         </div>
       </DropdownMenuContent>
