@@ -2,13 +2,13 @@ import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { ClerkProvider, SignedIn } from "@clerk/clerk-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./contexts/AuthContext";
-import Layout from "./components/Layout";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import ChooseRole from "./pages/ChooseRole";
 import AuthSync from "./components/AuthSync";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
+import Layout from "./components/Layout";
 import TruckerDashboard from "./pages/trucker/Dashboard";
 import ShipperDashboard from "./pages/shipper/Dashboard";
 import PostTrip from "./pages/trucker/PostTrip";
@@ -21,18 +21,16 @@ import MyShipments from "./pages/shipper/MyShipments";
 import EditShipment from "./pages/shipper/EditShipment";
 import ShipmentDetail from "./pages/shipper/ShipmentDetail";
 import ShipperHistory from "./pages/ShipperHistory";
-import TripDetail from "./pages/TripDetail";
+import BrowseShipments from "./pages/BrowseShipments";
+import BrowseTrips from "./pages/BrowseTrips";
 import Chat from "./pages/Chat";
 import ChatList from "./pages/ChatList";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
-import BrowseShipments from "./pages/trucker/BrowseShipments";
-import BrowseTrips from "./pages/shipper/BrowseTrips";
 import "./globals.css";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
-// Create a client
 const queryClient = new QueryClient();
 
 const App = () => {
@@ -62,12 +60,14 @@ const App = () => {
                 <Route path="/shipper/shipments/:shipmentId/edit" element={<RoleProtectedRoute allowedRole="shipper"><EditShipment /></RoleProtectedRoute>} />
                 <Route path="/shipper/history" element={<RoleProtectedRoute allowedRole="shipper"><ShipperHistory /></RoleProtectedRoute>} />
                 <Route path="/browse-trucks" element={<RoleProtectedRoute allowedRole="shipper"><BrowseTrips /></RoleProtectedRoute>} />
-                <Route path="/trips/:tripId" element={<TripDetail />} />
+                <Route path="/trips/:tripId" element={<ShipmentDetail />} />
                 <Route path="/chat/:requestId" element={<Chat />} />
                 <Route path="/messages" element={<ChatList />} />
                 <Route path="/profile" element={<Profile />} />
+                <Route path="/browse-shipments" element={<BrowseShipments />} />
+                <Route path="/browse-trips" element={<BrowseTrips />} />
+                <Route path="*" element={<NotFound />} />
               </Route>
-              <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
         </AuthProvider>
