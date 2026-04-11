@@ -121,6 +121,7 @@ const BrowseShipments = () => {
       setIsOfferDialogOpen(false);
       setProposedPrice('');
       setMessage('');
+      // Optionally redirect to a "My Offers" page if it exists
     } catch (err: any) {
       showError(err.message || 'Failed to send offer');
     } finally {
