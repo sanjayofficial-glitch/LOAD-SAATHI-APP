@@ -120,9 +120,7 @@ const TruckerHistory = () => {
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return `₹${amount.toLocaleString()}`;
-  };
+  const formatCurrency = (amount: number) => `₹${amount.toLocaleString()}`;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -170,7 +168,7 @@ const TruckerHistory = () => {
                 value={filters.activityType || "all"} 
                 onValueChange={(value) => setFilters(prev => ({ ...prev, activityType: value === "all" ? "" : value }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="All activity types" />
                 </SelectTrigger>
                 <SelectContent>
@@ -187,7 +185,7 @@ const TruckerHistory = () => {
                 value={filters.status || "all"} 
                 onValueChange={(value) => setFilters(prev => ({ ...prev, status: value === "all" ? "" : value }))}
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="All statuses" />
                 </SelectTrigger>
                 <SelectContent>
