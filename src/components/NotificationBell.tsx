@@ -20,6 +20,7 @@ import { Notification } from '@/types';
 
 const NotificationBell = () => {
   const { userProfile } = useAuth();
+  const { getToken } = useClerkAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -49,7 +50,7 @@ const NotificationBell = () => {
     } finally {
       setLoading(false);
     }
-  }, [userProfile?.id]);
+  }, [userProfile?.id, getToken]);
 
   useEffect(() => {
     if (!userProfile?.id) return;
@@ -77,7 +78,7 @@ const NotificationBell = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userProfile?.id]);
+  }, [userProfile?.id, getToken]);
 
   const markAllAsRead = async () => {
     if (unreadCount === 0 || !userProfile?.id) return;
@@ -152,7 +153,7 @@ const NotificationBell = () => {
                   </div>
                 </div>
               </DropdownMenuItem>
-            ))}
+            ))
           )}
         </div>
       </DropdownMenuContent>
