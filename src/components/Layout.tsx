@@ -96,20 +96,21 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
   const markAsRead = async () => {
     if (unreadCount === 0 || !userProfile?.id) return;
-    
+
     try {
       const supabaseToken = await getToken({ template: 'supabase' });
       if (!supabaseToken) return;
-      
+
       const supabaseClient = createClerkSupabaseClient(supabaseToken);
       
-      const { error } = await supabaseClient
+      // Mark all notifications as read
+      const { error: updateError } = await supabaseClient
         .from('notifications')
         .update({ is_read: true })
         .eq('user_id', userProfile.id)
         .eq('is_read', false);
-      
-      if (!error) {
+
+      if (!updateError) {
         setUnreadCount(0);
         setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
       }

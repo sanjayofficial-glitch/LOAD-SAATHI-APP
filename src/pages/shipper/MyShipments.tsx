@@ -118,23 +118,70 @@ const MyShipments = () => {
   };
 
   const handleOfferAction = async (requestId: string, status: 'accepted' | 'rejected') => {
-    setActionLoading(requestId);
-    try {
-      const supabase = await getAuthenticatedClient();
-      const { error } = await supabase
-        .from('shipment_requests')
-        .update({ status })
-        .eq('id', requestId);
-
-      if (error) throw error;
-      showSuccess(`Offer ${status} successfully`);
-      fetchData();
-    } catch (err: any) {
-      showError('Failed to update offer');
-    } finally {
-      setActionLoading(null);
-    }
-  };
+      setActionLoading(requestId);
+      try {
+        const supabase = await getAuthenticatedClient();
+        
+        // Get the request details first
+        const { data: request } = await supabase
+          .from('shipment_requests')
+          .select('shipment_id, trucker_id')
+          .eq('id', requestId)
+          .single();
+        
+        if (!request) throw new Error('Request not found');
+        
+        if (status === 'accepted') {
+          // 1. Update the selected offer to 'accepted'
+          const { error: acceptError } = await supabase
+            .from('shipment_requests')
+            .update({ status: 'accepted' })
+            .eq('id', requestId);
+  
+          if (acceptError) throw acceptError;
+  
+          // 2. Automatically decline all other pending offers for this shipment
+          await supabase
+            .from('shipment_requests')
+            .update({ status: 'declined' })
+            .eq('shipment_id', request.shipment_id)
+            .eq('status', 'pending')
+            .neq('id', requestId);
+  
+          // 3. Update shipment status to 'matched' (BOOKED)
+          await supabase
+            .from('shipments')
+            .update({ status: 'matched' })
+            .eq('id', request.shipment_id);
+  
+          // 4. Notify the trucker
+          await supabase.from('notifications').insert({
+            user_id: request.trucker_id,
+            message: `Your offer for shipment has been ACCEPTED!`,
+            related_shipment_request_id: requestId,
+            is_read: false
+          });
+  
+          showSuccess('Offer accepted! Shipment is now booked.');
+        } else {
+          // Just decline the offer
+          const { error: declineError } = await supabase
+            .from('shipment_requests')
+            .update({ status: 'declined' })
+            .eq('id', requestId);
+  
+          if (declineError) throw declineError;
+          
+          showSuccess('Offer declined');
+        }
+        
+        fetchData();
+      } catch (err: any) {
+        showError(`Failed to ${status} offer`);
+      } finally {
+        setActionLoading(null);
+      }
+    };
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-[400px]">
