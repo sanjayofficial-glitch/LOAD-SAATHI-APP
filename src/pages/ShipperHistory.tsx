@@ -9,135 +9,72 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { 
-  Truck, 
-  Clock, 
-  TrendingUp, 
-  DollarSign, 
-  Calendar, 
-  MapPin, 
-  Filter,
-  Eye,
-  Package,
-  CheckCircle,
-  AlertCircle,
-  Star,
-  Building,
-  Send
-} from 'lucide-react';
-import { showError, showSuccess } from '@/utils/toast';
+import { Filter, Clock, TrendingUp, DollarSign, Calendar, Package, CheckCircle, AlertCircle, Eye, Truck, Send } from 'lucide-react';
+import { showError } from '@/utils/toast';
 
-interface ActivityItem {
+interface NotificationItem {
   id: string;
-  activity_type: string;
-  reference_id: string;
-  activity_date: string;
-  description: string;
-  status: string;
-  title: string;
-  counterparty_name: string;
-  trip_details?: string;
-  shipment_details?: string;
+  message: string;
+  type: string;
+  is_read: boolean;
+  created_at: string;
+  related_trip_id?: string;
+  related_shipment_request_id?: string;
 }
 
 const ShipperHistory = () => {
   const { userProfile } = useAuth();
   const { getToken } = useClerkAuth();
-  const [filters, setFilters] = useState({
-    activityType: '',
-    status: ''
-  });
+  const [filters, setFilters] = useState({ type: '', read: '' });
 
-  const { data: activities = [], isLoading, refetch } = useQuery({
-    queryKey: ["shipperHistory", filters.activityType, filters.status],
+  const { data: notifications = [], isLoading, refetch } = useQuery({
+    queryKey: ['shipperHistory', filters.type, filters.read],
     queryFn: async () => {
       if (!userProfile?.id) return [];
-      
       const supabaseToken = await getToken({ template: 'supabase' });
       if (!supabaseToken) throw new Error('No Supabase token');
       const supabase = createClerkSupabaseClient(supabaseToken);
-
       const { data, error } = await supabase
-        .from("shipper_history")
-        .select("*")
-        .eq("user_id", userProfile.id);
-
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userProfile.id)
+        .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data as ActivityItem[]) || [];
+      return data as NotificationItem[];
     },
-    enabled: !!userProfile?.id
+    enabled: !!userProfile?.id,
   });
 
-  const filteredActivities = activities.filter(activity => {
-    if (filters.activityType && activity.activity_type !== filters.activityType) return false;
-    if (filters.status && activity.status !== filters.status) return false;
+  const filtered = notifications.filter((n) => {
+    if (filters.type && n.type !== filters.type) return false;
+    if (filters.read) {
+      const wantRead = filters.read === 'read';
+      if (wantRead !== n.is_read) return false;
+    }
     return true;
   });
 
-  const getStatusIcon = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-600" />;
-      case 'active':
-        return <TrendingUp className="h-4 w-4 text-blue-600" />;
-      case 'failed':
-        return <AlertCircle className="h-4 w-4 text-red-600" />;
-      default:
-        return <Clock className="h-4 w-4 text-gray-600" />;
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      completed: { variant: 'default' as const, className: 'bg-green-100 text-green-800' },
-      pending: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800' },
-      active: { variant: 'default' as const, className: 'bg-blue-100 text-blue-800' },
-      failed: { variant: 'destructive' as const, className: 'bg-red-100 text-red-800' },
-      cancelled: { variant: 'outline' as const, className: 'bg-gray-100 text-gray-800' }
-    };
-
-    const config = statusConfig[status.toLowerCase() as keyof typeof statusConfig] || statusConfig.pending;
-    
-    return (
-      <Badge variant={config.variant} className={config.className}>
-        {status}
-      </Badge>
-    );
-  };
-
-  const getActivityIcon = (activityType: string) => {
-    switch (activityType.toLowerCase()) {
-      case 'shipment':
-        return <Package className="h-5 w-5 text-purple-600" />;
-      case 'request':
+  const getIcon = (type: string) => {
+    switch (type) {
+      case 'REQUEST':
         return <Send className="h-5 w-5 text-orange-600" />;
-      case 'payment':
-        return <DollarSign className="h-5 w-5 text-green-600" />;
-      case 'trip':
-        return <Truck className="h-5 w-5 text-blue-600" />;
+      case 'ACCEPT':
+        return <CheckCircle className="h-5 w-5 text-green-600" />;
+      case 'REJECT':
+        return <AlertCircle className="h-5 w-5 text-red-600" />;
       default:
         return <Eye className="h-5 w-5 text-gray-600" />;
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return `₹${amount.toLocaleString()}`;
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleString('en-US', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
-  };
-
-  const uniqueActivityTypes = [...new Set(activities.map(a => a.activity_type))].filter(Boolean);
-  const uniqueStatuses = [...new Set(activities.map(a => a.status))].filter(Boolean);
 
   if (isLoading) {
     return (
@@ -149,11 +86,14 @@ const ShipperHistory = () => {
     );
   }
 
+  const uniqueTypes = Array.from(new Set(notifications.map((n) => n.type)));
+  const uniqueRead = ['read', 'unread'];
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">My Activity History</h1>
-        <p className="text-gray-600">View all your past shipments, requests, and activities</p>
+        <p className="text-gray-600">View all your past notifications and actions</p>
       </div>
 
       {/* Filters */}
@@ -167,41 +107,45 @@ const ShipperHistory = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Activity Type</label>
-              <Select 
-                value={filters.activityType || "all"} 
-                onValueChange={(value) => setFilters(prev => ({ ...prev, activityType: value === "all" ? "" : value }))}
+              <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+              <Select
+                value={filters.type || 'all'}
+                onValueChange={(v) => setFilters((p) => ({ ...p, type: v === 'all' ? '' : v }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="All activity types" />
+                  <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All activity types</SelectItem>
-                  {uniqueActivityTypes.map(type => (
-                    <SelectItem key={type} value={type}>{type}</SelectItem>
+                  <SelectItem value="all">All types</SelectItem>
+                  {uniqueTypes.map((t) => (
+                    <SelectItem key={t} value={t}>
+                      {t}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <Select 
-                value={filters.status || "all"} 
-                onValueChange={(value) => setFilters(prev => ({ ...prev, status: value === "all" ? "" : value }))}
+              <label className="block text-sm font-medium text-gray-700 mb-2">Read Status</label>
+              <Select
+                value={filters.read || 'all'}
+                onValueChange={(v) => setFilters((p) => ({ ...p, read: v === 'all' ? '' : v }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="All statuses" />
+                  <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  {uniqueStatuses.map(status => (
-                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                  {uniqueRead.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {r.charAt(0).toUpperCase() + r.slice(1)}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="flex items-end">
-              <Button onClick={() => setFilters({ activityType: '', status: '' })} variant="outline" className="w-full">
+              <Button onClick={() => setFilters({ type: '', read: '' })} variant="outline" className="w-full">
                 Clear Filters
               </Button>
             </div>
@@ -209,36 +153,25 @@ const ShipperHistory = () => {
         </CardContent>
       </Card>
 
-      {/* Stats Summary */}
+      {/* Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Activities</CardTitle>
-            <TrendingUp className="h-4 w-4 text-blue-600" />
+            <CardTitle className="text-sm font-medium">Total Notifications</CardTitle>
+            <Clock className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{activities.length}</div>
+            <div className="text-2xl font-bold">{notifications.length}</div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium">Unread</CardTitle>
+            <AlertCircle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {activities.filter(a => a.status === 'completed').length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <Clock className="h-4 w-4 text-yellow-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-600">
-              {activities.filter(a => a.status === 'pending').length}
+            <div className="text-2xl font-bold text-red-600">
+              {notifications.filter((n) => !n.is_read).length}
             </div>
           </CardContent>
         </Card>
@@ -249,83 +182,53 @@ const ShipperHistory = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
-              {activities.filter(a => {
-                const activityDate = new Date(a.activity_date);
+              {notifications.filter((n) => {
+                const d = new Date(n.created_at);
                 const now = new Date();
-                return activityDate.getMonth() === now.getMonth() && 
-                       activityDate.getFullYear() === now.getFullYear();
+                return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
               }).length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Accepted</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {notifications.filter((n) => n.type === 'ACCEPT').length}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Activities List */}
+      {/* List */}
       <Card>
         <CardHeader>
-          <CardTitle>Activity History ({filteredActivities.length})</CardTitle>
+          <CardTitle>Notifications ({filtered.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          {filteredActivities.length === 0 ? (
+          {filtered.length === 0 ? (
             <div className="text-center py-12">
               <Eye className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No activities found</h3>
-              <p className="text-gray-500">
-                {activities.length === 0 
-                  ? "You don't have any activity history yet." 
-                  : "Try adjusting your filters to see more activities."
-                }
-              </p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No notifications</h3>
+              <p className="text-gray-500">Adjust filters or wait for new activity.</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredActivities.map((activity) => (
-                <div key={activity.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-4">
-                      <div className="bg-purple-100 p-3 rounded-full">
-                        {getActivityIcon(activity.activity_type)}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">{activity.title}</h3>
-                          {getStatusIcon(activity.status)}
-                          <span className="text-sm text-gray-500">{formatDate(activity.activity_date)}</span>
-                        </div>
-                        
-                        <p className="text-gray-600 mb-3">{activity.description}</p>
-                        
-                        <div className="flex flex-wrap items-center gap-4 text-sm">
-                          <div className="flex items-center space-x-1">
-                            <Building className="h-4 w-4 text-gray-500" />
-                            <span className="text-gray-700">{activity.counterparty_name}</span>
-                          </div>
-                          
-                          {activity.trip_details && (
-                            <div className="flex items-center space-x-1">
-                              <Truck className="h-4 w-4 text-gray-500" />
-                              <span className="text-gray-700">{activity.trip_details}</span>
-                            </div>
-                          )}
-                          
-                          {activity.shipment_details && (
-                            <div className="flex items-center space-x-1">
-                              <Package className="h-4 w-4 text-gray-500" />
-                              <span className="text-gray-700">{activity.shipment_details}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-col items-end space-y-2">
-                      {getStatusBadge(activity.status)}
-                      <Button variant="outline" size="sm" className="text-purple-600 border-purple-200 hover:bg-purple-50">
-                        <Eye className="mr-1 h-4 w-4" />
-                        View Details
-                      </Button>
+              {filtered.map((n) => (
+                <div key={n.id} className="border rounded-lg p-4 hover:shadow-md flex justify-between items-start">
+                  <div className="flex items-start space-x-4">
+                    <div className="bg-gray-100 p-2 rounded-full">{getIcon(n.type)}</div>
+                    <div>
+                      <p className="font-medium text-gray-900">{n.message}</p>
+                      <p className="text-sm text-gray-500 mt-1">{formatDate(n.created_at)}</p>
                     </div>
                   </div>
+                  <Badge variant={n.is_read ? 'secondary' : 'default'} className={n.is_read ? 'bg-gray-200 text-gray-800' : 'bg-orange-600 text-white'}>
+                    {n.is_read ? 'Read' : 'New'}
+                  </Badge>
                 </div>
               ))}
             </div>
