@@ -6,4 +6,4 @@ const root = createRoot(document.getElementById("root")!);
 root.render(
   <App />
 );
-export default App; // ✅ Added default export to satisfy Vite expectations
+export default App;
