@@ -63,6 +63,8 @@ const BrowseTrips = () => {
   const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [goodsDescription, setGoodsDescription] = useState('');
   const [weight, setWeight] = useState('');
+  const [pickupAddress, setPickupAddress] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
   const [sendingRequest, setSendingRequest] = useState(false);
 
   const { data: trips = [], isLoading: loading } = useQuery({
@@ -197,8 +199,11 @@ const BrowseTrips = () => {
         .insert({
           trip_id: selectedTrip.id,
           shipper_id: userProfile.id,
+          receiver_id: selectedTrip.trucker_id, // Required by schema
           goods_description: goodsDescription.trim(),
           weight_tonnes: requestedWeight,
+          pickup_address: pickupAddress.trim(),
+          delivery_address: deliveryAddress.trim(),
           status: 'pending'
         });
 
@@ -208,6 +213,8 @@ const BrowseTrips = () => {
       setIsRequestDialogOpen(false);
       setGoodsDescription('');
       setWeight('');
+      setPickupAddress('');
+      setDeliveryAddress('');
       navigate('/shipper/my-shipments?tab=sent');
     } catch (err: any) {
       showError(err.message || 'Failed to send request');
@@ -531,6 +538,24 @@ const BrowseTrips = () => {
                 onChange={(e) => setGoodsDescription(e.target.value)} 
                 placeholder="e.g. 50 bags of cement, electronics, etc."
                 className="h-24"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pickup">Pickup Address</Label>
+              <Input 
+                id="pickup"
+                value={pickupAddress} 
+                onChange={(e) => setPickupAddress(e.target.value)} 
+                placeholder="Full pickup address" 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="delivery">Delivery Address</Label>
+              <Input 
+                id="delivery"
+                value={deliveryAddress} 
+                onChange={(e) => setDeliveryAddress(e.target.value)} 
+                placeholder="Full delivery address" 
               />
             </div>
             <div className="bg-blue-50 p-3 rounded-lg">

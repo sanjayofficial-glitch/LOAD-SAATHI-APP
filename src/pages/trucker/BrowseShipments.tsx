@@ -110,6 +110,7 @@ const BrowseShipments = () => {
         .insert({
           shipment_id: selectedShipment.id,
           trucker_id: userProfile.id,
+          shipper_id: selectedShipment.shipper_id, // Required by schema
           proposed_price_per_tonne: price,
           message: message.trim(),
           status: 'pending'
@@ -121,7 +122,6 @@ const BrowseShipments = () => {
       setIsOfferDialogOpen(false);
       setProposedPrice('');
       setMessage('');
-      // Optionally redirect to a "My Offers" page if it exists
     } catch (err: any) {
       showError(err.message || 'Failed to send offer');
     } finally {

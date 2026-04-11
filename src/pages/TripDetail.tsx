@@ -11,8 +11,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { showSuccess, showError } from '@/utils/toast';
-import { MapPin, Calendar, Truck, IndianRupee, ArrowLeft, CheckCircle, AlertCircle, MessageSquare } from 'lucide-react';
+import { MapPin, Calendar, Truck, IndianRupee, ArrowLeft, CheckCircle, AlertCircle, MessageSquare, Loader2 } from 'lucide-react';
 import Star from '@/components/Star';
 import RouteMap from '@/components/RouteMap';
 
@@ -26,6 +27,8 @@ const TripDetail = () => {
   const [loading, setLoading] = useState(true);
   const [weight, setWeight] = useState('');
   const [description, setDescription] = useState('');
+  const [pickupAddress, setPickupAddress] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -100,15 +103,17 @@ const TripDetail = () => {
         .insert({
           trip_id: tripId,
           shipper_id: userProfile.id,
+          receiver_id: trip.trucker_id, // Required by schema
           goods_description: description.trim(),
           weight_tonnes: requestedWeight,
+          pickup_address: pickupAddress.trim(),
+          delivery_address: deliveryAddress.trim(),
           status: 'pending'
         });
 
       if (insertError) throw insertError;
 
       showSuccess('Booking request sent successfully!');
-      // Redirect to the unified hub's "Sent Requests" tab
       navigate('/shipper/my-shipments?tab=sent');
     } catch (err: any) {
       showError(err.message || 'An unexpected error occurred');
@@ -117,7 +122,12 @@ const TripDetail = () => {
     }
   };
 
-  if (loading) return <div className="p-8 text-center text-gray-500">Loading trip details...</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <Loader2 className="h-8 w-8 animate-spin text-orange-600" />
+    </div>
+  );
+  
   if (!trip) return <div className="p-8 text-center">Trip not found</div>;
 
   return (
@@ -171,7 +181,8 @@ const TripDetail = () => {
 
               <div className="bg-blue-50 p-4 rounded-lg flex items-center justify-between">
                 <div className="flex items-center">
-                  <CheckCircle className="mr-2 h-5 w-5" /> Available Capacity              </div>
+                  <CheckCircle className="mr-2 h-5 w-5" /> Available Capacity
+                </div>
                 <Badge className="bg-blue-600 text-white text-lg px-3 py-1">
                   {trip.available_capacity_tonnes} Tonnes
                 </Badge>
@@ -229,7 +240,7 @@ const TripDetail = () => {
             <CardHeader className="bg-orange-50/50">
               <CardTitle>Book Space</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6 pt-6">
+            <CardContent className="space-y-4 pt-6">
               <div className="space-y-2">
                 <Label htmlFor="weight">Weight to Book (Tonnes)</Label>
                 <div className="relative">
@@ -263,6 +274,26 @@ const TripDetail = () => {
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label htmlFor="pickup">Pickup Address</Label>
+                <Input 
+                  id="pickup"
+                  value={pickupAddress} 
+                  onChange={(e) => setPickupAddress(e.target.value)} 
+                  placeholder="Full pickup address" 
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="delivery">Delivery Address</Label>
+                <Input 
+                  id="delivery"
+                  value={deliveryAddress} 
+                  onChange={(e) => setDeliveryAddress(e.target.value)} 
+                  placeholder="Full delivery address" 
+                />
+              </div>
+
               <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">Estimated Cost:</span>
@@ -280,7 +311,12 @@ const TripDetail = () => {
                 className="w-full bg-orange-600 hover:bg-orange-700 h-12 text-lg font-bold"
                 disabled={submitting || !weight || parseFloat(weight) > trip.available_capacity_tonnes}
               >
-                {submitting ? 'Sending Request...' : 'Send Booking Request'}
+                {submitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending Request...
+                  </>
+                ) : 'Send Booking Request'}
               </Button>
             </CardContent>
           </Card>
