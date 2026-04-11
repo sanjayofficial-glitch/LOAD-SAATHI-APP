@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSupabase } from "@/hooks/useSupabase";
-import { showError } from "@/utils/toast";
+import { showError, showSuccess } from "@/utils/toast";
 import {
   Card,
   CardContent,
@@ -14,8 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Button,
-  Search,
+  Search as LucideSearch,
   MapPin,
   Calendar,
   Package,
@@ -24,14 +23,13 @@ import {
   Loader2,
   Send,
 } from "lucide-react";
-import { showSuccess } from "@/utils/toast";
 import { sendNotification } from "@/utils/notifications";
-import { useClerkAuth } from "@/contexts/AuthContext";
+import { useClerkAuth } from "@clerk/clerk-react"; // ✅ Fixed import
 
 const BrowseShipments = () => {
   const { userProfile } = useAuth();
   const { getAuthenticatedClient } = useSupabase();
-  const { getToken } = useClerkAuth(); // ✅ Added import and hook
+  const { getToken } = useClerkAuth(); // ✅ Added import
   const navigate = useNavigate();
 
   const [shipments, setShipments] = useState<any[]>([]);
@@ -46,10 +44,10 @@ const BrowseShipments = () => {
 
   const fetchShipments = async () => {
     try {
-      const supabaseToken = await getToken({ template: "supabase" }); // ✅ Fixed missing closing parenthesis
+      const supabaseToken = await getToken({ template: "supabase" }); // ✅ Fixed missing parenthesis
       if (!supabaseToken) throw new Error("No Supabase token");
 
-      const supabase = createClerkSupabaseClient(supabaseToken); // ✅ Added import and usage
+      const supabase = createClerkSupabaseClient(supabaseToken); // ✅ Ensure function is imported
       const { data, error } = await supabase
         .from("shipments")
         .select(
@@ -88,7 +86,7 @@ const BrowseShipments = () => {
       const supabaseToken = await getToken({ template: "supabase" });
       if (!supabaseToken) throw new Error("No Supabase token");
 
-      const supabase = createClerkSupabaseClient(supabaseToken); // ✅ Added import and usage
+      const supabase = createClerkSupabaseClient(supabaseToken); // ✅ Ensure function is imported
       const { error } = await supabase
         .from("shipment_requests")
         .insert({
@@ -101,7 +99,8 @@ const BrowseShipments = () => {
 
       if (error) throw error;
 
-      // Send notification to shipper      await sendNotification({
+      // Send notification to shipper
+      await sendNotification({
         userId: offerModal.shipment.shipper_id,
         message: `${userProfile.full_name} offered ₹${price}/t for your ${offerModal.shipment.weight_tonnes}t shipment from ${offerModal.shipment.origin_city} to ${offerModal.shipment.destination_city}`,
         getToken: () => getToken({ template: "supabase" }),
@@ -125,18 +124,34 @@ const BrowseShipments = () => {
     );
   });
 
+  if (loading) return (
+    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <Card key={i}>
+          <CardHeader><Skeleton className="h-6 w-3/4" /></CardHeader>
+          <CardContent className="space-y-3">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-2/3" />
+            <Skeleton className="h-10 w-full mt-4" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Find Goods to Carry</h1>
         <p className="text-gray-600">
-          Browse available shipments posted by shippers and send your best offer        </p>
+          Browse available shipments posted by shippers and send your best offer
+        </p>
       </div>
 
       {/* Search Bar */}
       <div className="mb-8">
         <div className="relative max-w-xl">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <LucideSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
           <Input
             placeholder="Search by origin, destination, or goods type..."
             className="pl-10 h-12 text-lg border-orange-200 focus:ring-orange-500"
@@ -223,8 +238,7 @@ const BrowseShipments = () => {
                 </div>
                 
                 <div className="pt-4 border-t mt-auto">
-                  <Button
-                    className="w-full bg-orange-600 hover:bg-orange-700"
+                  <Button                    className="w-full bg-orange-600 hover:bg-orange-700"
                     onClick={() => setOfferModal({ shipment, price: "", message: "" })}
                   >
                     <Send className="h-4 w-4 mr-2" /> Send Offer
@@ -277,8 +291,7 @@ const BrowseShipments = () => {
 
               <div className="flex gap-3 pt-2">
                 <Button variant="outline" className="flex-1" onClick={() => setOfferModal(null)} disabled={!!sendingOffer}>
-                  Cancel
-                </Button>
+                  Cancel                </Button>
                 <Button className="flex-1 bg-orange-600 hover:bg-orange-700" onClick={handleSendOffer} disabled={sendingOffer || !offerModal.price}>
                   {sendingOffer ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Offer"}
                 </Button>

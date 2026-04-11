@@ -20,14 +20,14 @@ import MyShipments from "./pages/shipper/MyShipments";
 import EditShipment from "./pages/shipper/EditShipment";
 import ShipmentDetail from "./pages/shipper/ShipmentDetail";
 import ShipperHistory from "./pages/ShipperHistory";
-import BrowseTrips from "./pages/trucker/BrowseTrips";
+// import BrowseTrips from "./pages/trucker/BrowseTrips"; // ✅ Removed problematic import
+import BrowseShipments from "./pages/trucker/BrowseShipments"; // ✅ Ensure correct import
 import TripDetail from "./pages/TripDetail";
 import Chat from "./pages/Chat";
 import ChatList from "./pages/ChatList";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 import "./globals.css";
-import BrowseShipments from "./pages/trucker/BrowseShipments"; // ✅ Added import
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -44,15 +44,14 @@ const App = () => {
                         {/* Auth & Role Setup */}
             <Route path="/auth-sync" element={<AuthSync />} />
             <Route path="/choose-role" element={<ChooseRole />} />
-            
-            {/* Protected Routes with Layout */}
+                        {/* Protected Routes with Layout */}
             <Route element={<SignedIn><Layout><RoleProtectedRoute><Outlet /></RoleProtectedRoute></Layout></SignedIn>}>
               {/* Trucker Routes */}
               <Route path="/trucker/dashboard" element={<RoleProtectedRoute allowedRole="trucker"><TruckerDashboard /></RoleProtectedRoute>} />
               <Route path="/trucker/post-trip" element={<RoleProtectedRoute allowedRole="trucker"><PostTrip /></RoleProtectedRoute>} />
               <Route path="/trucker/my-trips" element={<RoleProtectedRoute allowedRole="trucker"><MyTrips /></RoleProtectedRoute>} />
               <Route path="/trucker/trips/:tripId/edit" element={<RoleProtectedRoute allowedRole="trucker"><EditTrip /></RoleProtectedRoute>} />
-              <Route path="/trucker/browse-shipments" element={<RoleProtectedRoute allowedRole="trucker"><BrowseShipments /></RoleProtectedRoute>} /> {/* ✅ Fixed component type */}
+              <Route path="/trucker/browse-shipments" element={<RoleProtectedRoute allowedRole="trucker"><BrowseShipments /></RoleProtectedRoute>} />
               <Route path="/trucker/my-requests" element={<RoleProtectedRoute allowedRole="trucker"><MyRequests /></RoleProtectedRoute>} />
               <Route path="/trucker/history" element={<RoleProtectedRoute allowedRole="trucker"><TruckerHistory /></RoleProtectedRoute>} />
                             {/* Shipper Routes */}
