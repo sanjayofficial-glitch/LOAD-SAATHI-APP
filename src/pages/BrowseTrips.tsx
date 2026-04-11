@@ -4,7 +4,6 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSupabase } from "@/hooks/useSupabase";
-import { createClerkSupabaseClient } from "@/utils/supabaseClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,7 +87,7 @@ const BrowseTrips = () => {
       }
     };
     fetchTrips();
-  }, [userProfile?.id]);
+  }, [userProfile?.id, getAuthenticatedClient]);
 
   const filteredTrips = useMemo(() => {
     let result = [...trips];
@@ -143,10 +142,8 @@ const BrowseTrips = () => {
 
     setSendingRequest(true);
     try {
-      const supabaseToken = await getAuthenticatedClient();
-      if (!supabaseToken) throw new Error('No Supabase token');
-      const supabase = createClerkSupabaseClient(supabaseToken);
-
+      const supabase = await getAuthenticatedClient();
+      
       const { error } = await supabase
         .from('requests')
         .insert({
