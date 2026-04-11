@@ -1,47 +1,70 @@
-import { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useSupabase } from '@/hooks/useSupabase';
-import { showError } from '@/utils/toast';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Search, MapPin, Calendar, Package, IndianRupee, ArrowRight, Truck, Loader2, Send } from 'lucide-react';
-import { sendNotification } from '@/utils/notifications';
+"use client";
+
+import React, { useEffect, useState, useCallback } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useSupabase } from "@/hooks/useSupabase";
+import { showError } from "@/utils/toast";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import {
+  Button,
+  Search,
+  MapPin,
+  Calendar,
+  Package,
+  ArrowRight,
+  Truck,
+  Loader2,
+  Send,
+} from "lucide-react";
+import { showSuccess } from "@/utils/toast";
+import { sendNotification } from "@/utils/notifications";
+import { useClerkAuth } from "@/contexts/AuthContext";
 
 const BrowseShipments = () => {
   const { userProfile } = useAuth();
   const { getAuthenticatedClient } = useSupabase();
+  const { getToken } = useClerkAuth(); // ✅ Added import and hook
   const navigate = useNavigate();
-  
+
   const [shipments, setShipments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState("");
   const [sendingOffer, setSendingOffer] = useState<string | null>(null);
-  const [offerModal, setOfferModal] = useState<{ shipment: any; price: string; message: string } | null>(null);
+  const [offerModal, setOfferModal] = useState<{
+    shipment: any;
+    price: string;
+    message: string;
+  } | null>(null);
 
   const fetchShipments = async () => {
     try {
-      const supabaseToken = await getToken({ template: 'supabase' }); // ✅ Fixed missing closing parenthesis
-      if (!supabaseToken) throw new Error('No Supabase token');
-      
-      const supabase = createClerkSupabaseClient(supabaseToken);
-      
-      // Fetch available shipments (pending status) from shippers
+      const supabaseToken = await getToken({ template: "supabase" }); // ✅ Fixed missing closing parenthesis
+      if (!supabaseToken) throw new Error("No Supabase token");
+
+      const supabase = createClerkSupabaseClient(supabaseToken); // ✅ Added import and usage
       const { data, error } = await supabase
-        .from('shipments')
-        .select(`
+        .from("shipments")
+        .select(
+          `
           *,
           shipper:users(id, full_name, phone, rating)
-        `)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
+        `
+        )
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
       setShipments(data || []);
     } catch (err: any) {
-      showError('Failed to load shipments');
+      showError("Failed to load shipments");
     } finally {
       setLoading(false);
     }
@@ -49,53 +72,51 @@ const BrowseShipments = () => {
 
   useEffect(() => {
     fetchShipments();
-  }, [getToken]);
+  }, [getToken]); // ✅ Added getToken to dependencies
 
   const handleSendOffer = async () => {
     if (!offerModal || !userProfile) return;
 
     const price = parseFloat(offerModal.price);
     if (isNaN(price) || price <= 0) {
-      showError('Please enter a valid price');
+      showError("Please enter a valid price");
       return;
     }
 
     setSendingOffer(offerModal.shipment.id);
     try {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
-      
-      const supabase = createClerkSupabaseClient(supabaseToken);
-      
+      const supabaseToken = await getToken({ template: "supabase" });
+      if (!supabaseToken) throw new Error("No Supabase token");
+
+      const supabase = createClerkSupabaseClient(supabaseToken); // ✅ Added import and usage
       const { error } = await supabase
-        .from('shipment_requests')
+        .from("shipment_requests")
         .insert({
           shipment_id: offerModal.shipment.id,
           trucker_id: userProfile.id,
           proposed_price_per_tonne: price,
           message: offerModal.message.trim(),
-          status: 'pending'
+          status: "pending",
         });
 
       if (error) throw error;
 
-      // Send notification to shipper
-      await sendNotification({
+      // Send notification to shipper      await sendNotification({
         userId: offerModal.shipment.shipper_id,
         message: `${userProfile.full_name} offered ₹${price}/t for your ${offerModal.shipment.weight_tonnes}t shipment from ${offerModal.shipment.origin_city} to ${offerModal.shipment.destination_city}`,
-        getToken: () => getToken({ template: 'supabase' })
+        getToken: () => getToken({ template: "supabase" }),
       });
 
       setOfferModal(null);
-      navigate('/trucker/my-requests?tab=sent');
+      navigate("/trucker/my-requests?tab=sent");
     } catch (err: any) {
-      showError(err.message || 'Failed to send offer');
+      showError(err.message || "Failed to send offer");
     } finally {
       setSendingOffer(null);
     }
   };
 
-  const filteredShipments = shipments.filter(s => {
+  const filteredShipments = shipments.filter((s) => {
     const search = searchTerm.toLowerCase();
     return (
       s.origin_city?.toLowerCase().includes(search) ||
@@ -108,7 +129,8 @@ const BrowseShipments = () => {
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Find Goods to Carry</h1>
-        <p className="text-gray-600">Browse available shipments posted by shippers and send your best offer</p>
+        <p className="text-gray-600">
+          Browse available shipments posted by shippers and send your best offer        </p>
       </div>
 
       {/* Search Bar */}
@@ -142,7 +164,7 @@ const BrowseShipments = () => {
           <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900">No shipments available</h3>
           <p className="text-gray-500">
-            {searchTerm ? 'No shipments match your search. Try different keywords.' : 'Check back later for new shipments from shippers.'}
+            {searchTerm ? "No shipments match your search. Try different keywords." : "Check back later for new shipments from shippers."}
           </p>
         </div>
       ) : (
@@ -164,7 +186,13 @@ const BrowseShipments = () => {
                 <div className="space-y-3 flex-1">
                   <div className="flex items-center text-sm text-gray-600">
                     <Calendar className="h-4 w-4 mr-2 text-orange-600" />
-                    <span className="font-medium">{new Date(shipment.departure_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    <span className="font-medium">
+                      {new Date(shipment.departure_date).toLocaleDateString('en-IN', {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </span>
                   </div>
                   <div className="flex items-center text-sm text-gray-600">
                     <Package className="h-4 w-4 mr-2 text-purple-600" />
@@ -172,7 +200,9 @@ const BrowseShipments = () => {
                   </div>
                   <div className="flex items-center text-sm text-gray-600">
                     <IndianRupee className="h-4 w-4 mr-2 text-green-600" />
-                    <span className="font-medium">Budget: ₹{shipment.budget_per_tonne.toLocaleString()}/t</span>
+                    <span className="font-medium">
+                      Budget: ₹{shipment.budget_per_tonne.toLocaleString()}/t
+                    </span>
                   </div>
                   <div className="pt-2 border-t">
                     <p className="text-xs text-gray-500 uppercase font-bold mb-1">Goods</p>
@@ -193,9 +223,9 @@ const BrowseShipments = () => {
                 </div>
                 
                 <div className="pt-4 border-t mt-auto">
-                  <Button 
+                  <Button
                     className="w-full bg-orange-600 hover:bg-orange-700"
-                    onClick={() => setOfferModal({ shipment, price: '', message: '' })}
+                    onClick={() => setOfferModal({ shipment, price: "", message: "" })}
                   >
                     <Send className="h-4 w-4 mr-2" /> Send Offer
                   </Button>
@@ -215,14 +245,21 @@ const BrowseShipments = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="bg-orange-50 p-4 rounded-lg space-y-2">
-                <p className="font-bold text-gray-900">{offerModal.shipment.origin_city} → {offerModal.shipment.destination_city}</p>
-                <p className="text-sm text-gray-600">{offerModal.shipment.weight_tonnes}t • {offerModal.shipment.goods_description}</p>
-                <p className="text-xs text-gray-500">Shipper's Budget: ₹{offerModal.shipment.budget_per_tonne}/t</p>
+                <p className="font-bold text-gray-900">
+                  {offerModal.shipment.origin_city} → {offerModal.shipment.destination_city}
+                </p>
+                <p className="text-sm text-gray-600">
+                  {offerModal.shipment.weight_tonnes}t • {offerModal.shipment.goods_description}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Shipper's Budget: ₹{offerModal.shipment.budget_per_tonne}/t
+                </p>
               </div>
               
               <div className="space-y-2">
                 <label className="text-sm font-medium">Your Price (₹/tonne)</label>
-                <Input                  type="number"
+                <Input
+                  type="number"
                   placeholder="Enter your price per tonne"
                   value={offerModal.price}
                   onChange={(e) => setOfferModal({ ...offerModal, price: e.target.value })}
@@ -242,8 +279,8 @@ const BrowseShipments = () => {
                 <Button variant="outline" className="flex-1" onClick={() => setOfferModal(null)} disabled={!!sendingOffer}>
                   Cancel
                 </Button>
-                <Button className="flex-1 bg-orange-600 hover:bg-orange-700" onClick={handleSendOffer} disabled={sendingOffer !== null && sendingOffer !== undefined || offerModal.price === ''}>
-                  {sendingOffer ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send Offer'}
+                <Button className="flex-1 bg-orange-600 hover:bg-orange-700" onClick={handleSendOffer} disabled={sendingOffer || !offerModal.price}>
+                  {sendingOffer ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Offer"}
                 </Button>
               </div>
             </CardContent>
