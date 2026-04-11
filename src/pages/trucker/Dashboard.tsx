@@ -6,7 +6,7 @@ import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { Truck, Clock, TrendingUp, PlusCircle, Search, DollarSign, Calendar, MapPin } from 'lucide-react';
+import { Truck, Clock, TrendingUp, PlusCircle, Search, DollarSign, Calendar, MapPin, Loader2 } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
 
 const StatCardSkeleton = () => (
@@ -35,6 +35,7 @@ const TruckerDashboard = () => {
     totalEarnings: 0, upcomingTrips: []
   });
   const [loading, setLoading] = useState(true);
+  const [completingId, setCompletingId] = useState<string | null>(null);
 
   const loadStats = async () => {
     if (!userProfile?.id) return;
@@ -45,22 +46,27 @@ const TruckerDashboard = () => {
 
       const { count: activeTrips } = await supabase.from('trips').select('*', { count: 'exact', head: true }).eq('trucker_id', userProfile.id).eq('status', 'active');
       const { count: completedTrips } = await supabase.from('trips').select('*', { count: 'exact', head: true }).eq('trucker_id', userProfile.id).eq('status', 'completed');
+      
       const { data: myTrips } = await supabase.from('trips').select('id').eq('trucker_id', userProfile.id).eq('status', 'active');
       const tripIds = myTrips?.map(t => t.id) || [];
+      
       let pendingRequests = 0;
       if (tripIds.length > 0) {
         const { count } = await supabase.from('requests').select('*', { count: 'exact', head: true }).in('trip_id', tripIds).eq('status', 'pending');
         pendingRequests = count || 0;
       }
+
       const { data: completedTripsData } = await supabase.from('trips')
         .select('price_per_tonne, requests!inner(weight_tonnes)')
         .eq('trucker_id', userProfile.id).eq('status', 'completed');
+      
       const totalEarnings = completedTripsData?.reduce((sum, trip) => {
         const request = trip.requests[0];
         return sum + (request ? trip.price_per_tonne * request.weight_tonnes : 0);
       }, 0) || 0;
+
       const { data: upcomingTrips } = await supabase.from('trips')
-        .select('origin_city, destination_city, departure_date, price_per_tonne, vehicle_type')
+        .select('id, origin_city, destination_city, departure_date, price_per_tonne, vehicle_type')
         .eq('trucker_id', userProfile.id).eq('status', 'active')
         .order('departure_date', { ascending: true }).limit(3);
 
@@ -75,16 +81,44 @@ const TruckerDashboard = () => {
   useEffect(() => { loadStats(); }, [userProfile, getToken]);
 
   const handleCompleteTrip = async (tripId: string) => {
+    setCompletingId(tripId);
     try {
       const supabaseToken = await getToken({ template: 'supabase' });
       if (!supabaseToken) throw new Error('No Supabase token');
       const supabase = createClerkSupabaseClient(supabaseToken);
-      const { error } = await supabase.from('trips').update({ status: 'completed' }).eq('id', tripId);
-      if (error) throw error;
-      showSuccess('Trip marked as completed!');
+
+      // 1. Update trip status
+      const { error: tripError } = await supabase
+        .from('trips')
+        .update({ status: 'completed' })
+        .eq('id', tripId);
+
+      if (tripError) throw tripError;
+
+      // 2. Fetch all accepted requests for this trip to notify shippers
+      const { data: requests } = await supabase
+        .from('requests')
+        .select('shipper_id, trip:trips(origin_city, destination_city)')
+        .eq('trip_id', tripId)
+        .eq('status', 'accepted');
+
+      if (requests && requests.length > 0) {
+        const notifications = requests.map(req => ({
+          user_id: req.shipper_id,
+          message: `Your trip from ${(req.trip as any).origin_city} to ${(req.trip as any).destination_city} has been marked as completed by the trucker.`,
+          related_trip_id: tripId,
+          is_read: false
+        }));
+
+        await supabase.from('notifications').insert(notifications);
+      }
+
+      showSuccess('Trip marked as completed and shippers notified!');
       loadStats();
     } catch (err: any) {
-      showError('Failed to complete trip');
+      showError(err.message || 'Failed to complete trip');
+    } finally {
+      setCompletingId(null);
     }
   };
 
@@ -192,7 +226,15 @@ const TruckerDashboard = () => {
                   </div>
                   <div className="flex items-center space-x-3">
                     <span className="text-lg font-bold text-green-600">₹{trip.price_per_tonne.toLocaleString()}/t</span>
-                    <Button size="sm" variant="outline" onClick={() => handleCompleteTrip(trip.id)} className="border-green-200 text-green-700 hover:bg-green-50">Complete</Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleCompleteTrip(trip.id)} 
+                      disabled={completingId === trip.id}
+                      className="border-green-200 text-green-700 hover:bg-green-50"
+                    >
+                      {completingId === trip.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Complete'}
+                    </Button>
                   </div>
                 </div>
               ))}
