@@ -2,16 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useSession } from '@clerk/clerk-react';
 import { Loader2, User, Truck, CheckCircle2 } from 'lucide-react';
+import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSupabase } from '@/hooks/useSupabase';
 import { showSuccess, showError } from '@/utils/toast';
 
 const ChooseRole = () => {
   const { user, isLoaded } = useUser();
+  const { session } = useSession();
   const { refreshProfile, userProfile } = useAuth();
-  const { getAuthenticatedClient } = useSupabase();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -25,36 +25,40 @@ const ChooseRole = () => {
   }, [userProfile, navigate]);
 
   const handleRoleSelection = async (role: "shipper" | "trucker") => {
-    if (!user) return;
+    if (!user || !session) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const supabase = await getAuthenticatedClient();
+      const supabaseToken = await session.getToken({ template: "supabase" });
+      if (!supabaseToken) throw new Error("No Supabase token available");
+
+      const supabase = createClerkSupabaseClient(supabaseToken);
       
-      // Use upsert to handle both new and existing users with the requested fields
+      // Use upsert to handle both new and existing users
       const { error: upsertError } = await supabase
         .from('users')
         .upsert({
           id: user.id,
-          email: user.primaryEmailAddress?.emailAddress || '',
           user_type: role,
+          email: user.primaryEmailAddress?.emailAddress || '',
           full_name: user.fullName || '',
-          phone: user.phoneNumbers?.[0]?.phoneNumber || user.primaryPhoneNumber?.phoneNumber || '',
-          company_name: null,
-          is_verified: true, // Setting to true as requested in the snippet
+          phone: user.primaryPhoneNumber?.phoneNumber || '',
+          is_verified: false,
           rating: 0,
           total_trips: 0,
+          created_at: user.createdAt ? new Date(user.createdAt).toISOString() : new Date().toISOString()
         }, { onConflict: 'id' });
 
       if (upsertError) throw upsertError;
 
-      // Refresh the profile in our context
+      // Crucial: Refresh the profile in our context so the app knows the new role immediately
       await refreshProfile();
 
       showSuccess(`Welcome ${role === 'shipper' ? 'Shipper' : 'Trucker'}!`);
       
+      // Use a small delay to ensure state is updated before navigation
       setTimeout(() => {
         navigate(role === 'shipper' ? '/shipper/dashboard' : '/trucker/dashboard', { replace: true });
       }, 100);

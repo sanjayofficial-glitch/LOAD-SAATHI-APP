@@ -15,7 +15,6 @@ import { showSuccess, showError } from '@/utils/toast';
 import { MapPin, Calendar, Truck, IndianRupee, ArrowLeft, CheckCircle, AlertCircle, MessageSquare } from 'lucide-react';
 import Star from '@/components/Star';
 import RouteMap from '@/components/RouteMap';
-import { sendNotification } from '@/utils/notifications';
 
 const TripDetail = () => {
   const { tripId } = useParams();
@@ -45,18 +44,16 @@ const TripDetail = () => {
         
         if (tripError) throw tripError;
         
-        // Handle potential array or object return for trucker
-        const truckerInfo = Array.isArray(tripData.trucker) ? tripData.trucker[0] : tripData.trucker;
-        
-        setTrip({
+        const mappedTrip = {
           ...tripData,
-          trucker: truckerInfo
-        } as unknown as Trip);
+          trucker: Array.isArray(tripData.trucker) ? tripData.trucker[0] : tripData.trucker
+        };
+        setTrip(mappedTrip as unknown as Trip);
 
         const { data: reviewData } = await supabase
           .from('reviews')
           .select('*, shipper:users(full_name)')
-          .eq('trucker_id', tripData.trucker_id)
+          .eq('trucker_id', mappedTrip.trucker_id)
           .order('created_at', { ascending: false })
           .limit(5);
         
@@ -96,10 +93,9 @@ const TripDetail = () => {
       const supabaseToken = await getToken({ template: 'supabase' });
       if (!supabaseToken) throw new Error('No Supabase token');
       
-      const supabaseClient = createClerkSupabaseClient(supabaseToken);
+      const supabase = createClerkSupabaseClient(supabaseToken);
       
-      // 1. Insert the request
-      const { data: requestData, error: insertError } = await supabaseClient
+      const { error: insertError } = await supabase
         .from('requests')
         .insert({
           trip_id: tripId,
@@ -107,24 +103,14 @@ const TripDetail = () => {
           goods_description: description.trim(),
           weight_tonnes: requestedWeight,
           status: 'pending'
-        })
-        .select()
-        .single();
+        });
 
       if (insertError) throw insertError;
 
-      // 2. Send notification to trucker
-      await sendNotification({
-        userId: trip.trucker_id,
-        message: `New Request: ${userProfile.full_name} wants to book ${requestedWeight}t for your ${trip.origin_city} to ${trip.destination_city} trip.`,
-        relatedTripId: trip.id,
-        getToken: () => getToken({ template: 'supabase' })
-      });
-
       showSuccess('Booking request sent successfully!');
+      // Redirect to the unified hub's "Sent Requests" tab
       navigate('/shipper/my-shipments?tab=sent');
     } catch (err: any) {
-      console.error('[handleRequest] Error:', err);
       showError(err.message || 'An unexpected error occurred');
     } finally {
       setSubmitting(false);
