@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useWebSocket } from 'react-use-websocket';
+import useWebSocket from 'react-use-websocket'; // Fixed import
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Bell, X } from "lucide-react";
@@ -13,7 +13,7 @@ interface NotificationData {
   status?: 'info' | 'success' | 'warning' | 'error';
 }
 
-const NotificationService = () => {
+const NotificationService: React.FC = () => {
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
   // Note: Using a placeholder URL for demo purposes as per previous code
   const { lastJsonMessage } = useWebSocket('wss://your-notification-service.com', {
