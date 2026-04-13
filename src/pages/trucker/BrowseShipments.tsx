@@ -1,11 +1,10 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
-import { useSupabase } from '@/hooks/useSupabase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,12 +19,12 @@ import {
   Loader2, 
   Send,
   IndianRupee,
-  MapPin,
   Filter,
   X,
-  Truck
+  Eye,
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
+import { supabase } from '@/lib/supabaseClient';
 import {
   Dialog,
   DialogContent,
@@ -34,12 +33,11 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { sendNotification } from '@/utils/notifications';
+import { notifyShipperOfTruckerOffer } from '@/utils/notifications';
 
 const BrowseShipments = () => {
   const { userProfile } = useAuth();
   const { getToken } = useClerkAuth();
-  const { getAuthenticatedClient } = useSupabase();
   const navigate = useNavigate();
   
   const [shipments, setShipments] = useState<any[]>([]);
@@ -58,32 +56,40 @@ const BrowseShipments = () => {
   const [message, setMessage] = useState('');
   const [sendingOffer, setSendingOffer] = useState(false);
 
-  const fetchShipments = async () => {
-    setLoading(true);
+  const fetchShipments = useCallback(async () => {
     try {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
-      
-      const supabase = createClerkSupabaseClient(supabaseToken);
-      
-      const { data, error } = await supabase
+      const token = await getToken({ template: 'supabase' });
+      if (!token) return;
+      const supabaseClient = createClerkSupabaseClient(token);
+      const { data, error } = await supabaseClient
         .from('shipments')
-        .select('*, shipper:users(*)')
+        .select('*')
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setShipments(data || []);
-    } catch (err: any) {
+      if (!error && data) setShipments(data);
+    } catch (err) {
       showError('Failed to load shipments');
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken]);
 
   useEffect(() => {
     fetchShipments();
-  }, [getToken]);
+
+    // Real-time: refresh when any shipment row changes
+    const channel = supabase
+      .channel('browse-shipments-realtime')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'shipments', filter: "status=eq.pending" },
+        () => fetchShipments()
+      )
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shipments' },
+        () => fetchShipments()
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [fetchShipments]);
 
   const filteredShipments = useMemo(() => {
     return shipments.filter(s => {
@@ -134,15 +140,18 @@ const BrowseShipments = () => {
 
       if (error) throw error;
 
-      // Notify the shipper
-      await sendNotification({
-        userId: selectedShipment.shipper_id,
-        message: `${userProfile.full_name} offered ₹${price}/t for your shipment from ${selectedShipment.origin_city} to ${selectedShipment.destination_city}`,
+      // Notify the shipper with full details
+      await notifyShipperOfTruckerOffer({
+        shipperId: selectedShipment.shipper_id,
+        truckerName: userProfile.full_name || 'A trucker',
+        proposedPrice: price,
+        weightTonnes: selectedShipment.weight_tonnes,
+        originCity: selectedShipment.origin_city,
+        destinationCity: selectedShipment.destination_city,
         getToken: () => getToken({ template: 'supabase' }),
-        relatedShipmentRequestId: selectedShipment.id
       });
 
-      showSuccess('Offer sent to shipper!');
+      showSuccess('🚛 Offer sent to shipper! They will be notified instantly.');
       setIsOfferDialogOpen(false);
       setProposedPrice('');
       setMessage('');
@@ -283,7 +292,7 @@ const BrowseShipments = () => {
                         </div>
                       </div>
 
-                      <div className="md:w-48 bg-gray-50 p-6 border-t md:border-t-0 md:border-l border-gray-100 flex flex-col justify-center">
+                      <div className="md:w-48 bg-gray-50 p-6 border-t md:border-t-0 md:border-l border-gray-100 flex flex-col justify-center gap-2">
                         <Button 
                           className="w-full bg-orange-600 hover:bg-orange-700 shadow-md"
                           onClick={() => openOfferDialog(shipment)}
@@ -291,6 +300,11 @@ const BrowseShipments = () => {
                           Send Offer
                           <Send className="ml-2 h-4 w-4" />
                         </Button>
+                        <Link to={`/shipper/shipments/${shipment.id}`} className="block">
+                          <Button variant="outline" className="w-full border-orange-200 text-orange-700 hover:bg-orange-50">
+                            <Eye className="mr-2 h-4 w-4" /> View Details
+                          </Button>
+                        </Link>
                       </div>
                     </div>
                   </CardContent>

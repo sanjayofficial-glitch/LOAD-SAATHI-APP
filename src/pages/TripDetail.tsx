@@ -16,7 +16,7 @@ import { showSuccess, showError } from '@/utils/toast';
 import { MapPin, Calendar, Truck, IndianRupee, ArrowLeft, CheckCircle, AlertCircle, MessageSquare, Loader2 } from 'lucide-react';
 import Star from '@/components/Star';
 import RouteMap from '@/components/RouteMap';
-import { sendNotification } from '@/utils/notifications';
+import { notifyTruckerOfBookingRequest } from '@/utils/notifications';
 
 const TripDetail = () => {
   const { tripId } = useParams();
@@ -116,10 +116,15 @@ const TripDetail = () => {
       if (insertError) throw insertError;
 
       // Send notification to trucker
-      await sendNotification({
-        userId: trip.trucker_id,
-        message: `New Request: ${userProfile.full_name} wants to book ${requestedWeight}t for your ${trip.origin_city} to ${trip.destination_city} trip.`,
-        getToken: () => getToken({ template: 'supabase' })
+      await notifyTruckerOfBookingRequest({
+        truckerId: trip.trucker_id,
+        shipperName: userProfile.full_name || 'A shipper',
+        weightTonnes: requestedWeight,
+        goodsDescription: description.trim(),
+        originCity: trip.origin_city,
+        destinationCity: trip.destination_city,
+        tripId: trip.id,
+        getToken: () => getToken({ template: 'supabase' }),
       });
 
       showSuccess('Booking request sent successfully!');

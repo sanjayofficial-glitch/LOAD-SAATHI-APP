@@ -45,21 +45,18 @@ const TruckerDashboard = () => {
       if (!supabaseToken) throw new Error('No Supabase token');
       const supabase = createClerkSupabaseClient(supabaseToken);
 
-      // Fetch active trips
       const { count: activeTrips } = await supabase
         .from('trips')
         .select('*', { count: 'exact', head: true })
         .eq('trucker_id', userProfile.id)
         .eq('status', 'active');
 
-      // Fetch completed trips
       const { count: completedTrips } = await supabase
         .from('trips')
         .select('*', { count: 'exact', head: true })
         .eq('trucker_id', userProfile.id)
         .eq('status', 'completed');
 
-      // Fetch pending requests for trucker's trips
       const { data: myTrips } = await supabase
         .from('trips')
         .select('id')
@@ -68,7 +65,6 @@ const TruckerDashboard = () => {
       const tripIds = myTrips?.map(t => t.id) || [];
       
       let pendingRequests = 0;
-      
       if (tripIds.length > 0) {
         const { count } = await supabase
           .from('requests')
@@ -78,7 +74,6 @@ const TruckerDashboard = () => {
         pendingRequests = count || 0;
       }
 
-      // Calculate earnings
       const { data: completedTripsData } = await supabase
         .from('trips')
         .select('price_per_tonne, requests!inner(weight_tonnes)')
@@ -90,7 +85,6 @@ const TruckerDashboard = () => {
         return sum + (request ? trip.price_per_tonne * request.weight_tonnes : 0);
       }, 0) || 0;
 
-      // Fetch upcoming trips
       const { data: upcomingTrips } = await supabase
         .from('trips')
         .select('id, origin_city, destination_city, departure_date, price_per_tonne, vehicle_type')
@@ -122,7 +116,6 @@ const TruckerDashboard = () => {
       if (!supabaseToken) throw new Error('No Supabase token');
       const supabase = createClerkSupabaseClient(supabaseToken);
 
-      // 1. Update trip status
       const { error: tripError } = await supabase
         .from('trips')
         .update({ status: 'completed' })
@@ -130,7 +123,6 @@ const TruckerDashboard = () => {
 
       if (tripError) throw tripError;
 
-      // 2. Fetch all accepted requests for this trip to notify shippers
       const { data: requests } = await supabase
         .from('requests')
         .select('shipper_id, trip:trips(origin_city, destination_city)')
@@ -144,11 +136,10 @@ const TruckerDashboard = () => {
           related_trip_id: tripId,
           is_read: false
         }));
-
         await supabase.from('notifications').insert(notifications);
       }
 
-      showSuccess('Trip marked as completed and shippers notified!');
+      showSuccess('Trip marked as completed!');
       loadStats();
     } catch (err: any) {
       showError(err.message || 'Failed to complete trip');
@@ -162,18 +153,17 @@ const TruckerDashboard = () => {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Trucker Dashboard</h1>
         <p className="text-gray-600">
-          Welcome back, {loading ? <Skeleton className="inline-block h-4 w-32 align-middle" /> : userProfile?.full_name}! Manage your trips and find new loads.
+          Welcome back, {userProfile?.full_name}! Manage your trips and find new loads.
         </p>
       </div>
 
-      {/* Action Required Alert */}
       {!loading && stats.pendingRequests > 0 && (
         <Alert className="mb-8 border-orange-200 bg-orange-50 animate-in fade-in slide-in-from-top-4 duration-500">
           <BellRing className="h-5 w-5 text-orange-600" />
           <AlertTitle className="text-orange-900 font-bold">Action Required!</AlertTitle>
           <AlertDescription className="text-orange-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <span>You have <strong>{stats.pendingRequests}</strong> new booking request(s) waiting for your approval.</span>
-            <Link to="/trucker/my-requests">
+            <Link to="/trucker/my-trips?tab=incoming">
               <Button size="sm" className="bg-orange-600 hover:bg-orange-700 text-white">
                 Review Requests <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -182,7 +172,6 @@ const TruckerDashboard = () => {
         </Alert>
       )}
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         {loading ? (
           <><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /></>
@@ -224,7 +213,6 @@ const TruckerDashboard = () => {
         )}
       </div>
 
-      {/* Quick Actions */}
       <div className="grid md:grid-cols-2 gap-6 mb-8">
         <Card className="border-orange-100">
           <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
@@ -241,7 +229,7 @@ const TruckerDashboard = () => {
             </Link>
             <Link to="/trucker/my-trips">
               <Button variant="outline" className="w-full border-orange-200 text-orange-700 hover:bg-orange-50">
-                <Truck className="mr-2 h-4 w-4" /> Manage My Trips
+                <Truck className="mr-2 h-4 w-4" /> Manage My Trips & Bookings
               </Button>
             </Link>
           </CardContent>
@@ -251,7 +239,7 @@ const TruckerDashboard = () => {
           <CardContent>
             <p className="text-gray-500 text-sm">Check your trips and requests for the latest updates.</p>
             <div className="mt-4 space-y-2">
-              <Link to="/trucker/my-requests" className="block text-sm text-orange-600 hover:underline">View My Requests →</Link>
+              <Link to="/trucker/my-trips?tab=incoming" className="block text-sm text-orange-600 hover:underline">View My Requests →</Link>
               <Link to="/trucker/history" className="block text-sm text-orange-600 hover:underline">View History →</Link>
               <Link to="/profile" className="block text-sm text-orange-600 hover:underline">Update Profile →</Link>
             </div>
@@ -259,7 +247,6 @@ const TruckerDashboard = () => {
         </Card>
       </div>
 
-      {/* Upcoming Trips */}
       {!loading && stats.upcomingTrips.length > 0 && (
         <Card className="border-orange-100">
           <CardHeader><CardTitle>Upcoming Trips</CardTitle></CardHeader>
