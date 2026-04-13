@@ -45,13 +45,11 @@ function App() {
               <Route path="/auth-sync" element={<AuthSync />} />
               <Route path="/choose-role" element={<ChooseRole />} />
               <Route element={
-                <Outlet>
-                  <Layout>
-                    <RoleProtectedRoute>
-                      <Outlet />
-                    </RoleProtectedRoute>
-                  </Layout>
-                </Outlet>
+                <Layout>
+                  <RoleProtectedRoute>
+                    <Outlet />
+                  </RoleProtectedRoute>
+                </Layout>
               } />
               <Route path="/trucker/dashboard" element={
                 <RoleProtectedRoute allowedRole="trucker">
