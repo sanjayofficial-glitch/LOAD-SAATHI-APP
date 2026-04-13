@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import useWebSocket from 'react-use-websocket'; // Fixed import
+import useWebSocket from 'react-use-websocket'; // ✅ Correct import
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Bell, X } from "lucide-react";
 
-// Define NotificationData type
+/** Notification payload shape */
 interface NotificationData {
   id: string;
   title: string;
@@ -15,7 +15,8 @@ interface NotificationData {
 
 const NotificationDemo: React.FC = () => {
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
-  // Note: Using a placeholder URL for demo purposes as per previous code
+
+  // NOTE: Replace with your actual WebSocket URL
   const { lastJsonMessage } = useWebSocket('wss://your-notification-service.com', {
     shouldReconnect: () => true,
   });
@@ -40,7 +41,7 @@ const NotificationDemo: React.FC = () => {
           <AlertDescription className="text-xs text-gray-600">
             {notif.description}
           </AlertDescription>
-          <button 
+          <button
             onClick={() => removeNotification(notif.id)}
             className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
           >
