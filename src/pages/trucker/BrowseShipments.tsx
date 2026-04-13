@@ -38,6 +38,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import locationData from '@/data/locations.json';
+import { sendNotification } from '@/utils/notifications';
 
 const ALL_CITIES = Object.values(locationData.data).flatMap(state => 
   Object.values(state).flat()
@@ -196,7 +197,7 @@ const BrowseShipments = () => {
       
       const supabaseClient = createClerkSupabaseClient(supabaseToken);
 
-      const { error } = await supabaseClient
+      const { data, error } = await supabaseClient
         .from('shipment_requests')
         .insert({
           shipment_id: selectedShipment.id,
@@ -205,9 +206,19 @@ const BrowseShipments = () => {
           message: requestMessage.trim(),
           proposed_price_per_tonne: requestPrice ? parseFloat(requestPrice) : null,
           status: 'pending'
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Send real-time notification to the shipper
+      await sendNotification({
+        userId: selectedShipment.shipper_id,
+        message: `Trucker ${userProfile.full_name} sent a request for your shipment from ${selectedShipment.origin_city} to ${selectedShipment.destination_city}`,
+        relatedShipmentRequestId: data.id,
+        getToken: () => getToken({ template: 'supabase' })
+      });
 
       showSuccess('Request sent! The shipper will be notified.');
       setIsRequestDialogOpen(false);
