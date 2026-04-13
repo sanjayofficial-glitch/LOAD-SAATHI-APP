@@ -44,6 +44,7 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/auth-sync" element={<AuthSync />} />
               <Route path="/choose-role" element={<ChooseRole />} />
+              {/* Wrap Layout with RoleProtectedRoute and use Outlet for nested routes */}
               <Route element={
                 <Layout>
                   <RoleProtectedRoute>
