@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuth as useClerkAuth } from '@clerk/clerk-react';
@@ -12,21 +12,21 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { 
-  Package, 
-  MapPin,   Calendar, 
+  MapPin,
+  Calendar, 
   IndianRupee, 
-  Search, 
   ArrowRight as ArrowRightIcon,
   Loader2,
   Sparkles,
-  Filter,
   X,
   AlertCircle,
   Truck
 } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabaseClient';
 import { parseNaturalLanguageSearch } from '@/lib/gemini';
+import { notifyTruckerOfBookingRequest } from '@/utils/notifications';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Dialog,
@@ -87,6 +87,22 @@ const BrowseTrips = () => {
     enabled: !!userProfile,
     staleTime: 1000 * 60 * 2,
   });
+
+  const queryClient = useQueryClient();
+
+  // Real-time: invalidate cache when a trip is inserted or updated
+  useEffect(() => {
+    const channel = supabase
+      .channel('browse-trips-realtime')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trips' },
+        () => queryClient.invalidateQueries({ queryKey: ['trips', 'active'] })
+      )
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips' },
+        () => queryClient.invalidateQueries({ queryKey: ['trips', 'active'] })
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
 
   const handleAiSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,7 +225,19 @@ const BrowseTrips = () => {
 
       if (error) throw error;
 
-      showSuccess('Booking request sent successfully!');
+      // Notify the trucker about the new booking request
+      await notifyTruckerOfBookingRequest({
+        truckerId: selectedTrip.trucker_id,
+        shipperName: userProfile.full_name || 'A shipper',
+        weightTonnes: requestedWeight,
+        goodsDescription: goodsDescription.trim(),
+        originCity: selectedTrip.origin_city,
+        destinationCity: selectedTrip.destination_city,
+        tripId: selectedTrip.id,
+        getToken: () => getToken({ template: 'supabase' }),
+      });
+
+      showSuccess('🎉 Booking request sent! The trucker will be notified.');
       setIsRequestDialogOpen(false);
       setGoodsDescription('');
       setWeight('');
