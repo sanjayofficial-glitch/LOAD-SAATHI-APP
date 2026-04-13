@@ -3,6 +3,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
+import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { useSupabase } from '@/hooks/useSupabase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,9 +25,11 @@ import {
   IndianRupee
 } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
+import { sendNotification } from '@/utils/notifications';
 
 const MyRequests = () => {
   const { userProfile } = useAuth();
+  const { getToken } = useClerkAuth();
   const { getAuthenticatedClient } = useSupabase();
   const navigate = useNavigate();
   const [incomingRequests, setIncomingRequests] = useState<any[]>([]);
@@ -81,6 +85,14 @@ const MyRequests = () => {
     setActionLoading(requestId);
     try {
       const supabase = await getAuthenticatedClient();
+      
+      // Get request details to notify shipper
+      const { data: request } = await supabase
+        .from('requests')
+        .select('shipper_id, trip:trips(origin_city, destination_city)')
+        .eq('id', requestId)
+        .single();
+
       const { error } = await supabase
         .from('requests')
         .update({ status })
@@ -88,6 +100,14 @@ const MyRequests = () => {
 
       if (error) throw error;
       
+      if (request) {
+        await sendNotification({
+          userId: request.shipper_id,
+          message: `Your request for trip ${(request.trip as any).origin_city} → ${(request.trip as any).destination_city} was ${status.toUpperCase()}`,
+          getToken: () => getToken({ template: 'supabase' })
+        });
+      }
+
       showSuccess(`Request ${status} successfully`);
       fetchData();
     } catch (err: any) {

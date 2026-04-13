@@ -134,11 +134,12 @@ const BrowseShipments = () => {
 
       if (error) throw error;
 
-      // Send notification to shipper
+      // Notify the shipper
       await sendNotification({
         userId: selectedShipment.shipper_id,
-        message: `${userProfile.full_name} offered ₹${price}/t for your ${selectedShipment.weight_tonnes}t shipment from ${selectedShipment.origin_city} to ${selectedShipment.destination_city}`,
-        getToken: () => getToken({ template: 'supabase' })
+        message: `${userProfile.full_name} offered ₹${price}/t for your shipment from ${selectedShipment.origin_city} to ${selectedShipment.destination_city}`,
+        getToken: () => getToken({ template: 'supabase' }),
+        relatedShipmentRequestId: selectedShipment.id
       });
 
       showSuccess('Offer sent to shipper!');

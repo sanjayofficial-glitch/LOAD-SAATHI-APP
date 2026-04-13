@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from '@/components/ui/label';
 import locationData from '@/data/locations.json';
+import { sendNotification } from '@/utils/notifications';
 
 const INDIAN_STATES = Object.keys(locationData.data);
 
@@ -199,7 +200,7 @@ const BrowseTrips = () => {
         .insert({
           trip_id: selectedTrip.id,
           shipper_id: userProfile.id,
-          receiver_id: selectedTrip.trucker_id, // Required by schema
+          receiver_id: selectedTrip.trucker_id,
           goods_description: goodsDescription.trim(),
           weight_tonnes: requestedWeight,
           pickup_address: pickupAddress.trim(),
@@ -208,6 +209,14 @@ const BrowseTrips = () => {
         });
 
       if (error) throw error;
+
+      // Notify the trucker
+      await sendNotification({
+        userId: selectedTrip.trucker_id,
+        message: `${userProfile.full_name} requested ${requestedWeight}t for your trip from ${selectedTrip.origin_city} to ${selectedTrip.destination_city}`,
+        getToken: () => getToken({ template: 'supabase' }),
+        relatedTripId: selectedTrip.id
+      });
 
       showSuccess('Booking request sent successfully!');
       setIsRequestDialogOpen(false);

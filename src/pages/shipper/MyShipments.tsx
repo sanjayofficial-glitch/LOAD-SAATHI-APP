@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { useSupabase } from '@/hooks/useSupabase';
 import { showSuccess, showError } from '@/utils/toast';
 import { Card, CardContent } from '@/components/ui/card';
@@ -39,9 +40,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { sendNotification } from '@/utils/notifications';
 
 const MyShipments = () => {
   const { userProfile } = useAuth();
+  const { getToken } = useClerkAuth();
   const { getAuthenticatedClient } = useSupabase();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -84,15 +87,15 @@ const MyShipments = () => {
         .from('shipment_requests')
         .select(`
           *,
-          shipment:shipments(*),
+          shipment:shipments!inner(*),
           trucker:users(*)
         `)
+        .eq('shipment.shipper_id', userProfile.id)
         .order('created_at', { ascending: false });
 
       setMyLoads(loads || []);
       setSentRequests(sent || []);
-      // Filter incoming offers for shipments owned by this shipper
-      setIncomingOffers((incoming || []).filter(r => r.shipment?.shipper_id === userProfile.id));
+      setIncomingOffers(incoming || []);
       
     } catch (err: any) {
       showError('Failed to fetch data');
@@ -125,12 +128,14 @@ const MyShipments = () => {
         // Get the request details first
         const { data: request } = await supabase
           .from('shipment_requests')
-          .select('shipment_id, trucker_id')
+          .select('shipment_id, trucker_id, shipment:shipments(origin_city, destination_city)')
           .eq('id', requestId)
           .single();
         
         if (!request) throw new Error('Request not found');
         
+        const dbStatus = status === 'accepted' ? 'accepted' : 'declined';
+
         if (status === 'accepted') {
           // 1. Update the selected offer to 'accepted'
           const { error: acceptError } = await supabase
@@ -148,19 +153,11 @@ const MyShipments = () => {
             .eq('status', 'pending')
             .neq('id', requestId);
   
-          // 3. Update shipment status to 'matched' (BOOKED)
+          // 3. Update shipment status to 'matched'
           await supabase
             .from('shipments')
             .update({ status: 'matched' })
             .eq('id', request.shipment_id);
-  
-          // 4. Notify the trucker
-          await supabase.from('notifications').insert({
-            user_id: request.trucker_id,
-            message: `Your offer for shipment has been ACCEPTED!`,
-            related_shipment_request_id: requestId,
-            is_read: false
-          });
   
           showSuccess('Offer accepted! Shipment is now booked.');
         } else {
@@ -174,6 +171,13 @@ const MyShipments = () => {
           
           showSuccess('Offer declined');
         }
+
+        // Notify the trucker
+        await sendNotification({
+          userId: request.trucker_id,
+          message: `Your offer for shipment ${(request.shipment as any).origin_city} → ${(request.shipment as any).destination_city} was ${dbStatus.toUpperCase()}`,
+          getToken: () => getToken({ template: 'supabase' })
+        });
         
         fetchData();
       } catch (err: any) {
