@@ -2,13 +2,6 @@ import React, { useState } from 'react';
 import { Button } from '@shadcn/ui';
 import { Notification } from '@shadcn/ui';
 
-interface Notif {
-  id: number;
-  title: string;
-  description: string;
-  status?: 'info' | 'success' | 'warning' | 'error';
-}
-
 const NotificationDemo: React.FC = () => {
   const [notifications, setNotifications] = useState<Notif[]>([]);
   const addNotification = () => {
