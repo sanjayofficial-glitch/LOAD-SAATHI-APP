@@ -12,9 +12,8 @@ import Layout from "./components/Layout";
 import TruckerDashboard from "./pages/trucker/Dashboard";
 import ShipperDashboard from "./pages/shipper/Dashboard";
 import PostTrip from "./pages/trucker/PostTrip";
-import MyTrips from "./pages/trucker/MyTrips";
+import TruckerHub from "./pages/trucker/TruckerHub";
 import EditTrip from "./pages/trucker/EditTrip";
-import MyRequests from "./pages/trucker/MyRequests";
 import TruckerHistory from "./pages/TruckerHistory";
 import PostShipments from "./pages/shipper/PostShipments";
 import MyShipments from "./pages/shipper/MyShipments";
@@ -50,11 +49,11 @@ const App = () => {
               <Route element={<SignedIn><Layout><RoleProtectedRoute><Outlet /></RoleProtectedRoute></Layout></SignedIn>}>
                 <Route path="/trucker/dashboard" element={<RoleProtectedRoute allowedRole="trucker"><TruckerDashboard /></RoleProtectedRoute>} />
                 <Route path="/trucker/post-trip" element={<RoleProtectedRoute allowedRole="trucker"><PostTrip /></RoleProtectedRoute>} />
-                <Route path="/trucker/my-trips" element={<RoleProtectedRoute allowedRole="trucker"><MyTrips /></RoleProtectedRoute>} />
+                <Route path="/trucker/my-trips" element={<RoleProtectedRoute allowedRole="trucker"><TruckerHub /></RoleProtectedRoute>} />
                 <Route path="/trucker/trips/:tripId/edit" element={<RoleProtectedRoute allowedRole="trucker"><EditTrip /></RoleProtectedRoute>} />
                 <Route path="/trucker/trips/:tripId" element={<RoleProtectedRoute allowedRole="trucker"><TruckerTripDetail /></RoleProtectedRoute>} />
                 <Route path="/trucker/browse-shipments" element={<RoleProtectedRoute allowedRole="trucker"><BrowseShipments /></RoleProtectedRoute>} />
-                <Route path="/trucker/my-requests" element={<RoleProtectedRoute allowedRole="trucker"><MyRequests /></RoleProtectedRoute>} />
+                <Route path="/trucker/my-requests" element={<RoleProtectedRoute allowedRole="trucker"><TruckerHub tab="incoming" /></RoleProtectedRoute>} />
                 <Route path="/trucker/history" element={<RoleProtectedRoute allowedRole="trucker"><TruckerHistory /></RoleProtectedRoute>} />
                 <Route path="/shipper/dashboard" element={<RoleProtectedRoute allowedRole="shipper"><ShipperDashboard /></RoleProtectedRoute>} />
                 <Route path="/shipper/post-shipment" element={<RoleProtectedRoute allowedRole="shipper"><PostShipments /></RoleProtectedRoute>} />
