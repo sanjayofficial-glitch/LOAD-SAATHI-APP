@@ -1,16 +1,18 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSupabase } from "@/hooks/useSupabase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {  
   Truck, 
-  Package,   Calendar, 
+  Package,   
+  Calendar, 
   IndianRupee, 
   ArrowLeft, 
   Loader2,
@@ -19,15 +21,16 @@ import {
   Sparkles,
   Filter,
   X,
-  Badge
+  Clock,
+  TrendingUp,
+  DollarSign,
+  ArrowRight
 } from "lucide-react";
 import { showSuccess, showError } from "@/utils/toast";
-import { useQuery } from "@tanstack/react-query";
-import LocationSelector from "@/components/LocationSelector";
 import locationData from "@/data/locations.json";
-import { createClerkSupabaseClient } from "@/utils/supabaseClient";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Link } from "react-router-dom";
+
+const INDIAN_STATES = Object.keys(locationData.data);
 
 const StatCardSkeleton = () => (
   <Card>
@@ -71,19 +74,20 @@ const ShipperDashboard = () => {
     minWeight: ''
   });
   const [showFilters, setShowFilters] = useState(false);
-  const [apiKeyMissing, setApiKeyMissing] = useState(false);
   const [selectedShipment, setSelectedShipment] = useState<any>(null);
   const [isOfferDialogOpen, setIsOfferDialogOpen] = useState(false);
   const [proposedPrice, setProposedPrice] = useState('');
   const [message, setMessage] = useState('');
   const [sendingOffer, setSendingOffer] = useState(false);
+  const [shipments, setShipments] = useState<any[]>([]);
 
   // Fetch shipments data
   const fetchShipments = useCallback(async () => {
     if (!userProfile?.id) return;
     try {
       const supabase = await getAuthenticatedClient();
-      const { data, error } = await supabase        .from('shipments')
+      const { data, error } = await supabase
+        .from('shipments')
         .select('*')
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
@@ -97,7 +101,6 @@ const ShipperDashboard = () => {
     }
   }, [userProfile?.id, getAuthenticatedClient]);
 
-  const [shipments, setShipments] = useState<any[]>([]);
   useEffect(() => {
     fetchShipments();
   }, [fetchShipments]);
@@ -129,26 +132,24 @@ const ShipperDashboard = () => {
       try {
         const supabase = await getAuthenticatedClient();
         
-        // Active shipments
         const { count: activeShipments } = await supabase
           .from('shipments')
           .select('*', { count: 'exact', head: true })
           .eq('shipper_id', userProfile.id)
           .eq('status', 'pending');
-                // Completed shipments
-        const { count: completedShipments } = await supabase          .from('shipments')
+
+        const { count: completedShipments } = await supabase
+          .from('shipments')
           .select('*', { count: 'exact', head: true })
           .eq('shipper_id', userProfile.id)
           .eq('status', 'completed');
         
-        // Pending requests
         const { count: pendingRequests } = await supabase
           .from('requests')
           .select('*', { count: 'exact', head: true })
           .eq('shipper_id', userProfile.id)
           .eq('status', 'pending');
         
-        // Total spent
         const { data: completedTrips } = await supabase
           .from('shipments')
           .select('budget_per_tonne, requests!inner(weight_tonnes)')
@@ -160,7 +161,6 @@ const ShipperDashboard = () => {
           return sum + (request ? trip.budget_per_tonne * request.weight_tonnes : 0);
         }, 0) || 0;
         
-        // Upcoming shipments
         const { data: upcomingShipments } = await supabase
           .from('shipments')
           .select('origin_city, destination_city, departure_date, goods_description, weight_tonnes, id')
@@ -185,66 +185,11 @@ const ShipperDashboard = () => {
     loadStats();
   }, [userProfile?.id, getAuthenticatedClient]);
 
-  // Handle location change
-  const handleLocationChange = (field: 'origin_city' | 'destination_city', value: { state: string; district: string; city: string }) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value.city
-    }));
+  const openOfferDialog = (shipment: any) => {
+    setSelectedShipment(shipment);
+    setIsOfferDialogOpen(true);
   };
 
-  // Handle form submit
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!userProfile?.id) {
-      showError('You must be logged in to post a shipment.');
-      return;
-    }
-
-    const weight = parseFloat(formData.weight_tonnes);
-    const budget = parseFloat(formData.budget_per_tonne);
-
-    if (isNaN(weight) || weight <= 0) {
-      showError('Please enter a valid weight in tonnes.');
-      return;
-    }
-
-    if (isNaN(budget) || budget <= 0) {
-      showError('Please enter a valid budget per tonne.');
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const supabase = await getAuthenticatedClient();
-      const { error } = await supabase.from('shipments').insert({
-        shipper_id: userProfile.id,
-        origin_city: formData.origin_city.trim(),
-        destination_city: formData.destination_city.trim(),
-        departure_date: formData.departure_date,
-        goods_description: formData.goods_description.trim(),
-        weight_tonnes: weight,
-        pickup_address: formData.pickup_address.trim(),
-        delivery_address: formData.delivery_address.trim(),
-        budget_per_tonne: budget,
-        status: 'pending'
-      });
-
-      if (error) {
-        showError(error.message);
-      } else {
-        showSuccess('Shipment posted successfully!');
-        navigate('/shipper/dashboard');
-      }
-    } catch (err: any) {
-      showError(err.message || 'An unexpected error occurred while posting the shipment.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Handle offer submission
   const submitOffer = async () => {
     if (!selectedShipment || !userProfile) return;
 
@@ -278,7 +223,6 @@ const ShipperDashboard = () => {
     }
   };
 
-  // Clear filters
   const clearFilters = () => {
     setFilters({
       origin: '',
@@ -287,7 +231,6 @@ const ShipperDashboard = () => {
     });
   };
 
-  // Render status badge
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       pending: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800' },
@@ -303,7 +246,6 @@ const ShipperDashboard = () => {
     );
   };
 
-  // Render status icon
   const getStatusIcon = (status: string) => {
     switch (status.toLowerCase()) {
       case 'pending': return <Clock className="h-4 w-4 text-yellow-600" />;
@@ -313,23 +255,20 @@ const ShipperDashboard = () => {
     }
   };
 
-  // Format date  const formatDate = (dateStr: string) => 
+  const formatDate = (dateStr: string) => 
     new Date(dateStr).toLocaleDateString('en-IN', { 
       day: 'numeric', 
       month: 'short',
       year: 'numeric' 
     });
 
-  // Render notification bell
   return (
     <div className="container mx-auto px-4 py-8">
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2">Shipper Dashboard</h1>
         <p className="text-gray-600">Manage your shipments and find truck space</p>
       </div>
 
-      {/* Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         {loading ? (
           <>
@@ -376,7 +315,6 @@ const ShipperDashboard = () => {
         )}
       </div>
 
-      {/* Quick Filters */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-gray-900">Find Shipments</h2>
@@ -390,7 +328,7 @@ const ShipperDashboard = () => {
         </div>
         
         {showFilters && (
-          <div className="space-y-4 animate-in slide-in-from-top duration-200">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 animate-in slide-in-from-top duration-200">
             <div>
               <Label htmlFor="origin" className="block text-sm font-medium text-gray-700 mb-1">Origin State</Label>
               <select
@@ -421,56 +359,60 @@ const ShipperDashboard = () => {
             </div>
             <div>
               <Label htmlFor="minWeight" className="block text-sm font-medium text-gray-700 mb-1">Min Capacity (Tonnes)</Label>
-              <input
-                type="number"
-                placeholder="e.g. 5"
-                value={filters.minWeight}
-                onChange={(e) => setFilters({...filters, minWeight: e.target.value})}
-                className="w-full p-2 border border-gray-200 rounded-md text-sm"
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="minWeight"
+                  type="number"
+                  placeholder="e.g. 5"
+                  value={filters.minWeight}
+                  onChange={(e) => setFilters({...filters, minWeight: e.target.value})}
+                  className="text-sm"
+                />
+                <Button 
+                  onClick={clearFilters} 
+                  variant="outline"               
+                  size="icon"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <Button 
-              onClick={clearFilters} 
-              variant="outline"               className="w-full" 
-              size="sm"
-            >
-              <X className="h-3 w-3 mr-1" /> Clear All
-            </Button>
           </div>
         )}
       </div>
 
-      {/* Shipments List */}
       <div className="grid lg:grid-cols-3 gap-8">
-        {/* Filters Sidebar */}
         <div className="lg:col-span-1 space-y-6">
           <Card className="border-blue-100 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center">
-                <Filter className="h-4 w-4 mr-2 text-blue-600" /> Filters
+                <Filter className="h-4 w-4 mr-2 text-blue-600" /> Quick Actions
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Filter inputs would go here */}
+            <CardContent className="space-y-3">
+              <Link to="/shipper/post-shipment" className="block">
+                <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                  Post New Shipment
+                </Button>
+              </Link>
+              <Link to="/browse-trucks" className="block">
+                <Button variant="outline" className="w-full border-blue-200 text-blue-700">
+                  Browse Trucks
+                </Button>
+              </Link>
             </CardContent>
           </Card>
         </div>
 
-        {/* Shipments Grid */}
         <div className="lg:col-span-2 space-y-6">
-          <div className="relative">
-            <Input               placeholder="Search by city..." 
-              className="pl-10 py-6 rounded-xl border-blue-100 focus:ring-blue-500"
-            />
-          </div>
-
           {filteredShipments.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
               <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900 mb-2">No shipments found</h3>
               <p className="text-gray-500 mb-6">Try adjusting your filters or search criteria</p>
               <Button 
-                onClick={clearFilters}                 className="bg-blue-600"
+                onClick={clearFilters}                 
+                className="bg-blue-600"
               >
                 Clear All Filters
               </Button>
@@ -505,13 +447,10 @@ const ShipperDashboard = () => {
                             <div>
                               <p className="text-gray-500 text-xs">Ready Date</p>
                               <p className="font-medium">
-                                {new Date(shipment.departure_date).toLocaleDateString('en-IN', { 
-                                  day: 'numeric', 
-                                  month: 'short',
-                                  year: 'numeric' 
-                                })}                                </p>
-                              </div>
+                                {formatDate(shipment.departure_date)}
+                              </p>
                             </div>
+                          </div>
                           <div className="flex items-center">
                             <IndianRupee className="h-4 w-4 mr-2 text-green-600" />
                             <div>
@@ -549,7 +488,6 @@ const ShipperDashboard = () => {
         </div>
       </div>
 
-      {/* Offer Dialog */}
       <Dialog open={isOfferDialogOpen} onOpenChange={setIsOfferDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
