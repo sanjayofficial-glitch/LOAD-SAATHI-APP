@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import useWebSocket from 'react-use-websocket'; // Fixed importimport { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import useWebSocket from 'react-use-websocket'; // Fixed import
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Bell, X } from "lucide-react";
-import { toast } from "sonner"; // Import toast
 
 // Define NotificationData type
 interface NotificationData {
@@ -24,7 +24,6 @@ const NotificationDemo: React.FC = () => {
     if (lastJsonMessage) {
       const data = lastJsonMessage as NotificationData;
       setNotifications(prev => [...prev, { ...data, id: data.id || Date.now().toString() }]);
-      toast.info(data.title);
     }
   }, [lastJsonMessage]);
 
