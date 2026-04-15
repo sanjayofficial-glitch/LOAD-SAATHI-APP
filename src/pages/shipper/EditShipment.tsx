@@ -63,8 +63,8 @@ const EditShipment = () => {
               onChange={(e) => setDescription(e.target.value)}
               required
             />
-            <Button type="submit" disabled={mutation.isLoading}>
-              {mutation.isLoading ? "Saving..." : "Save Changes"}
+            <Button type="submit" disabled={mutation.isPending}>
+              {mutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </form>
         )}
