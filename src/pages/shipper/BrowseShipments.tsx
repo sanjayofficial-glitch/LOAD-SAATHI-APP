@@ -4,16 +4,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Link } from "react-router-dom";
 
-const MyShipments = () => {
+const BrowseShipments = () => {
   const { user } = useAuth();
-  const { data: shipments, isLoading } = useQuery(["my-shipments", user.id], () =>
-    fetch(`/api/shipments?user_id=${user.id}`).then(res => res.json())
+  const { data: shipments, isLoading } = useQuery(["browse-shipments"], () =>
+    fetch(`/api/shipments`).then(res => res.json())
   );
 
   return (
     <Card className="max-w-4xl mx-auto mt-8">
       <CardHeader>
-        <CardTitle>My Shipments</CardTitle>
+        <CardTitle>Browse Shipments</CardTitle>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -31,7 +31,7 @@ const MyShipments = () => {
                   <p className="text-sm text-gray-600">{shipment.description}</p>
                   <div className="flex justify-between mt-2">
                     <span className="text-sm font-medium">{shipment.status}</span>
-                    <Link to={`/shipments/${shipment.id}`} className="text-blue-500 hover:underline">View Details</Link>
+                    <Link to={`/shipments/${shipment.id}/edit" className="text-blue-500 hover:underline">Edit</Link>
                   </div>
                 </CardContent>
               </div>
@@ -43,4 +43,4 @@ const MyShipments = () => {
   );
 };
 
-export default MyShipments;
+export default BrowseShipments;
