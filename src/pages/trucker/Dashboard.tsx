@@ -6,7 +6,7 @@ import { createClerkSupabaseClient } from "@/utils/supabaseClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Truck, Clock, TrendingUp, PlusCircle, Search, DollarSign, Calendar, MapPin } from "lucide-react";
+import { Truck, Clock, TrendingUp, PlusCircle, Search, DollarSign, Calendar, MapPin, Loader2 } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
 
 const StatCardSkeleton = () => (
@@ -46,8 +46,7 @@ const TruckerDashboard = () => {
       if (!supabaseToken) throw new Error("No Supabase token");
       const supabase = createClerkSupabaseClient(supabaseToken);
 
-      const { count: activeTrips } = await supabase
-        .from("trips")
+      const { count: activeTrips } = await supabase        .from("trips")
         .select("*", { count: "exact", head: true })
         .eq("trucker_id", userProfile.id)
         .eq("status", "active");
