@@ -46,6 +46,3 @@ const MyShipments = () => {
 };
 
 export default MyShipments;
-</parameter>
-</function>
-</tool_call>
