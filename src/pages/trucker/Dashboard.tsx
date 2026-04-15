@@ -1,22 +1,22 @@
-import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { useAuth as useClerkAuth } from '@clerk/clerk-react';
-import { createClerkSupabaseClient } from '@/utils/supabaseClient';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
-import { Truck, Clock, TrendingUp, PlusCircle, Search, DollarSign, Calendar, MapPin } from 'lucide-react';
-import { showError, showSuccess } from '@/utils/toast';
+import { useEffect, useState, useCallback } from "react";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { useAuth as useClerkAuth } from "@clerk/clerk-react";
+import { createClerkSupabaseClient } from "@/utils/supabaseClient";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Truck, Clock, TrendingUp, PlusCircle, Search, DollarSign, Calendar, MapPin } from "lucide-react";
+import { showError, showSuccess } from "@/utils/toast";
 
 const StatCardSkeleton = () => (
   <Card>
     <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <Skeleton className="h-4 w-28" />
-      <Skeleton className="h-4 w-4 rounded-full" />
+      <Loader2 className="h-4 w-28 animate-spin" />
+      <Loader2 className="h-4 w-4 rounded-full animate-spin" />
     </CardHeader>
     <CardContent>
-      <Skeleton className="h-8 w-16 mt-1" />
+      <Loader2 className="h-8 w-16 mt-1 animate-spin" />
     </CardContent>
   </Card>
 );
@@ -30,77 +30,121 @@ const TruckerDashboard = () => {
     completedTrips: number;
     totalEarnings: number;
     upcomingTrips: any[];
-  }>({ 
-    activeTrips: 0, pendingRequests: 0, completedTrips: 0,
-    totalEarnings: 0, upcomingTrips: []
+  }>({
+    activeTrips: 0,
+    pendingRequests: 0,
+    completedTrips: 0,
+    totalEarnings: 0,
+    upcomingTrips: [],
   });
   const [loading, setLoading] = useState(true);
 
   const loadStats = async () => {
     if (!userProfile?.id) return;
     try {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
+      const supabaseToken = await getToken({ template: "supabase" });
+      if (!supabaseToken) throw new Error("No Supabase token");
       const supabase = createClerkSupabaseClient(supabaseToken);
 
-      const { count: activeTrips } = await supabase.from('trips').select('*', { count: 'exact', head: true }).eq('trucker_id', userProfile.id).eq('status', 'active');
-      const { count: completedTrips } = await supabase.from('trips').select('*', { count: 'exact', head: true }).eq('trucker_id', userProfile.id).eq('status', 'completed');
-      const { data: myTrips } = await supabase.from('trips').select('id').eq('trucker_id', userProfile.id).eq('status', 'active');
-      const tripIds = myTrips?.map(t => t.id) || [];
+      const { count: activeTrips } = await supabase
+        .from("trips")
+        .select("*", { count: "exact", head: true })
+        .eq("trucker_id", userProfile.id)
+        .eq("status", "active");
+
+      const { count: completedTrips } = await supabase        .from("trips")
+        .select("*", { count: "exact", head: true })
+        .eq("trucker_id", userProfile.id)
+        .eq("status", "completed");
+
+      const { data: myTrips } = await supabase
+        .from("trips")
+        .select("id")
+        .eq("trucker_id", userProfile.id)
+        .eq("status", "active");
+
+      const tripIds = myTrips?.map((t) => t.id) || [];
+
       let pendingRequests = 0;
       if (tripIds.length > 0) {
-        const { count } = await supabase.from('requests').select('*', { count: 'exact', head: true }).in('trip_id', tripIds).eq('status', 'pending');
+        const { count } = await supabase
+          .from("requests")
+          .select("*", { count: "exact", head: true })
+          .in("trip_id", tripIds)
+          .eq("status", "pending");
         pendingRequests = count || 0;
       }
-      const { data: completedTripsData } = await supabase.from('trips')
-        .select('price_per_tonne, requests!inner(weight_tonnes)')
-        .eq('trucker_id', userProfile.id).eq('status', 'completed');
+
+      const { data: completedTripsData } = await supabase.from("trips")
+        .select("price_per_tonne, requests!inner(weight_tonnes)")
+        .eq("trucker_id", userProfile.id)
+        .eq("status", "completed");
+
       const totalEarnings = completedTripsData?.reduce((sum, trip) => {
-        const request = trip.requests[0];
+        const request = trip.requests?.[0];
         return sum + (request ? trip.price_per_tonne * request.weight_tonnes : 0);
       }, 0) || 0;
-      const { data: upcomingTrips } = await supabase.from('trips')
-        .select('origin_city, destination_city, departure_date, price_per_tonne, vehicle_type')
-        .eq('trucker_id', userProfile.id).eq('status', 'active')
-        .order('departure_date', { ascending: true }).limit(3);
 
-      setStats({ activeTrips: activeTrips || 0, pendingRequests, completedTrips: completedTrips || 0, totalEarnings, upcomingTrips: upcomingTrips || [] });
+      const { data: upcomingTrips } = await supabase.from("trips")
+        .select("origin_city, destination_city, departure_date, price_per_tonne, vehicle_type")
+        .eq("trucker_id", userProfile.id)
+        .eq("status", "active")
+        .order("departure_date", { ascending: true })
+        .limit(3);
+
+      setStats({
+        activeTrips: activeTrips || 0,
+        pendingRequests,
+        completedTrips: completedTrips || 0,
+        totalEarnings,
+        upcomingTrips: upcomingTrips || [],
+      });
     } catch (err: any) {
-      showError('Failed to load dashboard stats');
+      showError("Failed to load dashboard stats");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { loadStats(); }, [userProfile, getToken]);
+  useEffect(() => {
+    loadStats();
+  }, [userProfile, getToken]);
 
   const handleCompleteTrip = async (tripId: string) => {
     try {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
+      const supabaseToken = await getToken({ template: "supabase" });
+      if (!supabaseToken) throw new Error("No Supabase token");
       const supabase = createClerkSupabaseClient(supabaseToken);
-      const { error } = await supabase.from('trips').update({ status: 'completed' }).eq('id', tripId);
+      const { error } = await supabase.from("trips").update({ status: "completed" }).eq("id", tripId);
       if (error) throw error;
-      showSuccess('Trip marked as completed!');
+      showSuccess("Trip marked as completed!");
       loadStats();
     } catch (err: any) {
-      showError('Failed to complete trip');
+      showError("Failed to complete trip");
     }
   };
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Trucker Dashboard</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          Trucker Dashboard
+        </h1>
         <p className="text-gray-600">
-          Welcome back, {loading ? <Skeleton className="inline-block h-4 w-32 align-middle" /> : userProfile?.full_name}! Manage your trips and find new loads.
+          Welcome back, {loading ? <Skeleton className="inline-block h-4 w-32 align-middle" /> : userProfile?.full_name}!
+          Manage your trips and find new loads.
         </p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         {loading ? (
-          <><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /></>
+          <>
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+          </>
         ) : (
           <>
             <Card>
@@ -110,21 +154,25 @@ const TruckerDashboard = () => {
               </CardHeader>
               <CardContent><div className="text-2xl font-bold">{stats.activeTrips}</div></CardContent>
             </Card>
-            <Card>
+            <Card className={stats.pendingRequests > 0 ? "border-orange-500 ring-1 ring-orange-500" : "border-orange-100"}>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
-                <Clock className="h-4 w-4 text-yellow-600" />
+                <Clock className={stats.pendingRequests > 0 ? "text-orange-600 animate-pulse" : "text-yellow-600"} />
               </CardHeader>
-              <CardContent><div className="text-2xl font-bold">{stats.pendingRequests}</div></CardContent>
+              <CardContent>
+                <div className={`text-2xl font-bold ${stats.pendingRequests > 0 ? "text-orange-600" : ""}`}>
+                  {stats.pendingRequests}
+                </div>
+              </CardContent>
             </Card>
-            <Card>
+            <Card className="border-orange-100">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Completed Trips</CardTitle>
                 <TrendingUp className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent><div className="text-2xl font-bold">{stats.completedTrips}</div></CardContent>
             </Card>
-            <Card>
+            <Card className="border-orange-100">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
                 <DollarSign className="h-4 w-4 text-green-600" />
@@ -192,10 +240,12 @@ const TruckerDashboard = () => {
                   </div>
                   <div className="flex items-center space-x-3">
                     <span className="text-lg font-bold text-green-600">₹{trip.price_per_tonne.toLocaleString()}/t</span>
-                    <Button size="sm" variant="outline" onClick={() => handleCompleteTrip(trip.id)} className="border-green-200 text-green-700 hover:bg-green-50">Complete</Button>
+                    <Button size="sm" variant="outline" onClick={() => handleCompleteTrip(trip.id)} className="border-green-200 text-green-700 hover:bg-green-50">
+                      Complete
+                    </Button>
                   </div>
                 </div>
-              ))}
+              ))} 
             </div>
           </CardContent>
         </Card>
