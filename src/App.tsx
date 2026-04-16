@@ -127,7 +127,6 @@ function App() {
                 <Route path="/chat/:requestId" element={<Chat />} />
                 <Route path="/messages" element={<ChatList />} />
                 <Route path="/profile" element={<Profile />} />
-                <Route path="/browse-trips" element={<BrowseTrips />} />
 
                 {/* Catch‑all */}
                 <Route path="*" element={<NotFound />} />

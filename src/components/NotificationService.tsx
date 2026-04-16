@@ -1,9 +1,10 @@
+"use client";
+
 import React, { useEffect, useState } from 'react';
-import { toast } from "sonner";
+import useWebSocket from 'react-use-websocket';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Bell, X } from "lucide-react";
 
-/** Notification payload shape */
 interface NotificationData {
   id: string;
   title: string;
@@ -14,22 +15,20 @@ interface NotificationData {
 const NotificationService: React.FC = () => {
   const [notifications, setNotifications] = useState<NotificationData[]>([]);
 
-  // NOTE: Replace with your actual WebSocket URL
-  // We are removing the useWebSocket import because the package is not installed.
-  // If you want to use websockets, you need to install the package and then uncomment the import and use it.
-  // For now, we'll leave the component as a placeholder without websocket functionality.
+  // Replace with your actual WebSocket URL if needed
+  const socketUrl = 'wss://echo.websocket.org'; 
 
-  // If you want to keep the websocket functionality, you would do:
-  // import useWebSocket from 'react-use-websocket';
-  // and then use it as before.
+  const { lastJsonMessage } = useWebSocket(socketUrl, {
+    onOpen: () => console.log('Notification WebSocket connected'),
+    shouldReconnect: () => true,
+  });
 
-  // Since we are fixing the error by removing the invalid import, we comment out the websocket part.
-  // Alternatively, we can install the package, but the instruction is to fix the error in a concise way.
-  // We'll remove the websocket usage for now to avoid the error.
-
-  // useEffect(() => {
-  //   // Websocket logic would go here
-  // }, []);
+  useEffect(() => {
+    if (lastJsonMessage) {
+      const newNotif = lastJsonMessage as NotificationData;
+      setNotifications(prev => [newNotif, ...prev].slice(0, 5));
+    }
+  }, [lastJsonMessage]);
 
   const removeNotification = (id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
@@ -38,7 +37,7 @@ const NotificationService: React.FC = () => {
   return (
     <div className="fixed bottom-4 right-4 z-50 w-80 space-y-4">
       {notifications.map((notif) => (
-        <Alert key={notif.id} className="relative bg-white shadow-lg border-orange-100">
+        <Alert key={notif.id} className="relative bg-white shadow-lg border-orange-100 animate-in slide-in-from-right duration-300">
           <Bell className="h-4 w-4 text-orange-600" />
           <AlertTitle className="text-sm font-bold">{notif.title}</AlertTitle>
           <AlertDescription className="text-xs text-gray-600">
