@@ -1,8 +1,35 @@
+import { ClerkProvider } from "@clerk/clerk-react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
-import Layout from "./components/Layout"; // <-- now correctly exports default
+import Layout from "./components/Layout";
+import Index from "./pages/Index";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import AuthSync from "./components/AuthSync";
+import ChooseRole from "./pages/ChooseRole";
 import TruckerDashboard from "./pages/trucker/Dashboard";
+import PostTrip from "./pages/trucker/PostTrip";
+import TruckerHub from "./pages/trucker/TruckerHub";
+import EditTrip from "./pages/trucker/EditTrip";
+import TruckerTripDetail from "./pages/trucker/TruckerTripDetail";
+import BrowseShipments from "./pages/trucker/BrowseShipments";
+import TruckerHistory from "./pages/trucker/TruckerHistory";
 import ShipperDashboard from "./pages/shipper/Dashboard";
-// ... other imports remain unchanged ...
+import PostShipments from "./pages/shipper/PostShipments";
+import MyShipments from "./pages/shipper/MyShipments";
+import ShipmentDetail from "./pages/shipper/ShipmentDetail";
+import EditShipment from "./pages/shipper/EditShipment";
+import ShipperHistory from "./pages/shipper/ShipperHistory";
+import BrowseTrips from "./pages/shipper/BrowseTrips";
+import TripDetail from "./pages/TripDetail";
+import Chat from "./pages/Chat";
+import ChatList from "./pages/ChatList";
+import Profile from "./pages/Profile";
+import NotFound from "./pages/NotFound";
+
+const queryClient = new QueryClient();
 
 function App() {
   return (
