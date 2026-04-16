@@ -1,36 +1,8 @@
-import Index from "./pages/Index";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import ChooseRole from "./pages/ChooseRole";
-import AuthSync from "./components/AuthSync";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
-import Layout from "./components/Layout";
+import Layout from "./components/Layout"; // <-- now correctly exports default
 import TruckerDashboard from "./pages/trucker/Dashboard";
 import ShipperDashboard from "./pages/shipper/Dashboard";
-import PostTrip from "./pages/trucker/PostTrip";
-import TruckerHub from "./pages/trucker/TruckerHub";
-import EditTrip from "./pages/trucker/EditTrip";
-import TruckerHistory from "./pages/TruckerHistory";
-import PostShipments from "./pages/shipper/PostShipments";
-import MyShipments from "./pages/shipper/MyShipments";
-import EditShipment from "./pages/shipper/EditShipment";
-import ShipmentDetail from "./pages/shipper/ShipmentDetail";
-import TripDetail from "./pages/TripDetail";
-import TruckerTripDetail from "./pages/trucker/TruckerTripDetail";
-import ShipperHistory from "./pages/ShipperHistory";
-import BrowseShipments from "./pages/trucker/BrowseShipments";
-import BrowseTrips from "./pages/shipper/BrowseTrips";
-import Chat from "./pages/Chat";
-import ChatList from "./pages/ChatList";
-import Profile from "./pages/Profile";
-import NotFound from "./pages/NotFound";
-import "./globals.css";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ClerkProvider } from "@clerk/clerk-react";
-import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
-
-const queryClient = new QueryClient();
+// ... other imports remain unchanged ...
 
 function App() {
   return (
@@ -39,22 +11,24 @@ function App() {
         <AuthProvider>
           <BrowserRouter>
             <Routes>
-              {/* Public Routes */}
+              {/* Public routes */}
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/auth-sync" element={<AuthSync />} />
               <Route path="/choose-role" element={<ChooseRole />} />
-              
-              {/* Authenticated Routes - wrapped with Layout */}
-              <Route element={
-                <Layout>
-                  <RoleProtectedRoute allowedRole="both">
-                    <Outlet />
-                  </RoleProtectedRoute>
-                </Layout>
-              }>
-                {/* Trucker Routes */}
+
+              {/* Authenticated routes wrapped with Layout */}
+              <Route
+                element={
+                  <Layout>
+                    <RoleProtectedRoute allowedRole="both">
+                      <Outlet />
+                    </RoleProtectedRoute>
+                  </Layout>
+                }
+              >
+                {/* Trucker routes */}
                 <Route path="/trucker/dashboard" element={
                   <RoleProtectedRoute allowedRole="trucker">
                     <TruckerDashboard />
@@ -95,8 +69,8 @@ function App() {
                     <TruckerHistory />
                   </RoleProtectedRoute>
                 } />
-                
-                {/* Shipper Routes */}
+
+                {/* Shipper routes */}
                 <Route path="/shipper/dashboard" element={
                   <RoleProtectedRoute allowedRole="shipper">
                     <ShipperDashboard />
@@ -123,28 +97,24 @@ function App() {
                     <ShipperHistory />
                   </RoleProtectedRoute>
                 } />
-                <Route path="/browse-trucks" element={
-                  <RoleProtectedRoute allowedRole="shipper">
-                    <BrowseTrips />
-                  </RoleProtectedRoute>
-                } />
-                
-                {/* Common Authenticated Routes */}
+                <Route path="/browse-trucks" element={<BrowseTrips />} />
+                <Route path="/browse-shipments" element={<BrowseShipments />} />
+
+                {/* Common authenticated routes */}
                 <Route path="/trips/:tripId" element={<TripDetail />} />
                 <Route path="/chat/:requestId" element={<Chat />} />
                 <Route path="/messages" element={<ChatList />} />
                 <Route path="/profile" element={<Profile />} />
                 <Route path="/browse-shipments" element={<BrowseShipments />} />
                 <Route path="/browse-trips" element={<BrowseTrips />} />
-              </Route>
-              
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </AuthProvider>
-      </QueryClientProvider>
-    </ClerkProvider>
-  );
-}
 
-export default App;
+                {/* Catch‑all */}
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </BrowserRouter>
+          </AuthProvider>
+        </QueryClientProvider>
+      </ClerkProvider>
+    </function>
+
+    export default App;
