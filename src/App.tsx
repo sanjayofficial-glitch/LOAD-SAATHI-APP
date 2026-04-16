@@ -4,7 +4,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { Toaster } from "sonner";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import Skeleton from "./components/ui/Skeleton";
+import { Skeleton } from "./components/ui/skeleton";
 import Layout from "./components/Layout";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
 import { lazy, Suspense } from "react";
