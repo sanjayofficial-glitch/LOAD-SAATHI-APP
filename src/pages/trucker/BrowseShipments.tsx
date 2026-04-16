@@ -63,7 +63,7 @@ const BrowseShipments = () => {
       const supabaseClient = createClerkSupabaseClient(token);
       const { data, error } = await supabaseClient
         .from('shipments')
-        .select('*, shipper:users(*)')
+        .select('*')
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
       if (!error && data) setShipments(data);
