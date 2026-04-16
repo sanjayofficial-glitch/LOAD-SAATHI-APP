@@ -13,11 +13,11 @@ import { showError, showSuccess } from '@/utils/toast';
 const StatCardSkeleton = () => (
   <Card>
     <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <Skeleton className="h-4 w-28" />
-      <Skeleton className="h-4 w-4 rounded-full" />
+      <Loader2 className="h-4 w-28 animate-spin" />
+      <Loader2 className="h-4 w-4 rounded-full animate-spin" />
     </CardHeader>
     <CardContent>
-      <Skeleton className="h-8 w-16 mt-1" />
+      <Loader2 className="h-8 w-16 mt-1 animate-spin" />
     </CardContent>
   </Card>
 );
@@ -31,9 +31,12 @@ const TruckerDashboard = () => {
     completedTrips: number;
     totalEarnings: number;
     upcomingTrips: any[];
-  }>({ 
-    activeTrips: 0, pendingRequests: 0, completedTrips: 0,
-    totalEarnings: 0, upcomingTrips: []
+  }>({
+    activeTrips: 0,
+    pendingRequests: 0,
+    completedTrips: 0,
+    totalEarnings: 0,
+    upcomingTrips: [],
   });
   const [loading, setLoading] = useState(true);
   const [completingId, setCompletingId] = useState<string | null>(null);
@@ -41,8 +44,8 @@ const TruckerDashboard = () => {
   const loadStats = async () => {
     if (!userProfile?.id) return;
     try {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
+      const supabaseToken = await getToken({ template: "supabase" });
+      if (!supabaseToken) throw new Error("No Supabase token");
       const supabase = createClerkSupabaseClient(supabaseToken);
 
       const { count: activeTrips } = await supabase
@@ -81,7 +84,7 @@ const TruckerDashboard = () => {
         .eq('status', 'completed');
 
       const totalEarnings = completedTripsData?.reduce((sum, trip) => {
-        const request = trip.requests[0];
+        const request = trip.requests?.[0];
         return sum + (request ? trip.price_per_tonne * request.weight_tonnes : 0);
       }, 0) || 0;
 
@@ -101,19 +104,21 @@ const TruckerDashboard = () => {
         upcomingTrips: upcomingTrips || [] 
       });
     } catch (err: any) {
-      showError('Failed to load dashboard stats');
+      showError("Failed to load dashboard stats");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { loadStats(); }, [userProfile, getToken]);
+  useEffect(() => {
+    loadStats();
+  }, [userProfile, getToken]);
 
   const handleCompleteTrip = async (tripId: string) => {
     setCompletingId(tripId);
     try {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
+      const supabaseToken = await getToken({ template: "supabase" });
+      if (!supabaseToken) throw new Error("No Supabase token");
       const supabase = createClerkSupabaseClient(supabaseToken);
 
       const { error: tripError } = await supabase
@@ -151,7 +156,9 @@ const TruckerDashboard = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Trucker Dashboard</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          Trucker Dashboard
+        </h1>
         <p className="text-gray-600">
           Welcome back, {userProfile?.full_name}! Manage your trips and find new loads.
         </p>
@@ -174,7 +181,12 @@ const TruckerDashboard = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         {loading ? (
-          <><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /></>
+          <>
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+            <StatCardSkeleton />
+          </>
         ) : (
           <>
             <Card className="border-orange-100">
@@ -279,7 +291,7 @@ const TruckerDashboard = () => {
                     </Button>
                   </div>
                 </div>
-              ))}
+              ))} 
             </div>
           </CardContent>
         </Card>

@@ -63,7 +63,7 @@ const BrowseShipments = () => {
       const supabaseClient = createClerkSupabaseClient(token);
       const { data, error } = await supabaseClient
         .from('shipments')
-        .select('*')
+        .select('*, shipper:users(*)')
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
       if (!error && data) setShipments(data);
@@ -125,9 +125,9 @@ const BrowseShipments = () => {
       const supabaseToken = await getToken({ template: 'supabase' });
       if (!supabaseToken) throw new Error('No Supabase token');
       
-      const supabase = createClerkSupabaseClient(supabaseToken);
+      const supabaseClient = createClerkSupabaseClient(supabaseToken);
       
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from('shipment_requests')
         .insert({
           shipment_id: selectedShipment.id,
@@ -155,7 +155,7 @@ const BrowseShipments = () => {
       setIsOfferDialogOpen(false);
       setProposedPrice('');
       setMessage('');
-      navigate('/trucker/my-requests?tab=sent');
+      navigate('/trucker/my-trips?tab=sent');
     } catch (err: any) {
       showError(err.message || 'Failed to send offer');
     } finally {
