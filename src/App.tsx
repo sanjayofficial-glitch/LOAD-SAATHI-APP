@@ -3,32 +3,37 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { Toaster } from "sonner";
-import RoleProtectedRoute from "./components/RoleProtectedRoute";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import Skeleton from "./components/ui/Skeleton";
 import Layout from "./components/Layout";
-import Index from "./pages/Index";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import AuthSync from "./components/AuthSync";
-import ChooseRole from "./pages/ChooseRole";
-import TruckerDashboard from "./pages/trucker/Dashboard";
-import PostTrip from "./pages/trucker/PostTrip";
-import TruckerHub from "./pages/trucker/TruckerHub";
-import EditTrip from "./pages/trucker/EditTrip";
-import TruckerTripDetail from "./pages/trucker/TruckerTripDetail";
-import BrowseShipments from "./pages/trucker/BrowseShipments";
-import TruckerHistory from "./pages/trucker/TruckerHistory";
-import ShipperDashboard from "./pages/shipper/Dashboard";
-import PostShipments from "./pages/shipper/PostShipments";
-import MyShipments from "./pages/shipper/MyShipments";
-import ShipmentDetail from "./pages/shipper/ShipmentDetail";
-import EditShipment from "./pages/shipper/EditShipment";
-import ShipperHistory from "./pages/shipper/ShipperHistory";
-import BrowseTrips from "./pages/shipper/BrowseTrips";
-import TripDetail from "./pages/TripDetail";
-import Chat from "./pages/Chat";
-import ChatList from "./pages/ChatList";
-import Profile from "./pages/Profile";
-import NotFound from "./pages/NotFound";
+import RoleProtectedRoute from "./components/RoleProtectedRoute";
+import { lazy, Suspense } from "react";
+
+// Lazy load page components
+const Index = lazy(() => import("./pages/Index"));
+const Login = lazy(() => import("./pages/Login"));
+const Register = lazy(() => import("./pages/Register"));
+const AuthSync = lazy(() => import("./components/AuthSync"));
+const ChooseRole = lazy(() => import("./pages/ChooseRole"));
+const TruckerDashboard = lazy(() => import("./pages/trucker/Dashboard"));
+const PostTrip = lazy(() => import("./pages/trucker/PostTrip"));
+const TruckerHub = lazy(() => import("./pages/trucker/TruckerHub"));
+const EditTrip = lazy(() => import("./pages/trucker/EditTrip"));
+const TruckerTripDetail = lazy(() => import("./pages/trucker/TruckerTripDetail"));
+const BrowseShipments = lazy(() => import("./pages/trucker/BrowseShipments"));
+const TruckerHistory = lazy(() => import("./pages/trucker/TruckerHistory"));
+const ShipperDashboard = lazy(() => import("./pages/shipper/Dashboard"));
+const PostShipments = lazy(() => import("./pages/shipper/PostShipments"));
+const MyShipments = lazy(() => import("./pages/shipper/MyShipments"));
+const ShipmentDetail = lazy(() => import("./pages/shipper/ShipmentDetail"));
+const EditShipment = lazy(() => import("./pages/shipper/EditShipment"));
+const ShipperHistory = lazy(() => import("./pages/shipper/ShipperHistory"));
+const BrowseTrips = lazy(() => import("./pages/shipper/BrowseTrips"));
+const TripDetail = lazy(() => import("./pages/TripDetail"));
+const Chat = lazy(() => import("./pages/Chat"));
+const ChatList = lazy(() => import("./pages/ChatList"));
+const Profile = lazy(() => import("./pages/Profile"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
@@ -38,101 +43,105 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <BrowserRouter>
-            <Routes>
-              {/* Public routes */}
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/auth-sync" element={<AuthSync />} />
-              <Route path="/choose-role" element={<ChooseRole />} />
+            <ErrorBoundary>
+              <Suspense fallback={<Skeleton className="h-screen w-full" />}>
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/register" element={<Register />} />
+                  <Route path="/auth-sync" element={<AuthSync />} />
+                  <Route path="/choose-role" element={<ChooseRole />} />
 
-              {/* Authenticated routes wrapped with Layout */}
-              <Route
-                element={
-                  <Layout>
-                    <RoleProtectedRoute allowedRole="both">
-                      <Outlet />
-                    </RoleProtectedRoute>
-                  </Layout>
-                }
-              >
-                {/* Trucker routes */}
-                <Route path="/trucker/dashboard" element={
-                  <RoleProtectedRoute allowedRole="trucker">
-                    <TruckerDashboard />
-                  </RoleProtectedRoute>
-                } />
-                <Route path="/trucker/post-trip" element={
-                  <RoleProtectedRoute allowedRole="trucker">
-                    <PostTrip />
-                  </RoleProtectedRoute>
-                } />
-                <Route path="/trucker/my-trips" element={
-                  <RoleProtectedRoute allowedRole="trucker">
-                    <TruckerHub />
-                  </RoleProtectedRoute>
-                } />
-                <Route path="/trucker/trips/:tripId/edit" element={
-                  <RoleProtectedRoute allowedRole="trucker">
-                    <EditTrip />
-                  </RoleProtectedRoute>
-                } />
-                <Route path="/trucker/trips/:tripId" element={
-                  <RoleProtectedRoute allowedRole="trucker">
-                    <TruckerTripDetail />
-                  </RoleProtectedRoute>
-                } />
-                <Route path="/trucker/browse-shipments" element={
-                  <RoleProtectedRoute allowedRole="trucker">
-                    <BrowseShipments />
-                  </RoleProtectedRoute>
-                } />
-                <Route path="/trucker/history" element={
-                  <RoleProtectedRoute allowedRole="trucker">
-                    <TruckerHistory />
-                  </RoleProtectedRoute>
-                } />
+                  {/* Authenticated routes wrapped with Layout */}
+                  <Route
+                    element={
+                      <Layout>
+                        <RoleProtectedRoute allowedRole="both">
+                          <Outlet />
+                        </RoleProtectedRoute>
+                      </Layout>
+                    }
+                  >
+                    {/* Trucker routes */}
+                    <Route path="/trucker/dashboard" element={
+                      <RoleProtectedRoute allowedRole="trucker">
+                        <TruckerDashboard />
+                      </RoleProtectedRoute>
+                    } />
+                    <Route path="/trucker/post-trip" element={
+                      <RoleProtectedRoute allowedRole="trucker">
+                        <PostTrip />
+                      </RoleProtectedRoute>
+                    } />
+                    <Route path="/trucker/my-trips" element={
+                      <RoleProtectedRoute allowedRole="trucker">
+                        <TruckerHub />
+                      </RoleProtectedRoute>
+                    } />
+                    <Route path="/trucker/trips/:tripId/edit" element={
+                      <RoleProtectedRoute allowedRole="trucker">
+                        <EditTrip />
+                      </RoleProtectedRoute>
+                    } />
+                    <Route path="/trucker/trips/:tripId" element={
+                      <RoleProtectedRoute allowedRole="trucker">
+                        <TruckerTripDetail />
+                      </RoleProtectedRoute>
+                    } />
+                    <Route path="/trucker/browse-shipments" element={
+                      <RoleProtectedRoute allowedRole="trucker">
+                        <BrowseShipments />
+                      </RoleProtectedRoute>
+                    } />
+                    <Route path="/trucker/history" element={
+                      <RoleProtectedRoute allowedRole="trucker">
+                        <TruckerHistory />
+                      </RoleProtectedRoute>
+                    } />
 
-                {/* Shipper routes */}
-                <Route path="/shipper/dashboard" element={
-                  <RoleProtectedRoute allowedRole="shipper">
-                    <ShipperDashboard />
-                  </RoleProtectedRoute>
-                } />
-                <Route path="/shipper/post-shipment" element={
-                  <RoleProtectedRoute allowedRole="shipper">
-                    <PostShipments />
-                  </RoleProtectedRoute>
-                } />
-                <Route path="/shipper/my-shipments" element={
-                  <RoleProtectedRoute allowedRole="shipper">
-                    <MyShipments />
-                  </RoleProtectedRoute>
-                } />
-                <Route path="/shipper/shipments/:id" element={<ShipmentDetail />} />
-                <Route path="/shipper/shipments/:shipmentId/edit" element={
-                  <RoleProtectedRoute allowedRole="shipper">
-                    <EditShipment />
-                  </RoleProtectedRoute>
-                } />
-                <Route path="/shipper/history" element={
-                  <RoleProtectedRoute allowedRole="shipper">
-                    <ShipperHistory />
-                  </RoleProtectedRoute>
-                } />
-                <Route path="/browse-trucks" element={<BrowseTrips />} />
+                    {/* Shipper routes */}
+                    <Route path="/shipper/dashboard" element={
+                      <RoleProtectedRoute allowedRole="shipper">
+                        <ShipperDashboard />
+                      </RoleProtectedRoute>
+                    } />
+                    <Route path="/shipper/post-shipment" element={
+                      <RoleProtectedRoute allowedRole="shipper">
+                        <PostShipments />
+                      </RoleProtectedRoute>
+                    } />
+                    <Route path="/shipper/my-shipments" element={
+                      <RoleProtectedRoute allowedRole="shipper">
+                        <MyShipments />
+                      </RoleProtectedRoute>
+                    } />
+                    <Route path="/shipper/shipments/:id" element={<ShipmentDetail />} />
+                    <Route path="/shipper/shipments/:shipmentId/edit" element={
+                      <RoleProtectedRoute allowedRole="shipper">
+                        <EditShipment />
+                      </RoleProtectedRoute>
+                    } />
+                    <Route path="/shipper/history" element={
+                      <RoleProtectedRoute allowedRole="shipper">
+                        <ShipperHistory />
+                      </RoleProtectedRoute>
+                    } />
+                    <Route path="/browse-trucks" element={<BrowseTrips />} />
 
-                {/* Common authenticated routes */}
-                <Route path="/trips/:tripId" element={<TripDetail />} />
-                <Route path="/chat/:requestId" element={<Chat />} />
-                <Route path="/messages" element={<ChatList />} />
-                <Route path="/profile" element={<Profile />} />
+                    {/* Common authenticated routes */}
+                    <Route path="/trips/:tripId" element={<TripDetail />} />
+                    <Route path="/chat/:requestId" element={<Chat />} />
+                    <Route path="/messages" element={<ChatList />} />
+                    <Route path="/profile" element={<Profile />} />
 
-                {/* Catch‑all */}
-                <Route path="*" element={<NotFound />} />
-              </Route>
-            </Routes>
-            <Toaster position="top-center" richColors />
+                    {/* Catch‑all */}
+                    <Route path="*" element={<NotFound />} />
+                  </Route>
+                </Routes>
+                <Toaster position="top-center" richColors />
+              </Suspense>
+            </ErrorBoundary>
           </BrowserRouter>
         </AuthProvider>
       </QueryClientProvider>
