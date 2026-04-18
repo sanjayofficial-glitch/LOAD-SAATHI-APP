@@ -67,11 +67,15 @@ export const sendMessage = async (payload: {
 };
 
 /**
- * Fetch all messages for a specific request.
+ * Fetch all messages for a specific request using an authenticated client.
  */
-export const fetchMessages = async (requestId: string): Promise<Message[]> => {
+export const fetchMessages = async (requestId: string, getToken: () => Promise<string | null>): Promise<Message[]> => {
   try {
-    const { data, error } = await supabase
+    const token = await getToken();
+    if (!token) throw new Error('No token');
+    const supabaseClient = createClerkSupabaseClient(token);
+
+    const { data, error } = await supabaseClient
       .from('messages')
       .select('*')
       .eq('request_id', requestId)
@@ -89,11 +93,15 @@ export const fetchMessages = async (requestId: string): Promise<Message[]> => {
 };
 
 /**
- * Mark messages as read for a specific user in a chat.
+ * Mark messages as read for a specific user in a chat using an authenticated client.
  */
-export const markMessagesAsRead = async (requestId: string, userId: string): Promise<void> => {
+export const markMessagesAsRead = async (requestId: string, userId: string, getToken: () => Promise<string | null>): Promise<void> => {
   try {
-    await supabase
+    const token = await getToken();
+    if (!token) return;
+    const supabaseClient = createClerkSupabaseClient(token);
+
+    await supabaseClient
       .from('messages')
       .update({ is_read: true })
       .eq('request_id', requestId)

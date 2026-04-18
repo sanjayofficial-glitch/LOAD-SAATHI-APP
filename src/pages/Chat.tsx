@@ -52,18 +52,30 @@ const Chat = () => {
           .eq('id', requestId)
           .single();
 
-        if (reqError || !request) throw new Error('Request not found');
+        // If not found in requests, check shipment_requests
+        let otherUser;
+        if (reqError || !request) {
+          const { data: sRequest, error: sReqError } = await supabaseClient
+            .from('shipment_requests')
+            .select('*, shipment:shipments(*, shipper:users(*)), trucker:users(*)')
+            .eq('id', requestId)
+            .single();
+          
+          if (sReqError || !sRequest) throw new Error('Chat session not found');
+          
+          otherUser = userProfile.user_type === 'trucker' ? sRequest.shipment.shipper : sRequest.trucker;
+        } else {
+          otherUser = userProfile.user_type === 'trucker' ? request.shipper : request.trip.trucker;
+        }
 
-        const isTrucker = userProfile.user_type === 'trucker';
-        const otherUser = isTrucker ? request.shipper : request.trip.trucker;
         setRecipient(otherUser);
 
         // 2. Fetch existing messages
-        const initialMessages = await fetchMessages(requestId);
+        const initialMessages = await fetchMessages(requestId, () => getToken({ template: 'supabase' }));
         setMessages(initialMessages);
         
         // 3. Mark messages as read
-        markMessagesAsRead(requestId, userProfile.id);
+        markMessagesAsRead(requestId, userProfile.id, () => getToken({ template: 'supabase' }));
 
         // 4. Subscribe to real-time updates
         channel = subscribeToMessages(requestId, (msg) => {
@@ -73,7 +85,7 @@ const Chat = () => {
           });
           
           if (msg.recipient_id === userProfile.id) {
-            markMessagesAsRead(requestId, userProfile.id);
+            markMessagesAsRead(requestId, userProfile.id, () => getToken({ template: 'supabase' }));
           }
         });
 

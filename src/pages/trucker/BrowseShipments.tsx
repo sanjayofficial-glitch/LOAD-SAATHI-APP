@@ -23,8 +23,7 @@ import {
   X,
   Eye,
   Sparkles,
-  ChevronDown,
-  ChevronUp
+  AlertCircle
 } from 'lucide-react';
 import { 
   Select,
@@ -35,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { showSuccess, showError } from '@/utils/toast';
 import { supabase } from '@/lib/supabaseClient';
+import { parseNaturalLanguageSearch } from '@/lib/gemini';
 import {
   Dialog,
   DialogContent,
@@ -44,6 +44,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { notifyShipperOfTruckerOffer } from '@/utils/notifications';
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const INDIAN_STATES = [
   "Any", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
@@ -58,7 +59,9 @@ const BrowseShipments = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [aiSearchQuery, setAiSearchQuery] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
+  const [apiKeyMissing, setApiKeyMissing] = useState(false);
   
   const [filters, setFilters] = useState({
     originState: 'Any',
@@ -126,6 +129,41 @@ const BrowseShipments = () => {
     });
   }, [shipments, searchTerm, filters]);
 
+  const handleAiSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!aiSearchQuery.trim()) return;
+
+    setAiLoading(true);
+    setApiKeyMissing(false);
+    
+    try {
+      const parsedFilters = await parseNaturalLanguageSearch(aiSearchQuery);
+      
+      if (Object.keys(parsedFilters).length > 0) {
+        setFilters({
+          originState: 'Any', // AI returns city names, we keep state as Any for broad match
+          destinationState: 'Any',
+          minWeight: parsedFilters.weight?.toString() || '',
+          maxPrice: '',
+          departureDate: parsedFilters.date || ''
+        });
+        setSearchTerm(parsedFilters.origin || parsedFilters.destination || '');
+        showSuccess('AI parsed your search filters!');
+      } else {
+        showError('AI could not understand the search. Try being more specific.');
+      }
+    } catch (err: any) {
+      if (err.message === 'GEMINI_API_KEY_MISSING') {
+        setApiKeyMissing(true);
+        showError('AI Search requires a Gemini API Key.');
+      } else {
+        showError('AI search failed. Please try manual filters.');
+      }
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const openOfferDialog = (shipment: any) => {
     setSelectedShipment(shipment);
     setProposedPrice(shipment.budget_per_tonne.toString());
@@ -175,18 +213,12 @@ const BrowseShipments = () => {
       setIsOfferDialogOpen(false);
       setProposedPrice('');
       setMessage('');
-      navigate('/trucker/my-trips?tab=sent');
+      navigate('/trucker/dashboard?tab=sent');
     } catch (err: any) {
       showError(err.message || 'Failed to send offer');
     } finally {
       setSendingOffer(false);
     }
-  };
-
-  const handleAiSearch = () => {
-    if (!aiSearchQuery.trim()) return;
-    showSuccess('AI is analyzing your request...');
-    // In a real app, this would call an LLM to parse the query and update filters
   };
 
   return (
@@ -204,22 +236,34 @@ const BrowseShipments = () => {
             <CardContent className="p-5 space-y-4">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-700">AI Search</Label>
-                <div className="relative">
-                  <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
-                  <Input 
-                    placeholder="e.g. '10 tonnes from Mumbai to Delhi next week'" 
-                    className="pl-10 border-blue-100 focus:ring-blue-500"
-                    value={aiSearchQuery}
-                    onChange={(e) => setAiSearchQuery(e.target.value)}
-                  />
-                </div>
+                <form onSubmit={handleAiSearch} className="space-y-3">
+                  <div className="relative">
+                    <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
+                    <Input 
+                      placeholder="e.g. '10 tonnes from Mumbai to Delhi next week'" 
+                      className="pl-10 border-blue-100 focus:ring-blue-500"
+                      value={aiSearchQuery}
+                      onChange={(e) => setAiSearchQuery(e.target.value)}
+                    />
+                  </div>
+                  <Button 
+                    type="submit"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                    disabled={aiLoading}
+                  >
+                    {aiLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                    AI Search
+                  </Button>
+                </form>
+                {apiKeyMissing && (
+                  <Alert variant="destructive" className="mt-4 bg-red-50 border-red-100">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-xs">
+                      AI Search is disabled. Please add <strong>VITE_GEMINI_API_KEY</strong> to your environment variables.
+                    </AlertDescription>
+                  </Alert>
+                )}
               </div>
-              <Button 
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold"
-                onClick={handleAiSearch}
-              >
-                <Sparkles className="h-4 w-4 mr-2" /> AI Search
-              </Button>
             </CardContent>
           </Card>
 
@@ -307,13 +351,16 @@ const BrowseShipments = () => {
                 <Button 
                   variant="outline" 
                   className="w-full border-gray-200 text-gray-600"
-                  onClick={() => setFilters({
-                    originState: 'Any',
-                    destinationState: 'Any',
-                    minWeight: '',
-                    maxPrice: '',
-                    departureDate: ''
-                  })}
+                  onClick={() => {
+                    setFilters({
+                      originState: 'Any',
+                      destinationState: 'Any',
+                      minWeight: '',
+                      maxPrice: '',
+                      departureDate: ''
+                    });
+                    setSearchTerm('');
+                  }}
                 >
                   <X className="h-4 w-4 mr-2" /> Clear All
                 </Button>
