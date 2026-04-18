@@ -7,8 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  Truck, 
+import {   Truck, 
   MapPin, 
   Calendar,   IndianRupee, 
   ArrowLeft, 
@@ -22,13 +21,30 @@ import {
   XCircle,
   MessageSquare,
   Phone,
-  Users} from 'lucide-react';
+  Users,
+  Send,
+  Inbox,
+  ArrowRight,
+  Package,
+  Edit,
+  Trash2
+} from 'lucide-react';
+import { 
+  AlertDialog, 
+  AlertDialogTrigger, 
+  AlertDialogContent, 
+  AlertDialogHeader, 
+  AlertDialogTitle, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogAction 
+} from '@/components/ui/alert-dialog';
 import { showError, showSuccess } from '@/utils/toast';
 import { notifyShipperOfRequestAccepted, notifyShipperOfRequestDeclined } from '@/utils/notifications';
 
 const StatusBadge = ({ status }: { status: string }) => {
   const cfg: Record<string, string> = {
-    pending: 'bg-orange-100 text-orange-800 border-orange-200',
+    pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
     accepted: 'bg-green-100 text-green-700 border-green-200',
     active: 'bg-blue-100 text-blue-700 border-blue-200',
     declined: 'bg-red-100 text-red-700 border-red-200',
@@ -253,7 +269,7 @@ const TruckerDashboard = () => {
                                 <Edit className="h-4 w-4 mr-2" /> Edit
                               </Button>
                             </Link>
-                            <AlertDialog>
+                            <AlertDialog asChild>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50">
                                   <Trash2 className="h-4 w-4 mr-2" /> Delete
@@ -271,7 +287,9 @@ const TruckerDashboard = () => {
                                   <AlertDialogAction
                                     onClick={() => handleDeleteTrip(trip.id)}
                                     className="bg-red-600 hover:bg-red-700"
-                                  >Delete</AlertDialogAction>
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
@@ -352,7 +370,8 @@ const TruckerDashboard = () => {
                           </>
                         ) : offer.status === 'accepted' && (
                           <div className="flex items-center gap-2 text-green-600 font-medium">
-                            <CheckCircle className="h-5 w-5" /> Accepted                          </div>
+                            <CheckCircle className="h-5 w-5" /> Accepted
+                          </div>
                         )}
                       </div>
                     </div>
@@ -404,7 +423,8 @@ const TruckerDashboard = () => {
                       <div className="flex flex-col gap-2 min-w-[160px] justify-center">
                         {request.status === 'pending' ? (
                           <>
-                            <Button                              className="bg-green-600 hover:bg-green-700"
+                            <Button
+                              className="bg-green-600 hover:bg-green-700"
                               onClick={() => handleBookingAction(request, 'accepted')}
                               disabled={!!actionLoading}
                             >
