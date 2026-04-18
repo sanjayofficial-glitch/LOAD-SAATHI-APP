@@ -27,7 +27,8 @@ import {   Truck,
   ArrowRight,
   Package,
   Edit,
-  Trash2
+  Trash2,
+  Check
 } from 'lucide-react';
 import { 
   AlertDialog, 
@@ -37,7 +38,8 @@ import {
   AlertDialogTitle, 
   AlertDialogDescription, 
   AlertDialogFooter, 
-  AlertDialogAction 
+  AlertDialogAction,
+  AlertDialogCancel
 } from '@/components/ui/alert-dialog';
 import { showError, showSuccess } from '@/utils/toast';
 import { notifyShipperOfRequestAccepted, notifyShipperOfRequestDeclined } from '@/utils/notifications';
@@ -269,7 +271,7 @@ const TruckerDashboard = () => {
                                 <Edit className="h-4 w-4 mr-2" /> Edit
                               </Button>
                             </Link>
-                            <AlertDialog asChild>
+                            <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50">
                                   <Trash2 className="h-4 w-4 mr-2" /> Delete
