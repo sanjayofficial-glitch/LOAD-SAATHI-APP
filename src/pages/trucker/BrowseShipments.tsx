@@ -22,7 +22,17 @@ import {
   Filter,
   X,
   Eye,
+  Sparkles,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { showSuccess, showError } from '@/utils/toast';
 import { supabase } from '@/lib/supabaseClient';
 import {
@@ -35,6 +45,10 @@ import {
 } from "@/components/ui/dialog";
 import { notifyShipperOfTruckerOffer } from '@/utils/notifications';
 
+const INDIAN_STATES = [
+  "Any", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
+];
+
 const BrowseShipments = () => {
   const { userProfile } = useAuth();
   const { getToken } = useClerkAuth();
@@ -43,10 +57,15 @@ const BrowseShipments = () => {
   const [shipments, setShipments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [aiSearchQuery, setAiSearchQuery] = useState('');
+  const [showFilters, setShowFilters] = useState(true);
+  
   const [filters, setFilters] = useState({
-    origin: '',
-    destination: '',
-    minWeight: ''
+    originState: 'Any',
+    destinationState: 'Any',
+    minWeight: '',
+    maxPrice: '',
+    departureDate: ''
   });
 
   // Offer Dialog State
@@ -77,7 +96,6 @@ const BrowseShipments = () => {
   useEffect(() => {
     fetchShipments();
 
-    // Real-time: refresh when any shipment row changes
     const channel = supabase
       .channel('browse-shipments-realtime')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'shipments', filter: "status=eq.pending" },
@@ -97,11 +115,14 @@ const BrowseShipments = () => {
       const matchesSearch = s.origin_city.toLowerCase().includes(search) || 
                            s.destination_city.toLowerCase().includes(search) ||
                            s.goods_description.toLowerCase().includes(search);
-      const matchesOrigin = !filters.origin || s.origin_city.toLowerCase().includes(filters.origin.toLowerCase());
-      const matchesDest = !filters.destination || s.destination_city.toLowerCase().includes(filters.destination.toLowerCase());
-      const matchesWeight = !filters.minWeight || s.weight_tonnes >= parseFloat(filters.minWeight);
       
-      return matchesSearch && matchesOrigin && matchesDest && matchesWeight;
+      const matchesOrigin = filters.originState === 'Any' || (s.origin_state && s.origin_state === filters.originState);
+      const matchesDest = filters.destinationState === 'Any' || (s.destination_state && s.destination_state === filters.destinationState);
+      const matchesWeight = !filters.minWeight || s.weight_tonnes >= parseFloat(filters.minWeight);
+      const matchesPrice = !filters.maxPrice || s.budget_per_tonne <= parseFloat(filters.maxPrice);
+      const matchesDate = !filters.departureDate || new Date(s.departure_date) >= new Date(filters.departureDate);
+      
+      return matchesSearch && matchesOrigin && matchesDest && matchesWeight && matchesPrice && matchesDate;
     });
   }, [shipments, searchTerm, filters]);
 
@@ -140,7 +161,6 @@ const BrowseShipments = () => {
 
       if (error) throw error;
 
-      // Notify the shipper with full details
       await notifyShipperOfTruckerOffer({
         shipperId: selectedShipment.shipper_id,
         truckerName: userProfile.full_name || 'A trucker',
@@ -163,60 +183,142 @@ const BrowseShipments = () => {
     }
   };
 
+  const handleAiSearch = () => {
+    if (!aiSearchQuery.trim()) return;
+    showSuccess('AI is analyzing your request...');
+    // In a real app, this would call an LLM to parse the query and update filters
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Find Goods to Carry</h1>
-        <p className="text-gray-600">Browse available shipments posted by shippers and send your best offer</p>
+        <h1 className="text-4xl font-bold text-gray-900">Find Goods to Carry</h1>
+        <p className="text-gray-600 mt-2">Browse available shipments posted by shippers and send your best offer</p>
       </div>
 
       <div className="grid lg:grid-cols-4 gap-8">
         {/* Filters Sidebar */}
         <div className="lg:col-span-1 space-y-6">
-          <Card className="border-orange-100 shadow-sm">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center">
-                <Filter className="h-4 w-4 mr-2 text-orange-600" />
-                Filters
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          {/* AI Search Card */}
+          <Card className="border-blue-100 shadow-sm overflow-hidden">
+            <CardContent className="p-5 space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="origin">Origin City</Label>
-                <Input 
-                  id="origin" 
-                  placeholder="e.g. Mumbai" 
-                  value={filters.origin}
-                  onChange={(e) => setFilters({...filters, origin: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="destination">Destination City</Label>
-                <Input 
-                  id="destination" 
-                  placeholder="e.g. Delhi" 
-                  value={filters.destination}
-                  onChange={(e) => setFilters({...filters, destination: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="weight">Min Weight (Tonnes)</Label>
-                <Input 
-                  id="weight" 
-                  type="number" 
-                  placeholder="e.g. 5" 
-                  value={filters.minWeight}
-                  onChange={(e) => setFilters({...filters, minWeight: e.target.value})}
-                />
+                <Label className="text-sm font-semibold text-gray-700">AI Search</Label>
+                <div className="relative">
+                  <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
+                  <Input 
+                    placeholder="e.g. '10 tonnes from Mumbai to Delhi next week'" 
+                    className="pl-10 border-blue-100 focus:ring-blue-500"
+                    value={aiSearchQuery}
+                    onChange={(e) => setAiSearchQuery(e.target.value)}
+                  />
+                </div>
               </div>
               <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={() => setFilters({ origin: '', destination: '', minWeight: '' })}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                onClick={handleAiSearch}
               >
-                <X className="h-4 w-4 mr-2" /> Clear Filters
+                <Sparkles className="h-4 w-4 mr-2" /> AI Search
               </Button>
             </CardContent>
+          </Card>
+
+          {/* Manual Filters Card */}
+          <Card className="border-gray-100 shadow-sm">
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <CardTitle className="text-sm font-bold text-gray-700">Manual Filters</CardTitle>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-blue-600 hover:text-blue-700 p-0 h-auto font-medium"
+                onClick={() => setShowFilters(!showFilters)}
+              >
+                {showFilters ? 'Hide' : 'Show'}
+              </Button>
+            </CardHeader>
+            {showFilters && (
+              <CardContent className="space-y-5">
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-gray-500 uppercase">Origin State</Label>
+                  <Select 
+                    value={filters.originState} 
+                    onValueChange={(val) => setFilters({...filters, originState: val})}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select State" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INDIAN_STATES.map(state => (
+                        <SelectItem key={state} value={state}>{state}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-gray-500 uppercase">Destination State</Label>
+                  <Select 
+                    value={filters.destinationState} 
+                    onValueChange={(val) => setFilters({...filters, destinationState: val})}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select State" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INDIAN_STATES.map(state => (
+                        <SelectItem key={state} value={state}>{state}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-gray-500 uppercase">Min Capacity (Tonnes)</Label>
+                  <Input 
+                    type="number" 
+                    placeholder="e.g. 5" 
+                    value={filters.minWeight}
+                    onChange={(e) => setFilters({...filters, minWeight: e.target.value})}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-gray-500 uppercase">Max Price per Tonne (₹)</Label>
+                  <Input 
+                    type="number" 
+                    placeholder="e.g. 3000" 
+                    value={filters.maxPrice}
+                    onChange={(e) => setFilters({...filters, maxPrice: e.target.value})}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-gray-500 uppercase">Departure From</Label>
+                  <div className="relative">
+                    <Input 
+                      type="date" 
+                      className="w-full"
+                      value={filters.departureDate}
+                      onChange={(e) => setFilters({...filters, departureDate: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <Button 
+                  variant="outline" 
+                  className="w-full border-gray-200 text-gray-600"
+                  onClick={() => setFilters({
+                    originState: 'Any',
+                    destinationState: 'Any',
+                    minWeight: '',
+                    maxPrice: '',
+                    departureDate: ''
+                  })}
+                >
+                  <X className="h-4 w-4 mr-2" /> Clear All
+                </Button>
+              </CardContent>
+            )}
           </Card>
         </div>
 
@@ -225,8 +327,8 @@ const BrowseShipments = () => {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input 
-              placeholder="Search by origin, destination, or goods type..." 
-              className="pl-10 py-6 rounded-xl border-orange-100 focus:ring-orange-500"
+              placeholder="Search by city or goods type..." 
+              className="pl-10 py-6 rounded-xl border-gray-200 focus:ring-orange-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
