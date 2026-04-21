@@ -79,16 +79,43 @@ const Index = () => {
   // If we are showing the splash (Lottie), we don't show the rest of the content yet
   if (showSplash && !videoEnded) {
     return (
-      <div className="h-screen w-full bg-white flex items-center justify-center">
-        <LottieLoader 
-          src={lottieUrl} 
-          onComplete={handleAnimationEnd} 
-        />
+      <div className="h-screen w-full bg-white flex flex-col items-center justify-center relative overflow-hidden">
+        {/* Top Branding */}
+        <div className="absolute top-20 flex flex-col items-center animate-in fade-in slide-in-from-top duration-1000">
+          <div className="bg-orange-600 p-4 rounded-2xl shadow-lg mb-4 rotate-3">
+            <Truck className="h-10 w-10 text-white" />
+          </div>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tight">
+            Load<span className="text-orange-600">Saathi</span>
+          </h1>
+        </div>
+
+        {/* Main Animation */}
+        <div className="w-full max-w-md px-4">
+          <LottieLoader 
+            src={lottieUrl} 
+            onComplete={handleAnimationEnd} 
+            className="h-auto"
+          />
+        </div>
+
+        {/* Bottom Tagline */}
+        <div className="absolute bottom-24 text-center animate-in fade-in slide-in-from-bottom duration-1000 delay-300">
+          <p className="text-gray-400 font-medium tracking-widest uppercase text-xs">
+            India's Logistics Marketplace
+          </p>
+          <div className="mt-4 flex justify-center space-x-1">
+            <div className="w-1.5 h-1.5 bg-orange-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+            <div className="w-1.5 h-1.5 bg-orange-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+            <div className="w-1.5 h-1.5 bg-orange-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          </div>
+        </div>
+
         <button 
           onClick={handleAnimationEnd}
-          className="absolute bottom-10 right-10 bg-gray-100 hover:bg-gray-200 text-gray-600 px-6 py-2 rounded-full border border-gray-200 transition-all z-50 text-sm font-medium shadow-sm"
+          className="absolute bottom-8 right-8 bg-gray-50 hover:bg-gray-100 text-gray-400 hover:text-gray-600 px-4 py-1.5 rounded-full border border-gray-100 transition-all z-50 text-xs font-bold uppercase tracking-tighter shadow-sm"
         >
-          Skip Intro
+          Skip
         </button>
       </div>
     );
