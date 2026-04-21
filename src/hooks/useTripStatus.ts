@@ -13,7 +13,7 @@ export const useTripStatus = (initialStatus: TripStatus['status'] = 'pending'): 
   const [tripStatus, setTripStatus] = useState<TripStatus['status']>(initialStatus);
 
   useEffect(() => {
-    // Load trip status from localStorage or API    const savedStatus = localStorage.getItem('tripStatus');
+    const savedStatus = localStorage.getItem('tripStatus');
     if (savedStatus) {
       setTripStatus(savedStatus as TripStatus['status']);
     }

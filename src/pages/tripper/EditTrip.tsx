@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft, Truck, Check as CheckIcon } from 'lucide-react';
 import { showSuccess, showError } from '@/utils/toast';
 import { useTripStatus } from '@/hooks/useTripStatus';
 
@@ -63,7 +63,6 @@ const EditTrip = () => {
             vehicle_number: data.vehicle_number
           });
           
-          // Set completed status if trip is already completed
           if (data.status === 'completed') {
             setTripStatus('completed');
           }
@@ -77,14 +76,7 @@ const EditTrip = () => {
     };
 
     if (userProfile && tripId) fetchTrip();
-  }, [tripId, userProfile, navigate]);
-
-  const handleLocationChange = (field: 'origin_city' | 'destination_city', value: { state: string; district: string; city: string }) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value.city
-    }));
-  };
+  }, [tripId, userProfile, navigate, setTripStatus]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,13 +89,8 @@ const EditTrip = () => {
     const capacity = parseFloat(formData.available_capacity_tonnes);
     const price = parseFloat(formData.price_per_tonne);
 
-    if (isNaN(capacity) || capacity <= 0) {
-      showError('Please enter a valid capacity.');
-      return;
-    }
-
-    if (isNaN(price) || price <= 0) {
-      showError('Please enter a valid price.');
+    if (isNaN(capacity) || capacity <= 0 || isNaN(price) || price <= 0) {
+      showError('Please enter valid numeric values.');
       return;
     }
 
@@ -151,19 +138,16 @@ const EditTrip = () => {
       <Card className="border-orange-100 shadow-lg">
         <CardHeader className="bg-orange-50/50 border-b border-orange-100">
           <CardTitle className="flex items-center text-orange-900">
-            <Truck className="mr-2 text-orange-600" />             Edit Trip Details
+            <Truck className="mr-2 text-orange-600" /> Edit Trip Details
           </CardTitle>
         </CardHeader>
         <CardContent className="pt-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* ... existing form fields ... */}
-            
-            {/* Add Completed Status Display and Button */}
             <div className="space-y-4">
               <div className="flex items-center space-x-3">
                 <div className="flex items-center text-xl font-bold text-gray-900">
                   Current Status: 
-                  <span className={`font-medium ${tripStatus === 'completed' ? 'text-green-600' : 'text-orange-600'}`}>
+                  <span className={`ml-2 font-medium ${tripStatus === 'completed' ? 'text-green-600' : 'text-orange-600'}`}>
                     {tripStatus === 'completed' ? 'COMPLETED' : 'ACTIVE'}
                   </span>
                 </div>
@@ -171,17 +155,8 @@ const EditTrip = () => {
               
               {tripStatus !== 'completed' && (
                 <div className="mt-4">
-                  <Button                    onClick={() => setTripStatus('completed')}
-                    className="bg-orange-600 hover:bg-orange-700"
-                  >
-                    {tripStatus === 'pending' ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving Status...
-                      </>
-                    ) : (
-                      'Mark as Completed'
-                    )}
+                  <Button type="button" onClick={() => setTripStatus('completed')} className="bg-orange-600 hover:bg-orange-700">
+                    Mark as Completed
                   </Button>
                 </div>
               )}
@@ -196,15 +171,10 @@ const EditTrip = () => {
             
             <Button 
               type="submit" 
-              className="w-full bg-orange-600 hover:bg-orange-700 h-12 text-lg font-bold shadow-md transition-all hover:shadow-lg" 
+              className="w-full bg-orange-600 hover:bg-orange-700 h-12 text-lg font-bold shadow-md" 
               disabled={saving} 
             >
-              {saving ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" /> 
-                  Saving Changes...
-                </> 
-              ) : 'Save Changes' 
+              {saving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Save Changes'}
             </Button>
           </form>
         </CardContent>

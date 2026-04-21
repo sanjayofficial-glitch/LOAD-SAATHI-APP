@@ -21,14 +21,13 @@ export const TripStatusButton: React.FC<TripStatusButtonProps> = ({
   const handleComplete = () => {
     onComplete();
     setShowCompleted(true);
-    // Auto-hide after 2 seconds
     setTimeout(() => setShowCompleted(false), 2000);
   };
 
   return (
     <Button
       size="sm"
-      variant={isCompleted ? 'outline' : 'contained'}
+      variant={isCompleted ? 'outline' : 'default'}
       className={styles.button}
       onClick={handleComplete}
       disabled={isCompleted}
