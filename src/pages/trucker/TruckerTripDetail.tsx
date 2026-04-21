@@ -12,8 +12,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Truck, MapPin, Calendar, IndianRupee, ArrowLeft, ArrowRight,
   Edit, Package, Check, X, Loader2, User, Star,
-  CheckCircle, Clock, XCircle, Users,
+  CheckCircle, Clock, XCircle, Users, Flag
 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { showSuccess, showError } from '@/utils/toast';
 import RouteMap from '@/components/RouteMap';
 import {
@@ -21,7 +32,6 @@ import {
   notifyShipperOfRequestDeclined,
 } from '@/utils/notifications';
 
-// ─── Status Badge ──────────────────────────────────────────────────────────────
 const StatusBadge = ({ status }: { status: string }) => {
   const cfg: Record<string, string> = {
     pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
@@ -38,7 +48,6 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-// ─── Component ─────────────────────────────────────────────────────────────────
 const TruckerTripDetail = () => {
   const { tripId } = useParams<{ tripId: string }>();
   const { userProfile } = useAuth();
@@ -56,7 +65,6 @@ const TruckerTripDetail = () => {
     try {
       const supabase = await getAuthenticatedClient();
 
-      // Fetch trip (must belong to this trucker)
       const { data: tripData, error: tripError } = await supabase
         .from('trips')
         .select('*, trucker:users!trips_trucker_id_fkey(*)')
@@ -71,7 +79,6 @@ const TruckerTripDetail = () => {
       }
       setTrip(tripData);
 
-      // Fetch booking requests for this trip
       const { data: requests, error: requestsError } = await supabase
         .from('requests')
         .select('*, shipper:users!requests_shipper_id_fkey(*)')
@@ -87,6 +94,26 @@ const TruckerTripDetail = () => {
   }, [tripId, userProfile?.id, getAuthenticatedClient, navigate]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  const handleCompleteTrip = async () => {
+    if (!tripId) return;
+    setActionLoading('complete');
+    try {
+      const supabase = await getAuthenticatedClient();
+      const { error } = await supabase
+        .from('trips')
+        .update({ status: 'completed' })
+        .eq('id', tripId);
+
+      if (error) throw error;
+      showSuccess('Trip marked as completed!');
+      fetchData();
+    } catch (err: any) {
+      showError('Failed to complete trip');
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   const handleBookingAction = async (request: any, status: 'accepted' | 'declined') => {
     setActionLoading(request.id);
@@ -139,26 +166,50 @@ const TruckerTripDetail = () => {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <Button variant="ghost" onClick={() => navigate('/trucker/my-trips')} className="text-gray-600">
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to My Trips
         </Button>
-        {trip.status === 'active' && (
-          <Link to={`/trucker/trips/${trip.id}/edit`}>
-            <Button className="bg-orange-600 hover:bg-orange-700">
-              <Edit className="mr-2 h-4 w-4" /> Edit Trip
-            </Button>
-          </Link>
-        )}
+        <div className="flex gap-2">
+          {trip.status === 'active' && (
+            <>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" className="border-green-200 text-green-700 hover:bg-green-50" disabled={actionLoading === 'complete'}>
+                    {actionLoading === 'complete' ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Flag className="h-4 w-4 mr-2" />}
+                    Complete Trip
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Mark trip as completed?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will mark the trip as finished. You won't be able to accept more bookings for this trip.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleCompleteTrip} className="bg-green-600 hover:bg-green-700">
+                      Mark Completed
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+
+              <Link to={`/trucker/trips/${trip.id}/edit`}>
+                <Button className="bg-orange-600 hover:bg-orange-700">
+                  <Edit className="mr-2 h-4 w-4" /> Edit Trip
+                </Button>
+              </Link>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Route Map */}
       <div className="mb-8 rounded-2xl overflow-hidden">
         <RouteMap originCity={trip.origin_city} destinationCity={trip.destination_city} height="240px" />
       </div>
 
-      {/* Trip Info Card */}
       <Card className="mb-8 border-orange-100 shadow-sm">
         <CardHeader className="bg-orange-50/60 border-b border-orange-100">
           <div className="flex items-center justify-between">
@@ -209,7 +260,6 @@ const TruckerTripDetail = () => {
         </CardContent>
       </Card>
 
-      {/* Booking Requests Tabs */}
       <div>
         <div className="flex items-center gap-2 mb-4">
           <Users className="h-5 w-5 text-orange-600" />
@@ -246,7 +296,6 @@ const TruckerTripDetail = () => {
                         <CardContent className="p-5">
                           <div className="flex flex-col md:flex-row justify-between gap-4">
                             <div className="flex-1 space-y-3">
-                              {/* Shipper info */}
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center font-bold text-orange-600">
                                   {request.shipper?.full_name?.charAt(0) || '?'}
@@ -266,7 +315,6 @@ const TruckerTripDetail = () => {
                                 </div>
                               </div>
 
-                              {/* Cargo details */}
                               <div className="grid grid-cols-2 gap-3 text-sm bg-gray-50 p-3 rounded-lg">
                                 <div>
                                   <p className="text-xs text-gray-500 font-bold uppercase">Goods</p>
@@ -289,7 +337,6 @@ const TruckerTripDetail = () => {
                               </p>
                             </div>
 
-                            {/* Actions */}
                             {tab === 'pending' && (
                               <div className="flex flex-col gap-2 min-w-[140px] justify-center">
                                 <Button

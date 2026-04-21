@@ -11,7 +11,6 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Truck,
-  MapPin,
   Calendar,
   IndianRupee,
   Edit,
@@ -22,14 +21,14 @@ import {
   Plus,
   Send,
   Inbox,
-  Clock,
   Package,
   CheckCircle,
   XCircle,
   MessageSquare,
   Phone,
   Check,
-  X
+  X,
+  Flag
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -135,6 +134,25 @@ const TruckerHub = () => {
     }
   };
 
+  const handleCompleteTrip = async (tripId: string) => {
+    setActionLoading(tripId);
+    try {
+      const supabase = await getAuthenticatedClient();
+      const { error } = await supabase
+        .from('trips')
+        .update({ status: 'completed' })
+        .eq('id', tripId);
+
+      if (error) throw error;
+      showSuccess('Trip marked as completed!');
+      fetchData();
+    } catch (err: any) {
+      showError('Failed to complete trip');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleBookingAction = async (request: any, status: 'accepted' | 'declined') => {
     setActionLoading(request.id);
     try {
@@ -217,7 +235,6 @@ const TruckerHub = () => {
           </TabsTrigger>
         </TabsList>
 
-        {/* --- TAB 1: MY TRIPS --- */}
         <TabsContent value="trips">
           {trips.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
@@ -251,9 +268,34 @@ const TruckerHub = () => {
                       </div>
                       <div className="flex flex-wrap items-center gap-2 border-t md:border-t-0 pt-4 md:pt-0">
                         <Link to={`/trucker/trips/${trip.id}`}><Button variant="outline" size="sm" className="border-orange-200 text-orange-700 hover:bg-orange-50"><Eye className="h-4 w-4 mr-2" />View</Button></Link>
+                        
                         {trip.status === 'active' && (
                           <>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm" className="border-green-200 text-green-700 hover:bg-green-50" disabled={actionLoading === trip.id}>
+                                  {actionLoading === trip.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Flag className="h-4 w-4 mr-2" />}
+                                  Complete
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Mark trip as completed?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will mark the trip as finished. You won't be able to accept more bookings for this trip.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleCompleteTrip(trip.id)} className="bg-green-600 hover:bg-green-700">
+                                    Mark Completed
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+
                             <Link to={`/trucker/trips/${trip.id}/edit`}><Button variant="ghost" size="sm" className="text-blue-600 hover:bg-blue-50"><Edit className="h-4 w-4 mr-2" />Edit</Button></Link>
+                            
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50">
@@ -282,7 +324,6 @@ const TruckerHub = () => {
           )}
         </TabsContent>
 
-        {/* --- TAB 2: SENT OFFERS --- */}
         <TabsContent value="sent">
           {sentOffers.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
@@ -337,7 +378,6 @@ const TruckerHub = () => {
           )}
         </TabsContent>
 
-        {/* --- TAB 3: BOOKING REQUESTS --- */}
         <TabsContent value="incoming">
           {incomingRequests.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
