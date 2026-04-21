@@ -15,7 +15,7 @@ const LottieLoader: React.FC<LottieLoaderProps> = ({
   className = ''
 }) => {
   return (
-    <div className={`relative w-full h-screen flex items-center justify-center bg-black ${className}`}>
+    <div className={`relative w-full h-screen flex items-center justify-center bg-white ${className}`}>
       <div className="w-full max-w-2xl aspect-square">
         <DotLottiePlayer
           src={src}
@@ -29,8 +29,8 @@ const LottieLoader: React.FC<LottieLoaderProps> = ({
         />
       </div>
       
-      {/* Overlay to ensure text readability if needed */}
-      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40 pointer-events-none" />
+      {/* Subtle gradient for depth on white background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-gray-50/50 via-transparent to-gray-50/50 pointer-events-none" />
     </div>
   );
 };

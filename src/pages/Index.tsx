@@ -79,14 +79,14 @@ const Index = () => {
   // If we are showing the splash (Lottie), we don't show the rest of the content yet
   if (showSplash && !videoEnded) {
     return (
-      <div className="h-screen w-full bg-black flex items-center justify-center">
+      <div className="h-screen w-full bg-white flex items-center justify-center">
         <LottieLoader 
           src={lottieUrl} 
           onComplete={handleAnimationEnd} 
         />
         <button 
           onClick={handleAnimationEnd}
-          className="absolute bottom-10 right-10 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-6 py-2 rounded-full border border-white/30 transition-all z-50 text-sm font-medium"
+          className="absolute bottom-10 right-10 bg-gray-100 hover:bg-gray-200 text-gray-600 px-6 py-2 rounded-full border border-gray-200 transition-all z-50 text-sm font-medium shadow-sm"
         >
           Skip Intro
         </button>
