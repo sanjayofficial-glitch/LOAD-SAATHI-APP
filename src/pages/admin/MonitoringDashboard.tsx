@@ -13,8 +13,8 @@ import {
   BarChart3, 
   RefreshCw, 
   ShieldCheck,
-  Settings2,
-  Briefcase
+  Briefcase,
+  Terminal
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,12 +22,14 @@ import UserActivityTable from './UserActivityTable';
 import TripMapComponent from './TripMapComponent';
 import SystemMetricsPanel from './SystemMetricsPanel';
 import BusinessMetricsPanel from './BusinessMetricsPanel';
+import LiveEventFeed from './LiveEventFeed';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const MonitoringDashboard = () => {
   const { getAuthenticatedClient } = useSupabase();
   const [users, setUsers] = useState([]);
   const [trips, setTrips] = useState([]);
+  const [events, setEvents] = useState([]);
   const [metrics, setMetrics] = useState({ 
     active_connections: 0, 
     api_response_time: 0, 
@@ -72,10 +74,9 @@ const MonitoringDashboard = () => {
         setMetrics(m);
       }
 
-      // Calculate Business Metrics from available data
-      // In a real app, this would also be an RPC for performance
-      const { data: shipments } = await supabase.from('shipments').select('id');
-      const { data: requests } = await supabase.from('requests').select('status, weight_tonnes, trip:trips(price_per_tonne)');
+      // Calculate Business Metrics
+      const { data: shipments } = await supabase.from('shipments').select('id, origin_city, created_at');
+      const { data: requests } = await supabase.from('requests').select('status, weight_tonnes, trip:trips(price_per_tonne), created_at');
       
       const pending = requests?.filter(r => r.status === 'pending').length || 0;
       const accepted = requests?.filter(r => r.status === 'accepted') || [];
@@ -89,6 +90,13 @@ const MonitoringDashboard = () => {
         estimated_revenue: revenue,
         success_rate: successRate
       });
+
+      // Generate mock events based on real data for the feed
+      const newEvents = [];
+      if (shipments?.[0]) newEvents.push({ id: 's1', type: 'trip', message: `New load posted from ${shipments[0].origin_city}`, time: 'JUST NOW' });
+      if (accepted?.[0]) newEvents.push({ id: 'b1', type: 'booking', message: `Booking accepted for ${accepted[0].weight_tonnes}t`, time: '2M AGO' });
+      if (userData?.[0]) newEvents.push({ id: 'u1', type: 'user', message: `New ${userData[0].user_type} joined: ${userData[0].full_name}`, time: '5M AGO' });
+      setEvents(newEvents);
 
       setLastUpdated(new Date());
     } catch (err) {
@@ -158,6 +166,14 @@ const MonitoringDashboard = () => {
                       <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">Business Intelligence</h2>
                     </div>
                     <BusinessMetricsPanel metrics={businessMetrics} />
+                  </section>
+
+                  <section>
+                    <div className="flex items-center gap-2 mb-4">
+                      <Terminal className="h-4 w-4 text-green-400" />
+                      <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">Live Events</h2>
+                    </div>
+                    <LiveEventFeed events={events} />
                   </section>
                 </div>
               </ScrollArea>
