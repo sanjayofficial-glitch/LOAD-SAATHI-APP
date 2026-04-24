@@ -21,7 +21,9 @@ const PostShipments = () => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     origin_city: '',
+    origin_state: '',
     destination_city: '',
+    destination_state: '',
     departure_date: '',
     goods_description: '',
     weight_tonnes: '',
@@ -30,10 +32,11 @@ const PostShipments = () => {
     budget_per_tonne: ''
   });
 
-  const handleLocationChange = (field: 'origin_city' | 'destination_city', value: { state: string; district: string; city: string }) => {
+  const handleLocationChange = (field: 'origin' | 'destination', value: { state: string; district: string; city: string }) => {
     setFormData(prev => ({
       ...prev,
-      [field]: value.city
+      [`${field}_city`]: value.city,
+      [`${field}_state`]: value.state
     }));
   };
 
@@ -64,7 +67,9 @@ const PostShipments = () => {
       const { error } = await supabase.from('shipments').insert({
         shipper_id: userProfile.id,
         origin_city: formData.origin_city.trim(),
+        origin_state: formData.origin_state,
         destination_city: formData.destination_city.trim(),
+        destination_state: formData.destination_state,
         departure_date: formData.departure_date,
         goods_description: formData.goods_description.trim(),
         weight_tonnes: weight,
@@ -107,7 +112,7 @@ const PostShipments = () => {
               <LocationSelector
                 label="Origin"
                 data={locationData.data}
-                onChange={(value) => handleLocationChange('origin_city', value)}
+                onChange={(value) => handleLocationChange('origin', value)}
               />
             </div>
 
@@ -116,7 +121,7 @@ const PostShipments = () => {
               <LocationSelector
                 label="Destination"
                 data={locationData.data}
-                onChange={(value) => handleLocationChange('destination_city', value)}
+                onChange={(value) => handleLocationChange('destination', value)}
               />
             </div>
 

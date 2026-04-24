@@ -23,7 +23,9 @@ import {
   X,
   Eye,
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  User,
+  Trash2
 } from 'lucide-react';
 import { 
   Select,
@@ -43,6 +45,17 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { notifyShipperOfTruckerOffer } from '@/utils/notifications';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -83,13 +96,18 @@ const BrowseShipments = () => {
       const token = await getToken({ template: 'supabase' });
       if (!token) return;
       const supabaseClient = createClerkSupabaseClient(token);
+      
+      // Correctly query shipments table with joined shipper data
       const { data, error } = await supabaseClient
         .from('shipments')
-        .select('*')
+        .select('*, shipper:users!shipments_shipper_id_fkey(*)')
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
-      if (!error && data) setShipments(data);
-    } catch (err) {
+        
+      if (error) throw error;
+      if (data) setShipments(data);
+    } catch (err: any) {
+      console.error('[BrowseShipments] Error:', err);
       showError('Failed to load shipments');
     } finally {
       setLoading(false);
@@ -101,10 +119,7 @@ const BrowseShipments = () => {
 
     const channel = supabase
       .channel('browse-shipments-realtime')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'shipments', filter: "status=eq.pending" },
-        () => fetchShipments()
-      )
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shipments' },
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'shipments' },
         () => fetchShipments()
       )
       .subscribe();
@@ -141,7 +156,7 @@ const BrowseShipments = () => {
       
       if (Object.keys(parsedFilters).length > 0) {
         setFilters({
-          originState: 'Any', // AI returns city names, we keep state as Any for broad match
+          originState: 'Any',
           destinationState: 'Any',
           minWeight: parsedFilters.weight?.toString() || '',
           maxPrice: '',
@@ -221,11 +236,25 @@ const BrowseShipments = () => {
     }
   };
 
+  const handleDeleteShipment = async (id: string) => {
+    try {
+      const token = await getToken({ template: 'supabase' });
+      if (!token) return;
+      const supabaseClient = createClerkSupabaseClient(token);
+      const { error } = await supabaseClient.from('shipments').delete().eq('id', id);
+      if (error) throw error;
+      showSuccess('Shipment deleted successfully');
+      fetchShipments();
+    } catch (err) {
+      showError('Failed to delete shipment');
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900">Find Goods to Carry</h1>
-        <p className="text-gray-600 mt-2">Browse available shipments posted by shippers and send your best offer</p>
+        <h1 className="text-4xl font-bold text-gray-900">Find Trucks</h1>
+        <p className="text-gray-600 mt-2">Browse available shipments posted by shippers and send your best offer to request a load</p>
       </div>
 
       <div className="grid lg:grid-cols-4 gap-8">
@@ -240,7 +269,7 @@ const BrowseShipments = () => {
                   <div className="relative">
                     <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
                     <Input 
-                      placeholder="e.g. '10 tonnes from Mumbai to Delhi next week'" 
+                      placeholder="e.g. '10 tonnes from Mumbai to Delhi'" 
                       className="pl-10 border-blue-100 focus:ring-blue-500"
                       value={aiSearchQuery}
                       onChange={(e) => setAiSearchQuery(e.target.value)}
@@ -317,7 +346,7 @@ const BrowseShipments = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold text-gray-500 uppercase">Min Capacity (Tonnes)</Label>
+                  <Label className="text-xs font-semibold text-gray-500 uppercase">Min Weight (Tonnes)</Label>
                   <Input 
                     type="number" 
                     placeholder="e.g. 5" 
@@ -423,7 +452,7 @@ const BrowseShipments = () => {
                           </Badge>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
                           <div className="flex items-center">
                             <Calendar className="h-4 w-4 mr-2 text-orange-600" />
                             <div>
@@ -436,6 +465,13 @@ const BrowseShipments = () => {
                             <div>
                               <p className="text-gray-500 text-xs">Budget</p>
                               <p className="font-bold text-green-600">₹{shipment.budget_per_tonne.toLocaleString()} /t</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center">
+                            <User className="h-4 w-4 mr-2 text-blue-600" />
+                            <div>
+                              <p className="text-gray-500 text-xs">Shipper</p>
+                              <p className="font-medium">{shipment.shipper?.full_name || 'Anonymous'}</p>
                             </div>
                           </div>
                         </div>
@@ -454,6 +490,25 @@ const BrowseShipments = () => {
                             <Eye className="mr-2 h-4 w-4" /> View Details
                           </Button>
                         </Link>
+                        {shipment.shipper_id === userProfile?.id && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50">
+                                <Trash2 className="h-4 w-4 mr-2" /> Delete
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>This will permanently delete your shipment listing.</AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteShipment(shipment.id)} className="bg-red-600">Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </div>
                     </div>
                   </CardContent>
