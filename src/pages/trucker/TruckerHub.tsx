@@ -172,6 +172,7 @@ const TruckerHub = () => {
         await notifyShipperOfRequestAccepted({
           shipperId: request.shipper_id,
           truckerName: userProfile?.full_name || 'The trucker',
+          truckerPhone: userProfile?.phone || 'N/A',
           originCity: request.trip?.origin_city,
           destinationCity: request.trip?.destination_city,
           requestId: request.id,

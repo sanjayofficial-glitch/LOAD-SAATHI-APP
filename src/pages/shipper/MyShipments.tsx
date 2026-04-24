@@ -170,6 +170,7 @@ const MyShipments = () => {
         await notifyTruckerOfOfferAccepted({
           truckerId: offer.trucker_id,
           shipperName: userProfile?.full_name || 'The shipper',
+          shipperPhone: userProfile?.phone || 'N/A',
           originCity: offer.shipment.origin_city,
           destinationCity: offer.shipment.destination_city,
           requestId: offer.id,

@@ -147,6 +147,7 @@ const TruckerTripDetail = () => {
         await notifyShipperOfRequestAccepted({
           shipperId: request.shipper_id,
           truckerName: userProfile?.full_name || 'The trucker',
+          truckerPhone: userProfile?.phone || 'N/A',
           originCity: trip?.origin_city,
           destinationCity: trip?.destination_city,
           requestId: request.id,

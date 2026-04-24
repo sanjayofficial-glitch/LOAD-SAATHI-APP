@@ -15,7 +15,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { showError } from '@/utils/toast';
+import { showError, showSuccess } from '@/utils/toast';
 import { supabase } from '@/lib/supabaseClient';
 
 interface Notification {
@@ -23,8 +23,6 @@ interface Notification {
   message: string;
   is_read: boolean;
   created_at: string;
-  related_trip_id?: string;
-  related_shipment_request_id?: string;
 }
 
 const NotificationBell = () => {
@@ -39,10 +37,9 @@ const NotificationBell = () => {
     
     try {
       const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
+      if (!supabaseToken) return;
       
       const supabaseClient = createClerkSupabaseClient(supabaseToken);
-      
       const { data, error } = await supabaseClient
         .from('notifications')
         .select('*')
@@ -51,14 +48,12 @@ const NotificationBell = () => {
         .limit(10);
 
       if (error) throw error;
-
       if (data) {
         setNotifications(data);
         setUnreadCount(data.filter(n => !n.is_read).length);
       }
-    } catch (err: any) {
-      console.error('[NotificationBell] Error fetching notifications:', err);
-      showError('Failed to load notifications');
+    } catch (err) {
+      console.error('[NotificationBell] Error:', err);
     } finally {
       setLoading(false);
     }
@@ -83,6 +78,7 @@ const NotificationBell = () => {
           const newNotif = payload.new as Notification;
           setNotifications(prev => [newNotif, ...prev].slice(0, 10));
           setUnreadCount(prev => prev + 1);
+          showSuccess(newNotif.message); // Show popup toast
         }
       )
       .subscribe();
@@ -92,50 +88,17 @@ const NotificationBell = () => {
     };
   }, [userProfile?.id, fetchNotifications]);
 
-  const markAsRead = async (notificationId: string) => {
-    try {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
-      
-      const supabaseClient = createClerkSupabaseClient(supabaseToken);
-      
-      const { error } = await supabaseClient
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('id', notificationId);
-
-      if (!error) {
-        setNotifications(prev => 
-          prev.map(n => n.id === notificationId ? { ...n, is_read: true } : n)
-        );
-        setUnreadCount(prev => Math.max(0, prev - 1));
-      }
-    } catch (err: any) {
-      showError('Failed to mark notification as read');
-    }
-  };
-
   const markAllAsRead = async () => {
     if (unreadCount === 0 || !userProfile?.id) return;
-
     try {
       const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
-      
+      if (!supabaseToken) return;
       const supabaseClient = createClerkSupabaseClient(supabaseToken);
-      
-      const { error } = await supabaseClient
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', userProfile.id)
-        .eq('is_read', false);
-
-      if (!error) {
-        setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
-        setUnreadCount(0);
-      }
-    } catch (err: any) {
-      showError('Failed to mark all notifications as read');
+      await supabaseClient.from('notifications').update({ is_read: true }).eq('user_id', userProfile.id);
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+      setUnreadCount(0);
+    } catch (err) {
+      console.error('Failed to mark read');
     }
   };
 
@@ -151,14 +114,10 @@ const NotificationBell = () => {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-80 animate-in fade-in slide-in-from-top-2">
+      <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Notifications</span>
-          {unreadCount > 0 && (
-            <Badge variant="secondary" className="text-[10px]">
-              {unreadCount} New
-            </Badge>
-          )}
+          {unreadCount > 0 && <Badge variant="secondary" className="text-[10px]">{unreadCount} New</Badge>}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <div className="max-h-80 overflow-y-auto">
@@ -171,26 +130,14 @@ const NotificationBell = () => {
             </div>
           ) : (
             notifications.map((notif) => (
-              <DropdownMenuItem 
-                key={notif.id} 
-                className="p-3 cursor-default focus:bg-gray-50"
-                onClick={() => !notif.is_read && markAsRead(notif.id)}
-              >
+              <DropdownMenuItem key={notif.id} className="p-3 cursor-default focus:bg-gray-50">
                 <div className="flex gap-3">
                   <div className={`mt-0.5 p-1 rounded-full h-fit ${notif.is_read ? 'bg-gray-100' : 'bg-orange-100'}`}>
-                    {notif.message.toLowerCase().includes('accepted') ? (
-                      <CheckCircle className="h-3 w-3 text-green-600" />
-                    ) : (
-                      <AlertCircle className="h-3 w-3 text-orange-600" />
-                    )} 
+                    {notif.message.includes('Accepted') ? <CheckCircle className="h-3 w-3 text-green-600" /> : <AlertCircle className="h-3 w-3 text-orange-600" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium ${notif.is_read ? 'text-gray-600' : 'text-gray-900'}`}>
-                      {notif.message}
-                    </p>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {new Date(notif.created_at).toLocaleDateString()} • {new Date(notif.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
+                    <p className={`text-sm font-medium ${notif.is_read ? 'text-gray-600' : 'text-gray-900'}`}>{notif.message}</p>
+                    <p className="text-xs text-gray-400 mt-1">{new Date(notif.created_at).toLocaleDateString()}</p>
                   </div>
                 </div>
               </DropdownMenuItem>
