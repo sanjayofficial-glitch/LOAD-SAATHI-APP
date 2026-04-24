@@ -45,39 +45,46 @@ const Chat = () => {
         
         const supabaseClient = createClerkSupabaseClient(supabaseToken);
 
-        // 1. Fetch request details to identify the other participant
+        // 1. Try to fetch from 'requests' table (Shipper booking a Trucker's trip)
         const { data: request, error: reqError } = await supabaseClient
           .from('requests')
-          .select('*, trip:trips(*, trucker:users(*)), shipper:users(*)')
+          .select('*, trip:trips(*, trucker:users!trips_trucker_id_fkey(*)), shipper:users!requests_shipper_id_fkey(*)')
           .eq('id', requestId)
-          .single();
+          .maybeSingle();
 
-        // If not found in requests, check shipment_requests
-        let otherUser;
-        if (reqError || !request) {
+        let otherUser = null;
+
+        if (request) {
+          // If I am the trucker, the other user is the shipper. If I am the shipper, the other user is the trucker.
+          otherUser = userProfile.user_type === 'trucker' ? request.shipper : request.trip?.trucker;
+        } else {
+          // 2. Try to fetch from 'shipment_requests' table (Trucker offering on a Shipper's load)
           const { data: sRequest, error: sReqError } = await supabaseClient
             .from('shipment_requests')
-            .select('*, shipment:shipments(*, shipper:users(*)), trucker:users(*)')
+            .select('*, shipment:shipments(*, shipper:users!shipments_shipper_id_fkey(*)), trucker:users!shipment_requests_trucker_id_fkey(*)')
             .eq('id', requestId)
-            .single();
+            .maybeSingle();
           
-          if (sReqError || !sRequest) throw new Error('Chat session not found');
-          
-          otherUser = userProfile.user_type === 'trucker' ? sRequest.shipment.shipper : sRequest.trucker;
-        } else {
-          otherUser = userProfile.user_type === 'trucker' ? request.shipper : request.trip.trucker;
+          if (sRequest) {
+            otherUser = userProfile.user_type === 'trucker' ? sRequest.shipment?.shipper : sRequest.trucker;
+          }
+        }
+
+        if (!otherUser) {
+          console.error('[ChatPage] Could not find chat partner for request:', requestId);
+          throw new Error('Chat session not found or you do not have access');
         }
 
         setRecipient(otherUser);
 
-        // 2. Fetch existing messages
+        // 3. Fetch existing messages
         const initialMessages = await fetchMessages(requestId, () => getToken({ template: 'supabase' }));
         setMessages(initialMessages);
         
-        // 3. Mark messages as read
+        // 4. Mark messages as read
         markMessagesAsRead(requestId, userProfile.id, () => getToken({ template: 'supabase' }));
 
-        // 4. Subscribe to real-time updates
+        // 5. Subscribe to real-time updates
         channel = subscribeToMessages(requestId, (msg) => {
           setMessages((prev) => {
             if (prev.some((m) => m.id === msg.id)) return prev;
@@ -92,7 +99,7 @@ const Chat = () => {
         setLoading(false);
       } catch (err: any) {
         console.error('[ChatPage] Initialization error:', err);
-        showError('Failed to load chat session');
+        showError(err.message || 'Failed to load chat session');
         navigate(-1);
       }
     };
