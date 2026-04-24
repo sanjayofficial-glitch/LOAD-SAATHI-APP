@@ -103,7 +103,7 @@ const MonitoringDashboard = () => {
   useEffect(() => {
     fetchData();
     
-    // Set up real-time subscriptions
+    // Set up real-time subscriptions for immediate visual feedback
     const channel = supabase
       .channel('admin-monitor-all')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trips' }, (payload) => {
@@ -124,10 +124,19 @@ const MonitoringDashboard = () => {
         }, ...prev].slice(0, 15));
         fetchData();
       })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'requests' }, (payload) => {
+        setEvents(prev => [{
+          id: `request-sent-${Date.now()}`,
+          type: 'booking',
+          message: `New booking request sent for ${payload.new.weight_tonnes}t`,
+          time: 'JUST NOW'
+        }, ...prev].slice(0, 15));
+        fetchData();
+      })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'requests' }, (payload) => {
         if (payload.new.status === 'accepted' && payload.old.status !== 'accepted') {
           setEvents(prev => [{
-            id: `booking-${Date.now()}`,
+            id: `booking-accepted-${Date.now()}`,
             type: 'booking',
             message: `Booking accepted for ${payload.new.weight_tonnes}t load`,
             time: 'JUST NOW'
@@ -146,7 +155,8 @@ const MonitoringDashboard = () => {
       })
       .subscribe();
 
-    const interval = setInterval(fetchData, 30000); // Fallback refresh every 30s
+    // Set up 15-second interval refresh as requested
+    const interval = setInterval(fetchData, 15000);
     
     return () => {
       supabase.removeChannel(channel);
@@ -165,7 +175,7 @@ const MonitoringDashboard = () => {
             <h1 className="text-sm font-bold tracking-tight uppercase">Admin Command Center</h1>
             <div className="flex items-center gap-2">
               <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[10px] text-slate-400 font-medium uppercase">System Live</span>
+              <span className="text-[10px] text-slate-400 font-medium uppercase">System Live (15s Sync)</span>
             </div>
           </div>
         </div>
