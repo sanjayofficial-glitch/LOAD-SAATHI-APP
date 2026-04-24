@@ -94,7 +94,7 @@ const TruckerHub = () => {
         .from('shipment_requests')
         .select(`
           *,
-          shipment:shipments!inner(*, shipper:users(*))
+          shipment:shipments!inner(*)
         `)
         .eq('trucker_id', userProfile.id)
         .order('created_at', { ascending: false });
@@ -104,8 +104,7 @@ const TruckerHub = () => {
         .from('requests')
         .select(`
           *,
-          trip:trips!requests_trip_id_fkey(*),
-          shipper:users!requests_shipper_id_fkey(*)
+          trip:trips!requests_trip_id_fkey(*)
         `)
         .eq('receiver_id', userProfile.id)
         .order('created_at', { ascending: false });
@@ -262,8 +261,8 @@ const TruckerHub = () => {
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm text-gray-500">
                           <div className="flex items-center"><Calendar className="h-4 w-4 mr-2 text-orange-600" />{new Date(trip.departure_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
-                          <div className="flex items-center"><Package className="h-4 w-4 mr-2 text-blue-600" />{trip.available_capacity_tonnes}t available</div>
                           <div className="flex items-center font-semibold text-gray-900"><IndianRupee className="h-4 w-4 mr-1 text-green-600" />{trip.price_per_tonne.toLocaleString()} /t</div>
+                          <div className="flex items-center"><Package className="h-4 w-4 mr-2 text-blue-600" />{trip.available_capacity_tonnes}t available</div>
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 border-t md:border-t-0 pt-4 md:pt-0">
@@ -273,8 +272,8 @@ const TruckerHub = () => {
                           <>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button variant="outline" size="sm" className="border-green-200 text-green-700 hover:bg-green-50" disabled={actionLoading === trip.id}>
-                                  {actionLoading === trip.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Flag className="h-4 w-4 mr-2" />}
+                                <Button variant="outline" size="sm" className="border-green-200 text-green-700 hover:bg-green-50">
+                                  <CheckCircle className="h-4 w-4 mr-2" />
                                   Complete
                                 </Button>
                               </AlertDialogTrigger>
@@ -288,7 +287,11 @@ const TruckerHub = () => {
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                                   <AlertDialogAction onClick={() => handleCompleteTrip(trip.id)} className="bg-green-600 hover:bg-green-700">
-                                    Mark Completed
+                                    {actionLoading === trip.id ? (
+                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                    ) : (
+                                      'Mark Completed'
+                                    )}
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
@@ -299,7 +302,8 @@ const TruckerHub = () => {
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50">
-                                  <Trash2 className="h-4 w-4 mr-2" />Delete
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
@@ -309,7 +313,9 @@ const TruckerHub = () => {
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction onClick={() => handleDeleteTrip(trip.id)} className="bg-red-600 hover:bg-red-700">Delete</AlertDialogAction>
+                                  <AlertDialogAction onClick={() => handleDeleteTrip(trip.id)} className="bg-red-600 hover:bg-red-700">
+                                    Delete
+                                  </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
