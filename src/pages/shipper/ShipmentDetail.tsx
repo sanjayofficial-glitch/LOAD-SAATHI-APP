@@ -14,12 +14,14 @@ import { Label } from '@/components/ui/label';
 import {
   Package, MapPin, Calendar, IndianRupee, ArrowLeft, Loader2,
   Edit, Send, Star, Building2, Truck, IndianRupee as RupeeIcon,
+  CheckCircle, MessageSquare
 } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
 import { notifyShipperOfTruckerOffer } from '@/utils/notifications';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog';
+import ReviewDialog from '@/components/ReviewDialog';
 
 const ShipmentDetail = () => {
   const { id } = useParams();
@@ -30,12 +32,16 @@ const ShipmentDetail = () => {
   const [shipment, setShipment] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [offerCount, setOfferCount] = useState(0);
+  const [hasReview, setHasReview] = useState(false);
 
   // Offer dialog state (for truckers)
   const [offerOpen, setOfferOpen] = useState(false);
   const [proposedPrice, setProposedPrice] = useState('');
   const [offerMessage, setOfferMessage] = useState('');
   const [sendingOffer, setSendingOffer] = useState(false);
+  
+  // Review dialog state
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   const fetchData = async () => {
     if (!id) return;
@@ -60,6 +66,16 @@ const ShipmentDetail = () => {
           .select('*', { count: 'exact', head: true })
           .eq('shipment_id', id);
         setOfferCount(count ?? 0);
+        
+        // Check if already reviewed if completed
+        if (shipmentData.status === 'completed') {
+          const { data: review } = await supabase
+            .from('reviews')
+            .select('id')
+            .eq('shipper_id', userProfile.id)
+            .limit(1);
+          setHasReview(!!review?.length);
+        }
       }
     } catch (error: any) {
       console.error('[ShipmentDetail] Error:', error);
@@ -124,6 +140,7 @@ const ShipmentDetail = () => {
 
   const isOwner = userProfile?.id === shipment.shipper_id;
   const isTrucker = userProfile?.user_type === 'trucker';
+  const isCompleted = shipment.status === 'completed';
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -133,14 +150,22 @@ const ShipmentDetail = () => {
           <ArrowLeft className="mr-2 h-4 w-4" /> Back
         </Button>
         <div className="flex gap-2">
-          {isOwner && (
+          {isOwner && !isCompleted && (
             <Link to={`/shipper/shipments/${id}/edit`}>
               <Button variant="outline" className="border-blue-200 text-blue-700 hover:bg-blue-50">
                 <Edit className="mr-2 h-4 w-4" /> Edit Shipment
               </Button>
             </Link>
           )}
-          {isTrucker && (
+          {isOwner && isCompleted && !hasReview && (
+            <Button 
+              className="bg-yellow-500 hover:bg-yellow-600 text-white"
+              onClick={() => setReviewOpen(true)}
+            >
+              <Star className="mr-2 h-4 w-4" /> Rate Trucker
+            </Button>
+          )}
+          {isTrucker && !isCompleted && (
             <Button
               className="bg-orange-600 hover:bg-orange-700"
               onClick={() => setOfferOpen(true)}
@@ -168,7 +193,8 @@ const ShipmentDetail = () => {
                 <Badge className={
                   shipment.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
                   shipment.status === 'matched' ? 'bg-green-100 text-green-700' :
-                  'bg-blue-100 text-blue-700'
+                  shipment.status === 'completed' ? 'bg-blue-100 text-blue-700' :
+                  'bg-gray-100 text-gray-700'
                 }>
                   {shipment.status.toUpperCase()}
                 </Badge>
@@ -261,12 +287,14 @@ const ShipmentDetail = () => {
                   <span className="font-medium text-gray-700">{shipment.shipper?.rating?.toFixed(1) || '0.0'}</span>
                   <span className="text-gray-400">rating</span>
                 </div>
-                <Button
-                  className="w-full bg-orange-600 hover:bg-orange-700"
-                  onClick={() => setOfferOpen(true)}
-                >
-                  <Send className="h-4 w-4 mr-2" /> Send Offer
-                </Button>
+                {!isCompleted && (
+                  <Button
+                    className="w-full bg-orange-600 hover:bg-orange-700"
+                    onClick={() => setOfferOpen(true)}
+                  >
+                    <Send className="h-4 w-4 mr-2" /> Send Offer
+                  </Button>
+                )}
               </CardContent>
             </Card>
           )}
@@ -276,25 +304,45 @@ const ShipmentDetail = () => {
             <Card>
               <CardHeader><CardTitle>Shipment Status</CardTitle></CardHeader>
               <CardContent className="text-sm text-gray-600 space-y-4">
-                <div className="flex gap-3">
-                  <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 font-bold">1</div>
-                  <p>Your shipment is currently <strong>{shipment.status}</strong>.</p>
-                </div>
-                <div className="flex gap-3">
-                  <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 font-bold">2</div>
-                  <p>Truckers can view and send offers. You have <strong>{offerCount} offer{offerCount !== 1 ? 's' : ''}</strong> so far.</p>
-                </div>
-                <div className="flex gap-3">
-                  <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 font-bold">3</div>
-                  <p>Go to <strong>My Shipments → Incoming</strong> tab to review and accept offers.</p>
-                </div>
-                {offerCount > 0 && (
-                  <Button
-                    className="w-full bg-blue-600 hover:bg-blue-700 mt-2"
-                    onClick={() => navigate('/shipper/my-shipments?tab=incoming')}
-                  >
-                    Review Offers ({offerCount})
-                  </Button>
+                {isCompleted ? (
+                  <div className="flex flex-col items-center text-center py-4 space-y-3">
+                    <div className="bg-green-100 p-3 rounded-full">
+                      <CheckCircle className="h-8 w-8 text-green-600" />
+                    </div>
+                    <p className="font-bold text-gray-900">Trip Completed!</p>
+                    <p>This shipment has been successfully delivered.</p>
+                    {!hasReview && (
+                      <Button 
+                        className="w-full bg-yellow-500 hover:bg-yellow-600 mt-2"
+                        onClick={() => setReviewOpen(true)}
+                      >
+                        Rate the Trucker
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex gap-3">
+                      <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 font-bold">1</div>
+                      <p>Your shipment is currently <strong>{shipment.status}</strong>.</p>
+                    </div>
+                    <div className="flex gap-3">
+                      <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 font-bold">2</div>
+                      <p>Truckers can view and send offers. You have <strong>{offerCount} offer{offerCount !== 1 ? 's' : ''}</strong> so far.</p>
+                    </div>
+                    <div className="flex gap-3">
+                      <div className="bg-blue-100 text-blue-700 w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 font-bold">3</div>
+                      <p>Go to <strong>My Shipments → Incoming</strong> tab to review and accept offers.</p>
+                    </div>
+                    {offerCount > 0 && (
+                      <Button
+                        className="w-full bg-blue-600 hover:bg-blue-700 mt-2"
+                        onClick={() => navigate('/shipper/my-shipments?tab=incoming')}
+                      >
+                        Review Offers ({offerCount})
+                      </Button>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -357,6 +405,19 @@ const ShipmentDetail = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Review Dialog */}
+      {reviewOpen && (
+        <ReviewDialog
+          isOpen={reviewOpen}
+          onClose={() => setReviewOpen(false)}
+          tripId={shipment.id} // Using shipment ID as trip context for review
+          truckerId="" // This would need to be fetched from the accepted offer
+          shipperId={userProfile?.id || ''}
+          truckerName="the trucker"
+          onSuccess={fetchData}
+        />
+      )}
     </div>
   );
 };

@@ -26,7 +26,8 @@ import {
   User,
   Truck,
   CheckCircle,
-  XCircle
+  XCircle,
+  Star
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -42,6 +43,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { showError, showSuccess } from '@/utils/toast';
 import { notifyTruckerOfOfferAccepted, notifyTruckerOfOfferDeclined } from '@/utils/notifications';
+import ReviewDialog from '@/components/ReviewDialog';
 
 const StatusBadge = ({ status }: { status: string }) => {
   const cfg: Record<string, string> = {
@@ -71,6 +73,19 @@ const MyShipments = () => {
   const [incomingOffers, setIncomingOffers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  
+  // Review state
+  const [reviewData, setReviewData] = useState<{
+    isOpen: boolean;
+    tripId: string;
+    truckerId: string;
+    truckerName: string;
+  }>({
+    isOpen: false,
+    tripId: '',
+    truckerId: '',
+    truckerName: ''
+  });
 
   const loadData = useCallback(async () => {
     if (!userProfile?.id) return;
@@ -87,7 +102,11 @@ const MyShipments = () => {
       // 2. Requests I sent to Truckers (Shipper -> Trucker)
       const { data: sent } = await supabase
         .from('requests')
-        .select(`*, trip:trips(*, trucker:users(*))`)
+        .select(`
+          *, 
+          trip:trips(*, trucker:users(*)),
+          review:reviews(id)
+        `)
         .eq('shipper_id', userProfile.id)
         .order('created_at', { ascending: false });
 
@@ -173,6 +192,15 @@ const MyShipments = () => {
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const openReview = (request: any) => {
+    setReviewData({
+      isOpen: true,
+      tripId: request.trip_id,
+      truckerId: request.trip.trucker_id,
+      truckerName: request.trip.trucker.full_name
+    });
   };
 
   if (loading) return (
@@ -292,7 +320,10 @@ const MyShipments = () => {
                           <div className="text-lg font-bold text-gray-900">
                             {request.trip?.origin_city} <ArrowRight className="h-4 w-4 inline mx-2 text-gray-400" /> {request.trip?.destination_city}
                           </div>
-                          <StatusBadge status={request.status} />
+                          <div className="flex items-center gap-2">
+                            {request.trip?.status === 'completed' && <Badge className="bg-blue-100 text-blue-700">TRIP COMPLETED</Badge>}
+                            <StatusBadge status={request.status} />
+                          </div>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600">
                           <div className="flex items-center"><Calendar className="h-4 w-4 mr-2 text-blue-600" />Trip Date: {new Date(request.trip?.departure_date).toLocaleDateString()}</div>
@@ -311,6 +342,19 @@ const MyShipments = () => {
                       <div className="flex flex-col gap-2 min-w-[160px] justify-center">
                         {request.status === 'accepted' && (
                           <>
+                            {request.trip?.status === 'completed' && !request.review?.length ? (
+                              <Button 
+                                className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
+                                onClick={() => openReview(request)}
+                              >
+                                <Star className="h-4 w-4 mr-2" /> Rate Service
+                              </Button>
+                            ) : request.review?.length ? (
+                              <div className="flex items-center justify-center gap-2 text-green-600 font-bold text-sm py-2">
+                                <CheckCircle className="h-4 w-4" /> Rated
+                              </div>
+                            ) : null}
+                            
                             <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={() => navigate(`/chat/${request.id}`)}>
                               <MessageSquare className="h-4 w-4 mr-2" />Chat
                             </Button>
@@ -418,6 +462,19 @@ const MyShipments = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Review Dialog */}
+      {reviewData.isOpen && (
+        <ReviewDialog
+          isOpen={reviewData.isOpen}
+          onClose={() => setReviewData(prev => ({ ...prev, isOpen: false }))}
+          tripId={reviewData.tripId}
+          truckerId={reviewData.truckerId}
+          shipperId={userProfile?.id || ''}
+          truckerName={reviewData.truckerName}
+          onSuccess={loadData}
+        />
+      )}
     </div>
   );
 };
