@@ -10,6 +10,9 @@ interface RoleProtectedRouteProps {
   allowedRole?: 'shipper' | 'trucker' | 'both' | 'admin';
 }
 
+// Only this specific user ID is allowed to access admin features
+const ALLOWED_ADMIN_ID = "user_3Cn2O5bwNC0wsSEfGDnTky9rn2S";
+
 const RoleProtectedRoute = ({ children, allowedRole }: RoleProtectedRouteProps) => {
   const { userProfile, loading, isLoaded } = useAuth();
 
@@ -27,8 +30,16 @@ const RoleProtectedRoute = ({ children, allowedRole }: RoleProtectedRouteProps) 
     return <Navigate to="/" replace />;
   }
 
+  // Strict check for admin role: must have the admin type AND the specific allowed ID
+  if (allowedRole === 'admin') {
+    if (userProfile.user_type !== 'admin' || userProfile.id !== ALLOWED_ADMIN_ID) {
+      console.warn(`[Security] Unauthorized admin access attempt by user: ${userProfile.id}`);
+      return <Navigate to="/" replace />;
+    }
+  }
+
   // If a specific role is required and the current user doesn't match, redirect to their own dashboard
-  if (allowedRole && allowedRole !== 'both' && userProfile.user_type !== allowedRole) {
+  if (allowedRole && allowedRole !== 'both' && allowedRole !== 'admin' && userProfile.user_type !== allowedRole) {
     let targetPath = '/';
     if (userProfile.user_type === 'shipper') targetPath = '/shipper/dashboard';
     else if (userProfile.user_type === 'trucker') targetPath = '/trucker/dashboard';

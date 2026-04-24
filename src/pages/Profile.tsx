@@ -31,6 +31,8 @@ import {
 } from 'lucide-react';
 import Star from '@/components/Star';
 
+const ALLOWED_ADMIN_ID = "user_3Cn2O5bwNC0wsSEfGDnTky9rn2S";
+
 const Profile = () => {
   const { userProfile, refreshProfile } = useAuth();
   const { getToken } = useClerkAuth();
@@ -475,7 +477,7 @@ const Profile = () => {
                 <CardDescription>Change how you use LoadSaathi (for testing purposes)</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Button 
                     variant={userProfile?.user_type === 'shipper' ? 'default' : 'outline'}
                     onClick={() => handleSwitchRole('shipper')}
@@ -494,15 +496,19 @@ const Profile = () => {
                     {switching ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Truck className="h-4 w-4 mr-2" />}
                     Trucker
                   </Button>
-                  <Button 
-                    variant={userProfile?.user_type === 'admin' ? 'default' : 'outline'}
-                    onClick={() => handleSwitchRole('admin')}
-                    disabled={switching || userProfile?.user_type === 'admin'}
-                    className="w-full border-purple-200 text-purple-700 hover:bg-purple-50"
-                  >
-                    {switching ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
-                    Admin
-                  </Button>
+                  
+                  {/* Only show Admin switch option to the authorized developer ID */}
+                  {userProfile?.id === ALLOWED_ADMIN_ID && (
+                    <Button 
+                      variant={userProfile?.user_type === 'admin' ? 'default' : 'outline'}
+                      onClick={() => handleSwitchRole('admin')}
+                      disabled={switching || userProfile?.user_type === 'admin'}
+                      className="w-full border-purple-200 text-purple-700 hover:bg-purple-50 sm:col-span-2"
+                    >
+                      {switching ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+                      Admin Mode
+                    </Button>
+                  )}
                 </div>
                 <p className="text-[10px] text-gray-400 italic text-center">
                   Note: Switching roles will change your dashboard and available features.
