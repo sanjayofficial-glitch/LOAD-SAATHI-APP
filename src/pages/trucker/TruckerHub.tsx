@@ -163,6 +163,11 @@ const TruckerHub = () => {
 
       if (error) throw error;
 
+      // Update local state immediately for better UX
+      setIncomingRequests(prev => 
+        prev.map(r => r.id === request.id ? { ...r, status } : r)
+      );
+
       if (status === 'accepted') {
         await notifyShipperOfRequestAccepted({
           shipperId: request.shipper_id,
@@ -183,9 +188,12 @@ const TruckerHub = () => {
         });
         showSuccess('Request declined.');
       }
-      fetchData();
+      
+      // Refresh all data to ensure consistency
+      await fetchData();
     } catch (err: any) {
-      showError(`Failed to ${status} request`);
+      console.error('[handleBookingAction] Error:', err);
+      showError(`Failed to ${status} request. Please check your permissions.`);
     } finally {
       setActionLoading(null);
     }
