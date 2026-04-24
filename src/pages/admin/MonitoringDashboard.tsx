@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useSupabase } from '@/hooks/useSupabase';
+import { supabase } from '@/lib/supabaseClient';
 import { 
   ResizableHandle, 
   ResizablePanel, 
@@ -48,10 +49,10 @@ const MonitoringDashboard = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      const supabase = await getAuthenticatedClient();
+      const supabaseClient = await getAuthenticatedClient();
 
       // Fetch active users
-      const { data: userData } = await supabase
+      const { data: userData } = await supabaseClient
         .from('users')
         .select('*')
         .order('created_at', { ascending: false })
@@ -60,7 +61,7 @@ const MonitoringDashboard = () => {
       if (userData) setUsers(userData);
 
       // Fetch trips
-      const { data: tripData } = await supabase
+      const { data: tripData } = await supabaseClient
         .from('trips')
         .select('*')
         .order('created_at', { ascending: false });
@@ -68,15 +69,15 @@ const MonitoringDashboard = () => {
       if (tripData) setTrips(tripData);
 
       // Fetch system metrics via RPC
-      const { data: metricsData, error: metricsError } = await supabase.rpc('get_system_metrics');
+      const { data: metricsData, error: metricsError } = await supabaseClient.rpc('get_system_metrics');
       if (!metricsError && metricsData) {
         const m = Array.isArray(metricsData) ? metricsData[0] : metricsData;
         setMetrics(m);
       }
 
       // Calculate Business Metrics
-      const { data: shipments } = await supabase.from('shipments').select('id, origin_city, created_at');
-      const { data: requests } = await supabase.from('requests').select('status, weight_tonnes, trip:trips(price_per_tonne), created_at');
+      const { data: shipments } = await supabaseClient.from('shipments').select('id, origin_city, created_at');
+      const { data: requests } = await supabaseClient.from('requests').select('status, weight_tonnes, trip:trips(price_per_tonne), created_at');
       
       const pending = requests?.filter(r => r.status === 'pending').length || 0;
       const accepted = requests?.filter(r => r.status === 'accepted') || [];
@@ -91,13 +92,6 @@ const MonitoringDashboard = () => {
         success_rate: successRate
       });
 
-      // Generate mock events based on real data for the feed
-      const newEvents = [];
-      if (shipments?.[0]) newEvents.push({ id: 's1', type: 'trip', message: `New load posted from ${shipments[0].origin_city}`, time: 'JUST NOW' });
-      if (accepted?.[0]) newEvents.push({ id: 'b1', type: 'booking', message: `Booking accepted for ${accepted[0].weight_tonnes}t`, time: '2M AGO' });
-      if (userData?.[0]) newEvents.push({ id: 'u1', type: 'user', message: `New ${userData[0].user_type} joined: ${userData[0].full_name}`, time: '5M AGO' });
-      setEvents(newEvents);
-
       setLastUpdated(new Date());
     } catch (err) {
       console.error('[Monitoring] Fetch error:', err);
@@ -108,8 +102,56 @@ const MonitoringDashboard = () => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 15000);
-    return () => clearInterval(interval);
+    
+    // Set up real-time subscriptions
+    const channel = supabase
+      .channel('admin-monitor-all')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trips' }, (payload) => {
+        setEvents(prev => [{
+          id: `trip-${Date.now()}`,
+          type: 'trip',
+          message: `New trip: ${payload.new.origin_city} → ${payload.new.destination_city}`,
+          time: 'JUST NOW'
+        }, ...prev].slice(0, 15));
+        fetchData();
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shipments' }, (payload) => {
+        setEvents(prev => [{
+          id: `shipment-${Date.now()}`,
+          type: 'trip',
+          message: `New load posted from ${payload.new.origin_city}`,
+          time: 'JUST NOW'
+        }, ...prev].slice(0, 15));
+        fetchData();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'requests' }, (payload) => {
+        if (payload.new.status === 'accepted' && payload.old.status !== 'accepted') {
+          setEvents(prev => [{
+            id: `booking-${Date.now()}`,
+            type: 'booking',
+            message: `Booking accepted for ${payload.new.weight_tonnes}t load`,
+            time: 'JUST NOW'
+          }, ...prev].slice(0, 15));
+          fetchData();
+        }
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'users' }, (payload) => {
+        setEvents(prev => [{
+          id: `user-${Date.now()}`,
+          type: 'user',
+          message: `New ${payload.new.user_type} joined: ${payload.new.full_name}`,
+          time: 'JUST NOW'
+        }, ...prev].slice(0, 15));
+        fetchData();
+      })
+      .subscribe();
+
+    const interval = setInterval(fetchData, 30000); // Fallback refresh every 30s
+    
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
   }, [fetchData]);
 
   return (
