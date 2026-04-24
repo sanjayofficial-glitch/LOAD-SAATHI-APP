@@ -1,10 +1,9 @@
 export interface User {
   id: string;
   email: string;
-  user_type: 'trucker' | 'shipper';
+  user_type: 'trucker' | 'shipper' | 'admin';  // Added 'admin' type
   full_name: string;
-  phone: string;
-  company_name?: string;
+  phone: string;  company_name?: string;
   is_verified: boolean;
   rating: number;
   total_trips: number;
@@ -12,8 +11,7 @@ export interface User {
 }
 
 export interface Trip {
-  id: string;
-  trucker_id: string;
+  id: string;  trucker_id: string;
   origin_city: string;
   destination_city: string;
   departure_date: string;
@@ -37,19 +35,15 @@ export interface Shipment {
   weight_tonnes: number;
   pickup_address: string;
   delivery_address: string;
-  budget_per_tonne: number;
-  status: 'pending' | 'matched' | 'completed' | 'cancelled';
+  budget_per_tonne: number;  status: 'pending' | 'matched' | 'completed' | 'cancelled';
   created_at: string;
   shipper?: User;
-}
-
+}
 export interface Request {
   id: string;
   trip_id: string;
   shipper_id: string;
-  goods_description: string;
-  weight_tonnes: number;
-  pickup_address: string;
+  goods_description: string;  weight_tonnes: number;  pickup_address: string;
   delivery_address: string;
   status: 'pending' | 'accepted' | 'declined';
   created_at: string;

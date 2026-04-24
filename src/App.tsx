@@ -8,8 +8,9 @@ import { Skeleton } from "./components/ui/skeleton";
 import Layout from "./components/Layout";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
 import { lazy, Suspense } from "react";
+import AdminMonitoringDashboard from "./pages/admin/MonitoringDashboard";
+import MonitoringDashboardTest from "./pages/admin/MonitoringDashboardTest";
 
-// Lazy load page components
 const Index = lazy(() => import("./pages/Index"));
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
@@ -52,6 +53,18 @@ function App() {
                   <Route path="/register" element={<Register />} />
                   <Route path="/auth-sync" element={<AuthSync />} />
                   <Route path="/choose-role" element={<ChooseRole />} />
+
+                  {/* Test route for monitoring dashboard (development only) */}
+                  <Route path="/admin/monitoring/test" element={<MonitoringDashboardTest />} />
+
+                  {/* Admin routes - Only accessible by admin users */}
+                  <Route element={
+                    <RoleProtectedRoute allowedRole="admin">
+                      <Outlet />
+                    </RoleProtectedRoute>
+                  }>
+                    <Route path="/admin/monitoring" element={<AdminMonitoringDashboard />} />
+                  </Route>
 
                   {/* Authenticated routes wrapped with Layout */}
                   <Route
@@ -127,7 +140,6 @@ function App() {
                         <ShipperHistory />
                       </RoleProtectedRoute>
                     } />
-                    <Route path="/browse-trucks" element={<BrowseTrips />} />
 
                     {/* Common authenticated routes */}
                     <Route path="/trips/:tripId" element={<TripDetail />} />
@@ -135,7 +147,7 @@ function App() {
                     <Route path="/messages" element={<ChatList />} />
                     <Route path="/profile" element={<Profile />} />
 
-                    {/* Catch‑all */}
+                    {/* Catch-all */}
                     <Route path="*" element={<NotFound />} />
                   </Route>
                 </Routes>

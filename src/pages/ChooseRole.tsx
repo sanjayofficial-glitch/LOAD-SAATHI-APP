@@ -1,11 +1,8 @@
-"use client";
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useSession } from '@clerk/clerk-react';
 import { Loader2, User, Truck, CheckCircle2 } from 'lucide-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
-import { useAuth } from '@/contexts/AuthContext';
 import { showSuccess, showError } from '@/utils/toast';
 
 const ChooseRole = () => {
@@ -24,7 +21,7 @@ const ChooseRole = () => {
     }
   }, [userProfile, navigate]);
 
-  const handleRoleSelection = async (role: "shipper" | "trucker") => {
+  const handleRoleSelection = async (role: "shipper" | "trucker" | "admin") => {
     if (!user || !session) return;
 
     setLoading(true);
@@ -56,11 +53,12 @@ const ChooseRole = () => {
       // Crucial: Refresh the profile in our context so the app knows the new role immediately
       await refreshProfile();
 
-      showSuccess(`Welcome ${role === 'shipper' ? 'Shipper' : 'Trucker'}!`);
+      showSuccess(`Welcome ${role === 'shipper' ? 'Shipper' : role === 'trucker' ? 'Trucker' : 'Admin'}!`);
       
       // Use a small delay to ensure state is updated before navigation
       setTimeout(() => {
-        navigate(role === 'shipper' ? '/shipper/dashboard' : '/trucker/dashboard', { replace: true });
+        const targetPath = role === 'shipper' ? '/shipper/dashboard' : role === 'trucker' ? '/trucker/dashboard' : '/admin/monitoring';
+        navigate(targetPath, { replace: true });
       }, 100);
     } catch (err: any) {
       console.error("[ChooseRole] Error:", err);
@@ -79,8 +77,9 @@ const ChooseRole = () => {
           <p className="text-sm text-gray-500">Verifying account...</p>
         </div>
       </div>
-    );
-  }
+    </div>
+  </div>
+);
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-orange-50 to-blue-50 px-4">
@@ -90,7 +89,7 @@ const ChooseRole = () => {
             <Truck className="h-10 w-10 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Welcome to LoadSaathi!</h1>
-          <p className="text-lg text-gray-600">How will you be using the platform today?</p>
+          <p className="text-lg text-gray-600 mb-4">How will you be using the platform today?</p>
         </div>
 
         {error && (
@@ -99,9 +98,8 @@ const ChooseRole = () => {
           </div>
         )}
 
-        <div className="grid md:grid-cols-2 gap-6">
-          <button
-            onClick={() => handleRoleSelection("shipper")}
+        <div className="grid md:grid-cols-3 gap-6">
+          <button            onClick={() => handleRoleSelection("shipper")}
             disabled={loading}
             className="group relative flex flex-col items-center text-center bg-white hover:border-orange-500 border-2 border-transparent transition-all p-8 rounded-2xl shadow-sm hover:shadow-xl disabled:opacity-50"
           >
@@ -131,6 +129,23 @@ const ChooseRole = () => {
             </p>
             <div className="mt-6 flex items-center text-orange-600 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
               Select Trucker <CheckCircle2 className="ml-2 h-4 w-4" />
+            </div>
+          </button>
+
+          <button
+            onClick={() => handleRoleSelection("admin")}
+            disabled={loading}
+            className="group relative flex flex-col items-center text-center bg-white hover:border-purple-500 border-2 border-transparent transition-all p-8 rounded-2xl shadow-sm hover:shadow-xl disabled:opacity-50"
+          >
+            <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <span className="text-purple-600 text-2xl">👑</span>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">I am an Admin</h2>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              I want to monitor and manage the entire platform infrastructure and user activity.
+            </p>
+            <div className="mt-6 flex items-center text-purple-600 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+              Manage Platform <CheckCircle2 className="ml-2 h-4 w-4" />
             </div>
           </button>
         </div>
