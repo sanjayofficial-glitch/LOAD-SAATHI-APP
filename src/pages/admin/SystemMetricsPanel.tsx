@@ -8,8 +8,7 @@ import {
   Globe, 
   AlertTriangle, 
   Cpu,
-  ArrowUpRight,
-  ArrowDownRight
+  ArrowUpRight
 } from 'lucide-react';
 
 interface MetricsProps {
@@ -22,9 +21,8 @@ interface MetricsProps {
 }
 
 const SystemMetricsPanel: React.FC<MetricsProps> = ({ metrics }) => {
-  // Mocking some health percentages based on metrics
+  // Health percentages based on metrics
   const connectionHealth = Math.min(100, (metrics.active_connections / 100) * 100);
-  const latencyHealth = Math.max(0, 100 - (metrics.api_response_time / 5));
 
   return (
     <div className="space-y-4">

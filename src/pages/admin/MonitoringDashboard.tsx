@@ -20,7 +20,6 @@ import { Badge } from '@/components/ui/badge';
 import UserActivityTable from './UserActivityTable';
 import TripMapComponent from './TripMapComponent';
 import SystemMetricsPanel from './SystemMetricsPanel';
-import { showError } from '@/utils/toast';
 
 const MonitoringDashboard = () => {
   const { getAuthenticatedClient } = useSupabase();
@@ -166,13 +165,13 @@ const MonitoringDashboard = () => {
                 <div className="bg-slate-900/90 border border-slate-700 p-4 rounded-xl backdrop-blur-sm shadow-2xl">
                   <p className="text-[10px] text-slate-500 uppercase font-black mb-1">Active Trips</p>
                   <p className="text-2xl font-mono font-bold text-orange-500">
-                    {trips.filter(t => t.status === 'active').length}
+                    {trips.filter((t: any) => t.status === 'active').length}
                   </p>
                 </div>
                 <div className="bg-slate-900/90 border border-slate-700 p-4 rounded-xl backdrop-blur-sm shadow-2xl">
                   <p className="text-[10px] text-slate-500 uppercase font-black mb-1">Completed</p>
                   <p className="text-2xl font-mono font-bold text-green-500">
-                    {trips.filter(t => t.status === 'completed').length}
+                    {trips.filter((t: any) => t.status === 'completed').length}
                   </p>
                 </div>
               </div>
