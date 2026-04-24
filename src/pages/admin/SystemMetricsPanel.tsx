@@ -1,48 +1,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient';
 
 const SystemMetricsPanel: React.FC<{ metrics: any }> = ({ metrics }) => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  const fetchMetrics = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const { data, error } = await supabase.rpc('get_system_metrics', {});
-      if (error) throw error;
-      setMetrics(data);
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchMetrics();
-    const interval = setInterval(fetchMetrics, 30000); // 30-second polling
-    return () => clearInterval(interval);
-  }, [metrics]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    </div>
-  );
-
-  if (error) {
-    return (
-      <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
-        Error: {error}
-      </div>
-    );
-  }
-
   return (
     <Card>
       <CardHeader className="flex items-center justify-between">
