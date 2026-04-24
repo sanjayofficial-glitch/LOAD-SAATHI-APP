@@ -9,7 +9,6 @@ import Layout from "./components/Layout";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
 import { lazy, Suspense } from "react";
 import AdminMonitoringDashboard from "./pages/admin/MonitoringDashboard";
-import MonitoringDashboardTest from "./pages/admin/MonitoringDashboardTest";
 
 const Index = lazy(() => import("./pages/Index"));
 const Login = lazy(() => import("./pages/Login"));
@@ -53,9 +52,6 @@ function App() {
                   <Route path="/register" element={<Register />} />
                   <Route path="/auth-sync" element={<AuthSync />} />
                   <Route path="/choose-role" element={<ChooseRole />} />
-
-                  {/* Test route for monitoring dashboard (development only) */}
-                  <Route path="/admin/monitoring/test" element={<MonitoringDashboardTest />} />
 
                   {/* Admin routes - Only accessible by admin users */}
                   <Route element={
