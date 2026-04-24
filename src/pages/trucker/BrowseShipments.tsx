@@ -25,7 +25,7 @@ import {
   Sparkles,
   AlertCircle,
   User,
-  Trash2
+  MapPin
 } from 'lucide-react';
 import { 
   Select,
@@ -45,17 +45,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import { notifyShipperOfTruckerOffer } from '@/utils/notifications';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -84,7 +73,6 @@ const BrowseShipments = () => {
     departureDate: ''
   });
 
-  // Offer Dialog State
   const [selectedShipment, setSelectedShipment] = useState<any>(null);
   const [isOfferDialogOpen, setIsOfferDialogOpen] = useState(false);
   const [proposedPrice, setProposedPrice] = useState('');
@@ -97,7 +85,7 @@ const BrowseShipments = () => {
       if (!token) return;
       const supabaseClient = createClerkSupabaseClient(token);
       
-      // Correctly query shipments table with joined shipper data
+      // Fetch all pending shipments and join with the users table to get shipper details
       const { data, error } = await supabaseClient
         .from('shipments')
         .select('*, shipper:users!shipments_shipper_id_fkey(*)')
@@ -116,15 +104,6 @@ const BrowseShipments = () => {
 
   useEffect(() => {
     fetchShipments();
-
-    const channel = supabase
-      .channel('browse-shipments-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'shipments' },
-        () => fetchShipments()
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
   }, [fetchShipments]);
 
   const filteredShipments = useMemo(() => {
@@ -147,33 +126,16 @@ const BrowseShipments = () => {
   const handleAiSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!aiSearchQuery.trim()) return;
-
     setAiLoading(true);
-    setApiKeyMissing(false);
-    
     try {
       const parsedFilters = await parseNaturalLanguageSearch(aiSearchQuery);
-      
-      if (Object.keys(parsedFilters).length > 0) {
-        setFilters({
-          originState: 'Any',
-          destinationState: 'Any',
-          minWeight: parsedFilters.weight?.toString() || '',
-          maxPrice: '',
-          departureDate: parsedFilters.date || ''
-        });
-        setSearchTerm(parsedFilters.origin || parsedFilters.destination || '');
-        showSuccess('AI parsed your search filters!');
-      } else {
-        showError('AI could not understand the search. Try being more specific.');
-      }
+      if (parsedFilters.origin) setSearchTerm(parsedFilters.origin);
+      if (parsedFilters.weight) setFilters(f => ({ ...f, minWeight: parsedFilters.weight!.toString() }));
+      if (parsedFilters.date) setFilters(f => ({ ...f, departureDate: parsedFilters.date! }));
+      showSuccess('AI parsed your search!');
     } catch (err: any) {
-      if (err.message === 'GEMINI_API_KEY_MISSING') {
-        setApiKeyMissing(true);
-        showError('AI Search requires a Gemini API Key.');
-      } else {
-        showError('AI search failed. Please try manual filters.');
-      }
+      if (err.message === 'GEMINI_API_KEY_MISSING') setApiKeyMissing(true);
+      else showError('AI search failed');
     } finally {
       setAiLoading(false);
     }
@@ -187,7 +149,6 @@ const BrowseShipments = () => {
 
   const submitOffer = async () => {
     if (!selectedShipment || !userProfile) return;
-
     const price = parseFloat(proposedPrice);
     if (isNaN(price) || price <= 0) {
       showError('Please enter a valid price');
@@ -196,21 +157,18 @@ const BrowseShipments = () => {
 
     setSendingOffer(true);
     try {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
+      const token = await getToken({ template: 'supabase' });
+      if (!token) throw new Error('No auth token');
+      const supabaseClient = createClerkSupabaseClient(token);
       
-      const supabaseClient = createClerkSupabaseClient(supabaseToken);
-      
-      const { error } = await supabaseClient
-        .from('shipment_requests')
-        .insert({
-          shipment_id: selectedShipment.id,
-          trucker_id: userProfile.id,
-          shipper_id: selectedShipment.shipper_id,
-          proposed_price_per_tonne: price,
-          message: message.trim(),
-          status: 'pending'
-        });
+      const { error } = await supabaseClient.from('shipment_requests').insert({
+        shipment_id: selectedShipment.id,
+        trucker_id: userProfile.id,
+        shipper_id: selectedShipment.shipper_id,
+        proposed_price_per_tonne: price,
+        message: message.trim(),
+        status: 'pending'
+      });
 
       if (error) throw error;
 
@@ -224,11 +182,9 @@ const BrowseShipments = () => {
         getToken: () => getToken({ template: 'supabase' }),
       });
 
-      showSuccess('🚛 Offer sent to shipper! They will be notified instantly.');
+      showSuccess('Offer sent to shipper!');
       setIsOfferDialogOpen(false);
-      setProposedPrice('');
-      setMessage('');
-      navigate('/trucker/dashboard?tab=sent');
+      navigate('/trucker/my-trips?tab=sent');
     } catch (err: any) {
       showError(err.message || 'Failed to send offer');
     } finally {
@@ -236,31 +192,15 @@ const BrowseShipments = () => {
     }
   };
 
-  const handleDeleteShipment = async (id: string) => {
-    try {
-      const token = await getToken({ template: 'supabase' });
-      if (!token) return;
-      const supabaseClient = createClerkSupabaseClient(token);
-      const { error } = await supabaseClient.from('shipments').delete().eq('id', id);
-      if (error) throw error;
-      showSuccess('Shipment deleted successfully');
-      fetchShipments();
-    } catch (err) {
-      showError('Failed to delete shipment');
-    }
-  };
-
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900">Find Trucks</h1>
-        <p className="text-gray-600 mt-2">Browse available shipments posted by shippers and send your best offer to request a load</p>
+        <h1 className="text-4xl font-bold text-gray-900">Find Goods to Carry</h1>
+        <p className="text-gray-600 mt-2">Browse available shipments posted by shippers and send your best offer</p>
       </div>
 
       <div className="grid lg:grid-cols-4 gap-8">
-        {/* Filters Sidebar */}
         <div className="lg:col-span-1 space-y-6">
-          {/* AI Search Card */}
           <Card className="border-blue-100 shadow-sm overflow-hidden">
             <CardContent className="p-5 space-y-4">
               <div className="space-y-2">
@@ -269,142 +209,58 @@ const BrowseShipments = () => {
                   <div className="relative">
                     <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-500" />
                     <Input 
-                      placeholder="e.g. '10 tonnes from Mumbai to Delhi'" 
-                      className="pl-10 border-blue-100 focus:ring-blue-500"
+                      placeholder="e.g. '10 tonnes from Mumbai'" 
+                      className="pl-10 border-blue-100"
                       value={aiSearchQuery}
                       onChange={(e) => setAiSearchQuery(e.target.value)}
                     />
                   </div>
-                  <Button 
-                    type="submit"
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold"
-                    disabled={aiLoading}
-                  >
+                  <Button type="submit" className="w-full bg-blue-600" disabled={aiLoading}>
                     {aiLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
                     AI Search
                   </Button>
                 </form>
-                {apiKeyMissing && (
-                  <Alert variant="destructive" className="mt-4 bg-red-50 border-red-100">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription className="text-xs">
-                      AI Search is disabled. Please add <strong>VITE_GEMINI_API_KEY</strong> to your environment variables.
-                    </AlertDescription>
-                  </Alert>
-                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Manual Filters Card */}
           <Card className="border-gray-100 shadow-sm">
             <CardHeader className="pb-3 flex flex-row items-center justify-between">
-              <CardTitle className="text-sm font-bold text-gray-700">Manual Filters</CardTitle>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                className="text-blue-600 hover:text-blue-700 p-0 h-auto font-medium"
-                onClick={() => setShowFilters(!showFilters)}
-              >
+              <CardTitle className="text-sm font-bold text-gray-700">Filters</CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => setShowFilters(!showFilters)}>
                 {showFilters ? 'Hide' : 'Show'}
               </Button>
             </CardHeader>
             {showFilters && (
-              <CardContent className="space-y-5">
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-xs font-semibold text-gray-500 uppercase">Origin State</Label>
-                  <Select 
-                    value={filters.originState} 
-                    onValueChange={(val) => setFilters({...filters, originState: val})}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select State" />
-                    </SelectTrigger>
+                  <Select value={filters.originState} onValueChange={(val) => setFilters({...filters, originState: val})}>
+                    <SelectTrigger><SelectValue placeholder="Select State" /></SelectTrigger>
                     <SelectContent>
-                      {INDIAN_STATES.map(state => (
-                        <SelectItem key={state} value={state}>{state}</SelectItem>
-                      ))}
+                      {INDIAN_STATES.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold text-gray-500 uppercase">Destination State</Label>
-                  <Select 
-                    value={filters.destinationState} 
-                    onValueChange={(val) => setFilters({...filters, destinationState: val})}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select State" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {INDIAN_STATES.map(state => (
-                        <SelectItem key={state} value={state}>{state}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-xs font-semibold text-gray-500 uppercase">Min Weight (t)</Label>
+                  <Input type="number" value={filters.minWeight} onChange={(e) => setFilters({...filters, minWeight: e.target.value})} />
                 </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold text-gray-500 uppercase">Min Weight (Tonnes)</Label>
-                  <Input 
-                    type="number" 
-                    placeholder="e.g. 5" 
-                    value={filters.minWeight}
-                    onChange={(e) => setFilters({...filters, minWeight: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold text-gray-500 uppercase">Max Price per Tonne (₹)</Label>
-                  <Input 
-                    type="number" 
-                    placeholder="e.g. 3000" 
-                    value={filters.maxPrice}
-                    onChange={(e) => setFilters({...filters, maxPrice: e.target.value})}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-xs font-semibold text-gray-500 uppercase">Departure From</Label>
-                  <div className="relative">
-                    <Input 
-                      type="date" 
-                      className="w-full"
-                      value={filters.departureDate}
-                      onChange={(e) => setFilters({...filters, departureDate: e.target.value})}
-                    />
-                  </div>
-                </div>
-
-                <Button 
-                  variant="outline" 
-                  className="w-full border-gray-200 text-gray-600"
-                  onClick={() => {
-                    setFilters({
-                      originState: 'Any',
-                      destinationState: 'Any',
-                      minWeight: '',
-                      maxPrice: '',
-                      departureDate: ''
-                    });
-                    setSearchTerm('');
-                  }}
-                >
-                  <X className="h-4 w-4 mr-2" /> Clear All
-                </Button>
+                <Button variant="outline" className="w-full" onClick={() => {
+                  setFilters({ originState: 'Any', destinationState: 'Any', minWeight: '', maxPrice: '', departureDate: '' });
+                  setSearchTerm('');
+                }}>Clear All</Button>
               </CardContent>
             )}
           </Card>
         </div>
 
-        {/* Shipments List */}
         <div className="lg:col-span-3 space-y-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input 
               placeholder="Search by city or goods type..." 
-              className="pl-10 py-6 rounded-xl border-gray-200 focus:ring-orange-500"
+              className="pl-10 py-6 rounded-xl border-gray-200"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -412,26 +268,17 @@ const BrowseShipments = () => {
 
           {loading ? (
             <div className="grid gap-6">
-              {[1, 2, 3].map((i) => (
-                <Card key={i}>
-                  <CardContent className="p-6 space-y-4">
-                    <Skeleton className="h-6 w-1/2" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-10 w-32" />
-                  </CardContent>
-                </Card>
-              ))}
+              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-48 w-full rounded-xl" />)}
             </div>
           ) : filteredShipments.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
               <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900">No shipments found</h3>
-              <p className="text-gray-500">Try adjusting your search or filters</p>
             </div>
           ) : (
             <div className="grid gap-6">
               {filteredShipments.map((shipment) => (
-                <Card key={shipment.id} className="overflow-hidden border-orange-100 hover:shadow-lg transition-all duration-200">
+                <Card key={shipment.id} className="overflow-hidden border-orange-100 hover:shadow-lg transition-all">
                   <CardContent className="p-0">
                     <div className="flex flex-col md:flex-row">
                       <div className="flex-1 p-6 space-y-4">
@@ -447,7 +294,7 @@ const BrowseShipments = () => {
                               <p className="text-sm text-gray-600">{shipment.goods_description}</p>
                             </div>
                           </div>
-                          <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">
+                          <Badge className="bg-blue-100 text-blue-700">
                             {shipment.weight_tonnes} Tonnes
                           </Badge>
                         </div>
@@ -471,44 +318,19 @@ const BrowseShipments = () => {
                             <User className="h-4 w-4 mr-2 text-blue-600" />
                             <div>
                               <p className="text-gray-500 text-xs">Shipper</p>
-                              <p className="font-medium">{shipment.shipper?.full_name || 'Anonymous'}</p>
+                              <p className="font-medium">{shipment.shipper?.full_name || 'Verified Shipper'}</p>
                             </div>
                           </div>
                         </div>
                       </div>
 
                       <div className="md:w-48 bg-gray-50 p-6 border-t md:border-t-0 md:border-l border-gray-100 flex flex-col justify-center gap-2">
-                        <Button 
-                          className="w-full bg-orange-600 hover:bg-orange-700 shadow-md"
-                          onClick={() => openOfferDialog(shipment)}
-                        >
+                        <Button className="w-full bg-orange-600" onClick={() => openOfferDialog(shipment)}>
                           Send Offer
-                          <Send className="ml-2 h-4 w-4" />
                         </Button>
-                        <Link to={`/shipper/shipments/${shipment.id}`} className="block">
-                          <Button variant="outline" className="w-full border-orange-200 text-orange-700 hover:bg-orange-50">
-                            <Eye className="mr-2 h-4 w-4" /> View Details
-                          </Button>
+                        <Link to={`/shipper/shipments/${shipment.id}`}>
+                          <Button variant="outline" className="w-full">View Details</Button>
                         </Link>
-                        {shipment.shipper_id === userProfile?.id && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="sm" className="text-red-600 hover:bg-red-50">
-                                <Trash2 className="h-4 w-4 mr-2" /> Delete
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                <AlertDialogDescription>This will permanently delete your shipment listing.</AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => handleDeleteShipment(shipment.id)} className="bg-red-600">Delete</AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -519,7 +341,6 @@ const BrowseShipments = () => {
         </div>
       </div>
 
-      {/* Offer Dialog */}
       <Dialog open={isOfferDialogOpen} onOpenChange={setIsOfferDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -530,11 +351,10 @@ const BrowseShipments = () => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="price">Your Price per Tonne (₹)</Label>
+              <Label>Your Price per Tonne (₹)</Label>
               <div className="relative">
                 <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <Input 
-                  id="price"
                   type="number" 
                   className="pl-10"
                   value={proposedPrice} 
@@ -544,36 +364,14 @@ const BrowseShipments = () => {
               <p className="text-xs text-gray-500">Shipper's budget: ₹{selectedShipment?.budget_per_tonne}/t</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="message">Message (Optional)</Label>
-              <Input 
-                id="message"
-                value={message} 
-                onChange={(e) => setMessage(e.target.value)} 
-                placeholder="e.g. I have a 12-wheeler available."
-              />
-            </div>
-            <div className="bg-orange-50 p-3 rounded-lg">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Total Offer:</span>
-                <span className="font-bold text-orange-700">
-                  ₹{((parseFloat(proposedPrice) || 0) * (selectedShipment?.weight_tonnes || 0)).toLocaleString()}
-                </span>
-              </div>
+              <Label>Message (Optional)</Label>
+              <Input value={message} onChange={(e) => setMessage(e.target.value)} placeholder="e.g. I have a 12-wheeler available." />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsOfferDialogOpen(false)} disabled={sendingOffer}>Cancel</Button>
-            <Button 
-              onClick={submitOffer} 
-              className="bg-orange-600 hover:bg-orange-700"
-              disabled={sendingOffer || !proposedPrice}
-            >
-              {sendingOffer ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending...
-                </>
-              ) : 'Send Offer'}
+            <Button variant="outline" onClick={() => setIsOfferDialogOpen(false)}>Cancel</Button>
+            <Button onClick={submitOffer} className="bg-orange-600" disabled={sendingOffer}>
+              {sendingOffer ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send Offer'}
             </Button>
           </DialogFooter>
         </DialogContent>
