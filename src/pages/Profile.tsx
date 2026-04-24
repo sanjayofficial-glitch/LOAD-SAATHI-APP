@@ -26,7 +26,8 @@ import {
   Loader2,
   CheckCircle2,
   MessageSquare,
-  ShieldCheck
+  ShieldCheck,
+  RefreshCw
 } from 'lucide-react';
 import Star from '@/components/Star';
 
@@ -39,6 +40,7 @@ const Profile = () => {
   const [companyName, setCompanyName] = useState(userProfile?.company_name || '');
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [switching, setSwitching] = useState(false);
   const [stats, setStats] = useState({ count: 0, rating: 0 });
   const [statsLoading, setStatsLoading] = useState(true);
   const [reviews, setReviews] = useState<any[]>([]);
@@ -72,7 +74,7 @@ const Profile = () => {
           .select('*', { count: 'exact', head: true })
           .eq('trucker_id', userProfile.id);
         setStats({ count: count || 0, rating: userProfile.rating || 0 });
-      } else {
+      } else if (userProfile.user_type === 'shipper') {
         const { count } = await supabase
           .from('requests')
           .select('*', { count: 'exact', head: true })
@@ -168,6 +170,36 @@ const Profile = () => {
     }
   };
 
+  const handleSwitchRole = async (newRole: 'shipper' | 'trucker' | 'admin') => {
+    setSwitching(true);
+    try {
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('Authentication error');
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
+      
+      const { error } = await supabase
+        .from('users')
+        .update({ user_type: newRole })
+        .eq('id', userProfile?.id);
+
+      if (error) throw error;
+
+      showSuccess(`Switched to ${newRole} mode!`);
+      await refreshProfile();
+      
+      // Redirect to appropriate dashboard
+      if (newRole === 'admin') navigate('/admin/monitoring');
+      else if (newRole === 'trucker') navigate('/trucker/dashboard');
+      else navigate('/shipper/dashboard');
+      
+    } catch (err: any) {
+      showError(err.message || 'Failed to switch role');
+    } finally {
+      setSwitching(false);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
@@ -178,8 +210,8 @@ const Profile = () => {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{userProfile?.full_name || 'User'}</h1>
             <div className="flex items-center gap-2 mt-1">
-              <Badge variant="secondary" className="bg-orange-50 text-orange-700 border-orange-100">
-                {userProfile?.user_type === 'trucker' ? 'Trucker' : 'Shipper'}
+              <Badge variant="secondary" className="bg-orange-50 text-orange-700 border-orange-100 capitalize">
+                {userProfile?.user_type}
               </Badge>
               {userProfile?.is_verified && (
                 <Badge className="bg-green-100 text-green-700 hover:bg-green-100 border-green-200">
@@ -403,35 +435,81 @@ const Profile = () => {
         </TabsContent>
 
         <TabsContent value="security">
-          <Card className="border-red-100 shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center text-red-900">
-                <Shield className="mr-2 h-5 w-5 text-red-600" />
-                Security Settings
-              </CardTitle>
-              <CardDescription>Manage your password and account security</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="p-4 bg-red-50 rounded-lg border border-red-100">
-                <div className="flex items-start gap-3">
-                  <Lock className="h-5 w-5 text-red-600 mt-0.5" />
-                  <div>
-                    <h4 className="text-sm font-bold text-red-900">Password Management</h4>
-                    <p className="text-sm text-red-700 mt-1">
-                      Manage your password through your Clerk account settings.
-                    </p>
+          <div className="space-y-6">
+            <Card className="border-red-100 shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center text-red-900">
+                  <Shield className="mr-2 h-5 w-5 text-red-600" />
+                  Security Settings
+                </CardTitle>
+                <CardDescription>Manage your password and account security</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="p-4 bg-red-50 rounded-lg border border-red-100">
+                  <div className="flex items-start gap-3">
+                    <Lock className="h-5 w-5 text-red-600 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-bold text-red-900">Password Management</h4>
+                      <p className="text-sm text-red-700 mt-1">
+                        Manage your password through your Clerk account settings.
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="pt-4 border-t">
-                <h4 className="text-sm font-bold text-gray-900 mb-2">Account Safety</h4>
-                <p className="text-sm text-gray-500">
-                  Your account is protected by industry-standard encryption. Always ensure you use a strong, unique password.
+                <div className="pt-4 border-t">
+                  <h4 className="text-sm font-bold text-gray-900 mb-2">Account Safety</h4>
+                  <p className="text-sm text-gray-500">
+                    Your account is protected by industry-standard encryption. Always ensure you use a strong, unique password.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-blue-100 shadow-sm">
+              <CardHeader>
+                <CardTitle className="flex items-center text-blue-900">
+                  <RefreshCw className="mr-2 h-5 w-5 text-blue-600" />
+                  Switch Account Type
+                </CardTitle>
+                <CardDescription>Change how you use LoadSaathi (for testing purposes)</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <Button 
+                    variant={userProfile?.user_type === 'shipper' ? 'default' : 'outline'}
+                    onClick={() => handleSwitchRole('shipper')}
+                    disabled={switching || userProfile?.user_type === 'shipper'}
+                    className="w-full"
+                  >
+                    {switching ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Package className="h-4 w-4 mr-2" />}
+                    Shipper
+                  </Button>
+                  <Button 
+                    variant={userProfile?.user_type === 'trucker' ? 'default' : 'outline'}
+                    onClick={() => handleSwitchRole('trucker')}
+                    disabled={switching || userProfile?.user_type === 'trucker'}
+                    className="w-full"
+                  >
+                    {switching ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Truck className="h-4 w-4 mr-2" />}
+                    Trucker
+                  </Button>
+                  <Button 
+                    variant={userProfile?.user_type === 'admin' ? 'default' : 'outline'}
+                    onClick={() => handleSwitchRole('admin')}
+                    disabled={switching || userProfile?.user_type === 'admin'}
+                    className="w-full border-purple-200 text-purple-700 hover:bg-purple-50"
+                  >
+                    {switching ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ShieldCheck className="h-4 w-4 mr-2" />}
+                    Admin
+                  </Button>
+                </div>
+                <p className="text-[10px] text-gray-400 italic text-center">
+                  Note: Switching roles will change your dashboard and available features.
                 </p>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>
