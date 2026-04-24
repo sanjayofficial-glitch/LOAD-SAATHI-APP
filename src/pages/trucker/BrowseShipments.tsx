@@ -25,7 +25,8 @@ import {
   Sparkles,
   AlertCircle,
   User,
-  MapPin
+  MapPin,
+  Truck
 } from 'lucide-react';
 import { 
   Select,
@@ -35,7 +36,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { showSuccess, showError } from '@/utils/toast';
-import { supabase } from '@/lib/supabaseClient';
 import { parseNaturalLanguageSearch } from '@/lib/gemini';
 import {
   Dialog,
@@ -46,7 +46,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { notifyShipperOfTruckerOffer } from '@/utils/notifications';
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const INDIAN_STATES = [
   "Any", "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Goa", "Gujarat", "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra", "Manipur", "Meghalaya", "Mizoram", "Nagaland", "Odisha", "Punjab", "Rajasthan", "Sikkim", "Tamil Nadu", "Telangana", "Tripura", "Uttar Pradesh", "Uttarakhand", "West Bengal"
@@ -63,7 +62,6 @@ const BrowseShipments = () => {
   const [aiSearchQuery, setAiSearchQuery] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(true);
-  const [apiKeyMissing, setApiKeyMissing] = useState(false);
   
   const [filters, setFilters] = useState({
     originState: 'Any',
@@ -80,15 +78,17 @@ const BrowseShipments = () => {
   const [sendingOffer, setSendingOffer] = useState(false);
 
   const fetchShipments = useCallback(async () => {
+    setLoading(true);
     try {
       const token = await getToken({ template: 'supabase' });
       if (!token) return;
       const supabaseClient = createClerkSupabaseClient(token);
       
-      // Fetch all pending shipments and join with the users table to get shipper details
+      // Fetch all pending shipments and join with the users table
+      // Using a simpler join syntax for better compatibility
       const { data, error } = await supabaseClient
         .from('shipments')
-        .select('*, shipper:users!shipments_shipper_id_fkey(*)')
+        .select('*, shipper:users(*)')
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
         
@@ -134,8 +134,7 @@ const BrowseShipments = () => {
       if (parsedFilters.date) setFilters(f => ({ ...f, departureDate: parsedFilters.date! }));
       showSuccess('AI parsed your search!');
     } catch (err: any) {
-      if (err.message === 'GEMINI_API_KEY_MISSING') setApiKeyMissing(true);
-      else showError('AI search failed');
+      showError('AI search failed');
     } finally {
       setAiLoading(false);
     }
@@ -274,6 +273,7 @@ const BrowseShipments = () => {
             <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
               <Package className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <h3 className="text-lg font-semibold text-gray-900">No shipments found</h3>
+              <p className="text-gray-500">Try adjusting your filters or check back later.</p>
             </div>
           ) : (
             <div className="grid gap-6">
