@@ -1,12 +1,10 @@
-"use client";
-
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useSession } from '@clerk/clerk-react';
 import { Loader2, User, Truck, CheckCircle2 } from 'lucide-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
-import { useAuth } from '@/contexts/AuthContext';
 import { showSuccess, showError } from '@/utils/toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 const ChooseRole = () => {
   const { user, isLoaded } = useUser();
@@ -19,23 +17,27 @@ const ChooseRole = () => {
   // Redirect if user already has a role
   useEffect(() => {
     if (userProfile?.user_type) {
-      const targetPath = userProfile.user_type === 'shipper' ? '/shipper/dashboard' : '/trucker/dashboard';
+      let targetPath = '/';
+      if (userProfile.user_type === 'shipper') targetPath = '/shipper/dashboard';
+      else if (userProfile.user_type === 'trucker') targetPath = '/trucker/dashboard';
+      else if (userProfile.user_type === 'admin') targetPath = '/admin/monitoring';
+      
       navigate(targetPath, { replace: true });
     }
   }, [userProfile, navigate]);
 
-  const handleRoleSelection = async (role: "shipper" | "trucker") => {
+  const handleRoleSelection = async (role: 'shipper' | 'trucker' | 'admin') => {
     if (!user || !session) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const supabaseToken = await session.getToken({ template: "supabase" });
-      if (!supabaseToken) throw new Error("No Supabase token available");
+      const supabaseToken = await session.getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('No Supabase token available');
 
       const supabase = createClerkSupabaseClient(supabaseToken);
-      
+
       // Use upsert to handle both new and existing users
       const { error: upsertError } = await supabase
         .from('users')
@@ -45,7 +47,7 @@ const ChooseRole = () => {
           email: user.primaryEmailAddress?.emailAddress || '',
           full_name: user.fullName || '',
           phone: user.primaryPhoneNumber?.phoneNumber || '',
-          is_verified: false,
+          is_verified: role === 'admin', // Auto-verify admins
           rating: 0,
           total_trips: 0,
           created_at: user.createdAt ? new Date(user.createdAt).toISOString() : new Date().toISOString()
@@ -56,16 +58,17 @@ const ChooseRole = () => {
       // Crucial: Refresh the profile in our context so the app knows the new role immediately
       await refreshProfile();
 
-      showSuccess(`Welcome ${role === 'shipper' ? 'Shipper' : 'Trucker'}!`);
-      
+      showSuccess(`Welcome ${role === 'shipper' ? 'Shipper' : role === 'trucker' ? 'Trucker' : 'Admin'}!`);
+
       // Use a small delay to ensure state is updated before navigation
       setTimeout(() => {
-        navigate(role === 'shipper' ? '/shipper/dashboard' : '/trucker/dashboard', { replace: true });
+        const targetPath = role === 'shipper' ? '/shipper/dashboard' : role === 'trucker' ? '/trucker/dashboard' : '/admin/monitoring';
+        navigate(targetPath, { replace: true });
       }, 100);
     } catch (err: any) {
-      console.error("[ChooseRole] Error:", err);
-      setError(err.message || "Failed to set role");
-      showError(err.message || "Failed to set role");
+      console.error('[ChooseRole] Error:', err);
+      setError(err.message || 'Failed to set role');
+      showError(err.message || 'Failed to set role');
     } finally {
       setLoading(false);
     }
@@ -90,7 +93,7 @@ const ChooseRole = () => {
             <Truck className="h-10 w-10 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Welcome to LoadSaathi!</h1>
-          <p className="text-lg text-gray-600">How will you be using the platform today?</p>
+          <p className="text-lg text-gray-600 mb-4">How will you be using the platform today?</p>
         </div>
 
         {error && (
@@ -99,9 +102,9 @@ const ChooseRole = () => {
           </div>
         )}
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-3 gap-6">
           <button
-            onClick={() => handleRoleSelection("shipper")}
+            onClick={() => handleRoleSelection('shipper')}
             disabled={loading}
             className="group relative flex flex-col items-center text-center bg-white hover:border-orange-500 border-2 border-transparent transition-all p-8 rounded-2xl shadow-sm hover:shadow-xl disabled:opacity-50"
           >
@@ -109,7 +112,7 @@ const ChooseRole = () => {
               <User className="h-10 w-10 text-blue-600" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">I am a Shipper</h2>
-            <p className="text-sm text-gray-500 leading-relaxed">
+            <p className="text-sm text-gray-500 mt-2">
               I have goods to transport and want to find reliable trucks at the best prices.
             </p>
             <div className="mt-6 flex items-center text-blue-600 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
@@ -118,7 +121,7 @@ const ChooseRole = () => {
           </button>
 
           <button
-            onClick={() => handleRoleSelection("trucker")}
+            onClick={() => handleRoleSelection('trucker')}
             disabled={loading}
             className="group relative flex flex-col items-center text-center bg-white hover:border-orange-500 border-2 border-transparent transition-all p-8 rounded-2xl shadow-sm hover:shadow-xl disabled:opacity-50"
           >
@@ -126,11 +129,28 @@ const ChooseRole = () => {
               <Truck className="h-10 w-10 text-orange-600" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">I am a Trucker</h2>
-            <p className="text-sm text-gray-500 leading-relaxed">
+            <p className="text-sm text-gray-500 mt-2">
               I have a truck and want to find loads to fill my empty space and earn more.
             </p>
             <div className="mt-6 flex items-center text-orange-600 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
               Select Trucker <CheckCircle2 className="ml-2 h-4 w-4" />
+            </div>
+          </button>
+
+          <button
+            onClick={() => handleRoleSelection('admin')}
+            disabled={loading}
+            className="group relative flex flex-col items-center text-center bg-white hover:border-purple-500 border-2 border-transparent transition-all p-8 rounded-2xl shadow-sm hover:shadow-xl disabled:opacity-50"
+          >
+            <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <span className="text-purple-600 text-2xl">👑</span>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">I am an Admin</h2>
+            <p className="text-sm text-gray-500 leading-relaxed">
+              I want to monitor and manage the entire platform infrastructure and user activity.
+            </p>
+            <div className="mt-6 flex items-center text-purple-600 font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
+              Manage Platform <CheckCircle2 className="ml-2 h-4 w-4" />
             </div>
           </button>
         </div>
