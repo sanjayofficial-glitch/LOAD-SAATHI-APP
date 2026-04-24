@@ -27,7 +27,8 @@ import {
   Truck,
   CheckCircle,
   XCircle,
-  Star
+  Star,
+  MapPin
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -104,7 +105,7 @@ const MyShipments = () => {
         .from('requests')
         .select(`
           *, 
-          trip:trips(*, trucker:users(*)),
+          trip:trips(*, trucker:users!trips_trucker_id_fkey(*)),
           review:reviews(id)
         `)
         .eq('shipper_id', userProfile.id)
@@ -311,65 +312,87 @@ const MyShipments = () => {
                 </Link>
               </div>
             ) : (
-              sentRequests.map(request => (
-                <Card key={request.id} className="border-blue-100 hover:shadow-md transition-shadow">
-                  <CardContent className="p-6">
-                    <div className="flex flex-col md:flex-row justify-between gap-6">
-                      <div className="flex-1 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="text-lg font-bold text-gray-900">
-                            {request.trip?.origin_city} <ArrowRight className="h-4 w-4 inline mx-2 text-gray-400" /> {request.trip?.destination_city}
+              sentRequests.map(request => {
+                const trucker = request.trip?.trucker;
+                return (
+                  <Card key={request.id} className="border-blue-100 hover:shadow-md transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex flex-col md:flex-row justify-between gap-6">
+                        <div className="flex-1 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div className="text-lg font-bold text-gray-900">
+                              {request.trip?.origin_city} <ArrowRight className="h-4 w-4 inline mx-2 text-gray-400" /> {request.trip?.destination_city}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {request.trip?.status === 'completed' && <Badge className="bg-blue-100 text-blue-700">TRIP COMPLETED</Badge>}
+                              <StatusBadge status={request.status} />
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {request.trip?.status === 'completed' && <Badge className="bg-blue-100 text-blue-700">TRIP COMPLETED</Badge>}
-                            <StatusBadge status={request.status} />
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600">
+                            <div className="flex items-center"><Calendar className="h-4 w-4 mr-2 text-blue-600" />Trip Date: {new Date(request.trip?.departure_date).toLocaleDateString()}</div>
+                            <div className="flex items-center"><Package className="h-4 w-4 mr-2 text-purple-600" />Your Load: {request.weight_tonnes}t</div>
                           </div>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-600">
-                          <div className="flex items-center"><Calendar className="h-4 w-4 mr-2 text-blue-600" />Trip Date: {new Date(request.trip?.departure_date).toLocaleDateString()}</div>
-                          <div className="flex items-center"><Package className="h-4 w-4 mr-2 text-purple-600" />Your Load: {request.weight_tonnes}t</div>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-lg flex items-center gap-3">
-                          <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold">
-                            {request.trip?.trucker?.full_name?.charAt(0) || 'T'}
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-500 uppercase font-bold">Trucker</p>
-                            <p className="text-sm font-semibold">{request.trip?.trucker?.full_name}</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-2 min-w-[160px] justify-center">
-                        {request.status === 'accepted' && (
-                          <>
-                            {request.trip?.status === 'completed' && !request.review?.length ? (
-                              <Button 
-                                className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
-                                onClick={() => openReview(request)}
-                              >
-                                <Star className="h-4 w-4 mr-2" /> Rate Service
-                              </Button>
-                            ) : request.review?.length ? (
-                              <div className="flex items-center justify-center gap-2 text-green-600 font-bold text-sm py-2">
-                                <CheckCircle className="h-4 w-4" /> Rated
+
+                          <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 font-bold border border-orange-200">
+                                  {trucker?.full_name?.charAt(0) || 'T'}
+                                </div>
+                                <div>
+                                  <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Trucker Details</p>
+                                  <p className="text-base font-bold text-gray-900">{trucker?.full_name || 'Verified Trucker'}</p>
+                                  <div className="flex items-center gap-1 text-xs text-yellow-600">
+                                    <Star className="h-3 w-3 fill-current" />
+                                    {trucker?.rating?.toFixed(1) || '0.0'} Rating
+                                  </div>
+                                </div>
                               </div>
-                            ) : null}
-                            
-                            <Button className="w-full bg-blue-600 hover:bg-blue-700" onClick={() => navigate(`/chat/${request.id}`)}>
-                              <MessageSquare className="h-4 w-4 mr-2" />Chat
+                              {request.status === 'accepted' && trucker?.phone && (
+                                <a href={`tel:${trucker.phone}`} className="hidden sm:block">
+                                  <Button variant="outline" size="sm" className="rounded-full border-green-200 text-green-700 hover:bg-green-50">
+                                    <Phone className="h-4 w-4 mr-2" /> Call Trucker
+                                  </Button>
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2 min-w-[180px] justify-center">
+                          <Link to={`/trips/${request.trip_id}`} className="w-full">
+                            <Button variant="outline" className="w-full border-blue-200 text-blue-700 hover:bg-blue-50">
+                              <Eye className="h-4 w-4 mr-2" /> View Trip
                             </Button>
-                            {request.trip?.trucker?.phone && (
-                              <a href={`tel:${request.trip.trucker.phone}`} className="block">
-                                <Button variant="outline" className="w-full border-blue-200 text-blue-700 hover:bg-blue-50"><Phone className="h-4 w-4 mr-2" />Call</Button>
-                              </a>
-                            )}
-                          </>
-                        )}
+                          </Link>
+                          
+                          {request.status === 'accepted' && (
+                            <>
+                              <Button className="w-full bg-orange-600 hover:bg-orange-700 shadow-sm" onClick={() => navigate(`/chat/${request.id}`)}>
+                                <MessageSquare className="h-4 w-4 mr-2" /> Chat with Trucker
+                              </Button>
+                              
+                              {request.trip?.status === 'completed' && !request.review?.length ? (
+                                <Button 
+                                  className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
+                                  onClick={() => openReview(request)}
+                                >
+                                  <Star className="h-4 w-4 mr-2" /> Rate Service
+                                </Button>
+                              ) : request.review?.length ? (
+                                <div className="flex items-center justify-center gap-2 text-green-600 font-bold text-sm py-2 bg-green-50 rounded-lg">
+                                  <CheckCircle className="h-4 w-4" /> Feedback Given
+                                </div>
+                              ) : null}
+                            </>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+                    </CardContent>
+                  </Card>
+                );
+              })
             )}
           </div>
         </TabsContent>
