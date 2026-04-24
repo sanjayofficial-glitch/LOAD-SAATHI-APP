@@ -20,7 +20,8 @@ import {
   LogOut, 
   MessageSquare, 
   History,
-  PlusCircle
+  PlusCircle,
+  ShieldCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import NotificationBell from "./NotificationBell";
@@ -29,19 +30,30 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { userProfile, signOut } = useAuth();
   const navigate = useNavigate();
 
-  const navItems = userProfile?.user_type === 'trucker' ? [
-    { label: "Dashboard", path: "/trucker/dashboard", icon: <Clock className="h-4 w-4" /> },
-    { label: "Post Trip", path: "/trucker/post-trip", icon: <PlusCircle className="h-4 w-4" /> },
-    { label: "Find Goods", path: "/trucker/browse-shipments", icon: <Search className="h-4 w-4" /> },
-    { label: "My Trips", path: "/trucker/my-trips", icon: <Truck className="h-4 w-4" /> },
-    { label: "History", path: "/trucker/history", icon: <History className="h-4 w-4" /> },
-  ] : [
-    { label: "Dashboard", path: "/shipper/dashboard", icon: <Clock className="h-4 w-4" /> },
-    { label: "Post Load", path: "/shipper/post-shipment", icon: <PlusCircle className="h-4 w-4" /> },
-    { label: "Find Trucks", path: "/browse-trucks", icon: <Truck className="h-4 w-4" /> },
-    { label: "My Loads", path: "/shipper/my-shipments", icon: <Search className="h-4 w-4" /> },
-    { label: "History", path: "/shipper/history", icon: <History className="h-4 w-4" /> },
-  ];
+  const getNavItems = () => {
+    if (userProfile?.user_type === 'admin') {
+      return [
+        { label: "Command Center", path: "/admin/monitoring", icon: <ShieldCheck className="h-4 w-4" /> },
+        { label: "Messages", path: "/messages", icon: <MessageSquare className="h-4 w-4" /> },
+      ];
+    }
+
+    return userProfile?.user_type === 'trucker' ? [
+      { label: "Dashboard", path: "/trucker/dashboard", icon: <Clock className="h-4 w-4" /> },
+      { label: "Post Trip", path: "/trucker/post-trip", icon: <PlusCircle className="h-4 w-4" /> },
+      { label: "Find Goods", path: "/trucker/browse-shipments", icon: <Search className="h-4 w-4" /> },
+      { label: "My Trips", path: "/trucker/my-trips", icon: <Truck className="h-4 w-4" /> },
+      { label: "History", path: "/trucker/history", icon: <History className="h-4 w-4" /> },
+    ] : [
+      { label: "Dashboard", path: "/shipper/dashboard", icon: <Clock className="h-4 w-4" /> },
+      { label: "Post Load", path: "/shipper/post-shipment", icon: <PlusCircle className="h-4 w-4" /> },
+      { label: "Find Trucks", path: "/browse-trucks", icon: <Truck className="h-4 w-4" /> },
+      { label: "My Loads", path: "/shipper/my-shipments", icon: <Search className="h-4 w-4" /> },
+      { label: "History", path: "/shipper/history", icon: <History className="h-4 w-4" /> },
+    ];
+  };
+
+  const navItems = getNavItems();
 
   const handleSignOut = async () => {
     await signOut();
