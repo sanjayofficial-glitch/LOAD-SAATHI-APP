@@ -42,6 +42,8 @@ const AuthSync = () => {
           navigate("/shipper/dashboard");
         } else if (data?.user_type === "trucker") {
           navigate("/trucker/dashboard");
+        } else if (data?.user_type === "admin") {
+          navigate("/admin/monitoring");
         } else {
           navigate("/choose-role");
         }

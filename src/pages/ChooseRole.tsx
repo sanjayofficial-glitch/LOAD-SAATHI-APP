@@ -17,7 +17,11 @@ const ChooseRole = () => {
   // Redirect if user already has a role
   useEffect(() => {
     if (userProfile?.user_type) {
-      const targetPath = userProfile.user_type === 'shipper' ? '/shipper/dashboard' : '/trucker/dashboard';
+      let targetPath = '/';
+      if (userProfile.user_type === 'shipper') targetPath = '/shipper/dashboard';
+      else if (userProfile.user_type === 'trucker') targetPath = '/trucker/dashboard';
+      else if (userProfile.user_type === 'admin') targetPath = '/admin/monitoring';
+      
       navigate(targetPath, { replace: true });
     }
   }, [userProfile, navigate]);
@@ -43,7 +47,7 @@ const ChooseRole = () => {
           email: user.primaryEmailAddress?.emailAddress || '',
           full_name: user.fullName || '',
           phone: user.primaryPhoneNumber?.phoneNumber || '',
-          is_verified: false,
+          is_verified: role === 'admin', // Auto-verify admins
           rating: 0,
           total_trips: 0,
           created_at: user.createdAt ? new Date(user.createdAt).toISOString() : new Date().toISOString()
