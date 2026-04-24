@@ -1,89 +1,68 @@
 "use client";
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { 
-  Zap, 
-  Globe, 
-  AlertTriangle, 
-  Cpu,
-  ArrowUpRight
-} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2, Activity, Server, ShieldCheck, Zap } from 'lucide-react';
 
-interface MetricsProps {
-  metrics: {
-    active_connections: number;
-    api_response_time: number;
-    error_rate: number;
-    active_requests: number;
-  };
-}
-
-const SystemMetricsPanel: React.FC<MetricsProps> = ({ metrics }) => {
-  // Health percentages based on metrics
-  const connectionHealth = Math.min(100, (metrics.active_connections / 100) * 100);
-
+const SystemMetricsPanel: React.FC<{ metrics: any }> = ({ metrics }) => {
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <Card className="bg-slate-900 border-slate-800">
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between mb-2">
-              <Globe className="h-3 w-3 text-blue-400" />
-              <ArrowUpRight className="h-3 w-3 text-green-500" />
+    <Card className="bg-slate-900 border-slate-800 text-white h-full">
+      <CardHeader className="flex flex-row items-center justify-between pb-4">
+        <CardTitle className="text-lg font-bold flex items-center gap-2">
+          <Activity className="h-5 w-5 text-emerald-500" /> System Health
+        </CardTitle>
+        <div className="flex items-center gap-2 bg-emerald-500/10 px-2 py-1 rounded text-[10px] text-emerald-400 font-bold uppercase tracking-wider">
+          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
+          Live
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <p className="text-[10px] text-slate-500 uppercase font-bold">API Latency</p>
+            <div className="text-xl font-bold flex items-center gap-2">
+              <Zap className="h-4 w-4 text-yellow-500" />
+              {metrics.api_response_time}ms
             </div>
-            <p className="text-[10px] text-slate-500 uppercase font-bold">Connections</p>
-            <p className="text-lg font-mono font-bold text-slate-100">{metrics.active_connections}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-slate-900 border-slate-800">
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between mb-2">
-              <Zap className="h-3 w-3 text-yellow-400" />
-              <span className="text-[10px] font-mono text-slate-500">ms</span>
-            </div>
-            <p className="text-[10px] text-slate-500 uppercase font-bold">Latency</p>
-            <p className="text-lg font-mono font-bold text-slate-100">{metrics.api_response_time}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="space-y-4 mt-4">
-        <div className="space-y-1.5">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <Cpu className="h-3 w-3 text-slate-400" />
-              <span className="text-[10px] text-slate-400 uppercase font-bold">API Load</span>
-            </div>
-            <span className="text-[10px] font-mono text-slate-300">{connectionHealth.toFixed(0)}%</span>
           </div>
-          <Progress value={connectionHealth} className="h-1 bg-slate-800" />
+          <div className="space-y-1">
+            <p className="text-[10px] text-slate-500 uppercase font-bold">Error Rate</p>
+            <div className="text-xl font-bold flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-emerald-500" />
+              {metrics.error_rate}%
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-1.5">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-3 w-3 text-red-400" />
-              <span className="text-[10px] text-slate-400 uppercase font-bold">Error Rate</span>
+        <div className="space-y-3">
+          <div className="flex justify-between items-center p-3 bg-slate-950 rounded-lg border border-slate-800">
+            <div className="flex items-center gap-3">
+              <Server className="h-4 w-4 text-blue-500" />
+              <span className="text-sm font-medium">Active Connections</span>
             </div>
-            <span className="text-[10px] font-mono text-red-400">{metrics.error_rate}%</span>
+            <span className="text-sm font-bold text-blue-400">{metrics.active_connections}</span>
           </div>
-          <Progress value={metrics.error_rate * 10} className="h-1 bg-slate-800" />
+          
+          <div className="flex justify-between items-center p-3 bg-slate-950 rounded-lg border border-slate-800">
+            <div className="flex items-center gap-3">
+              <Activity className="h-4 w-4 text-orange-500" />
+              <span className="text-sm font-medium">Pending Requests</span>
+            </div>
+            <span className="text-sm font-bold text-orange-400">{metrics.total_pending_requests}</span>
+          </div>
         </div>
-      </div>
 
-      <div className="pt-4 border-t border-slate-800">
-        <div className="flex items-center justify-between p-2 bg-slate-900/50 rounded-lg border border-slate-800">
-          <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-green-500" />
-            <span className="text-[10px] text-slate-400 uppercase font-bold">Database Status</span>
+        <div className="pt-4 border-t border-slate-800">
+          <div className="flex items-center justify-between text-[10px] text-slate-500 font-bold uppercase">
+            <span>Database Status</span>
+            <span className="text-emerald-500">Operational</span>
           </div>
-          <span className="text-[10px] font-mono text-green-400">OPTIMAL</span>
+          <div className="mt-2 h-1 w-full bg-slate-800 rounded-full overflow-hidden">
+            <div className="h-full bg-emerald-500 w-full" />
+          </div>
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 
