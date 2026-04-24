@@ -133,3 +133,19 @@ export const notifyTruckerOfOfferDeclined = (params: {
     message: `❌ ${params.shipperName} declined your offer for the load from ${params.originCity} → ${params.destinationCity}.`,
     getToken: params.getToken,
   });
+
+/** Notify shipper that a trip has been completed */
+export const notifyShipperOfTripCompletion = (params: {
+  shipperId: string;
+  truckerName: string;
+  originCity: string;
+  destinationCity: string;
+  tripId: string;
+  getToken: () => Promise<string | null>;
+}) =>
+  sendNotification({
+    userId: params.shipperId,
+    message: `🏁 Trip Completed! ${params.truckerName} has marked the trip from ${params.originCity} → ${params.destinationCity} as completed. Thank you for using LoadSaathi!`,
+    relatedTripId: params.tripId,
+    getToken: params.getToken,
+  });

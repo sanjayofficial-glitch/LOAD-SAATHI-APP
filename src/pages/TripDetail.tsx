@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { showSuccess, showError } from '@/utils/toast';
-import { MapPin, Calendar, Truck, IndianRupee, ArrowLeft, CheckCircle, AlertCircle, MessageSquare, Loader2 } from 'lucide-react';
+import { MapPin, Calendar, Truck, IndianRupee, ArrowLeft, CheckCircle, AlertCircle, MessageSquare, Loader2, Flag } from 'lucide-react';
 import Star from '@/components/Star';
 import RouteMap from '@/components/RouteMap';
 import { notifyTruckerOfBookingRequest } from '@/utils/notifications';
@@ -145,6 +145,8 @@ const TripDetail = () => {
   
   if (!trip) return <div className="p-8 text-center">Trip not found</div>;
 
+  const isCompleted = trip.status === 'completed';
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
       <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
@@ -159,7 +161,14 @@ const TripDetail = () => {
         <div className="space-y-6">
           <Card className="border-orange-100">
             <CardHeader>
-              <CardTitle className="text-2xl font-bold text-gray-900">Trip Information</CardTitle>
+              <div className="flex justify-between items-center">
+                <CardTitle className="text-2xl font-bold text-gray-900">Trip Information</CardTitle>
+                {isCompleted && (
+                  <Badge className="bg-blue-100 text-blue-700 border-blue-200">
+                    <Flag className="h-3 w-3 mr-1" /> COMPLETED
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
@@ -194,11 +203,11 @@ const TripDetail = () => {
                 </div>
               </div>
 
-              <div className="bg-blue-50 p-4 rounded-lg flex items-center justify-between">
+              <div className={`p-4 rounded-lg flex items-center justify-between ${isCompleted ? 'bg-gray-100 text-gray-500' : 'bg-blue-50 text-blue-700'}`}>
                 <div className="flex items-center">
-                  <CheckCircle className="mr-2 h-5 w-5" /> Available Capacity
+                  <CheckCircle className="mr-2 h-5 w-5" /> {isCompleted ? 'Final Capacity' : 'Available Capacity'}
                 </div>
-                <Badge className="bg-blue-600 text-white text-lg px-3 py-1">
+                <Badge className={`${isCompleted ? 'bg-gray-400' : 'bg-blue-600'} text-white text-lg px-3 py-1`}>
                   {trip.available_capacity_tonnes} Tonnes
                 </Badge>
               </div>
@@ -251,88 +260,104 @@ const TripDetail = () => {
         </div>
 
         {userProfile?.user_type === 'shipper' && (
-          <Card className="border-orange-200 shadow-md h-fit sticky top-24">
+          <Card className={`border-orange-200 shadow-md h-fit sticky top-24 ${isCompleted ? 'opacity-75 grayscale-[0.5]' : ''}`}>
             <CardHeader className="bg-orange-50/50">
-              <CardTitle>Book Space</CardTitle>
+              <CardTitle>{isCompleted ? 'Trip Finished' : 'Book Space'}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 pt-6">
-              <div className="space-y-2">
-                <Label htmlFor="weight">Weight to Book (Tonnes)</Label>
-                <div className="relative">
-                  <Input 
-                    id="weight"
-                    type="number" 
-                    step="0.1" 
-                    placeholder="e.g. 2.5"
-                    className="pr-16"
-                    value={weight}
-                    onChange={(e) => setWeight(e.target.value)}
-                  />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">
-                    Tonnes
+              {isCompleted ? (
+                <div className="text-center py-8 space-y-4">
+                  <div className="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto">
+                    <Flag className="h-8 w-8 text-blue-600" />
                   </div>
-                </div>
-                {parseFloat(weight) > trip.available_capacity_tonnes && (
-                  <p className="text-xs text-red-500 flex items-center mt-1">
-                    <AlertCircle className="h-3 w-3 mr-1" /> Exceeds available capacity
+                  <p className="text-gray-600 font-medium">
+                    This trip has been marked as completed by the trucker and is no longer accepting bookings.
                   </p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="description">Goods Description</Label>
-                <Input 
-                  id="description"
-                  value={description} 
-                  onChange={(e) => setDescription(e.target.value)} 
-                  placeholder="e.g. Cotton fabric, Electronics, etc." 
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="pickup">Pickup Address</Label>
-                <Input 
-                  id="pickup"
-                  value={pickupAddress} 
-                  onChange={(e) => setPickupAddress(e.target.value)} 
-                  placeholder="Full pickup address" 
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="delivery">Delivery Address</Label>
-                <Input 
-                  id="delivery"
-                  value={deliveryAddress} 
-                  onChange={(e) => setDeliveryAddress(e.target.value)} 
-                  placeholder="Full delivery address" 
-                />
-              </div>
-
-              <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Estimated Cost:</span>
-                  <span className="font-bold text-gray-900">
-                    ₹{((parseFloat(weight) || 0) * (trip.price_per_tonne || 0)).toLocaleString()}
-                  </span>
+                  <Button variant="outline" className="w-full" onClick={() => navigate('/browse-trucks')}>
+                    Find Other Trucks
+                  </Button>
                 </div>
-                <p className="text-[10px] text-gray-400 italic">
-                  * Final price to be confirmed with the trucker.
-                </p>
-              </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="weight">Weight to Book (Tonnes)</Label>
+                    <div className="relative">
+                      <Input 
+                        id="weight"
+                        type="number" 
+                        step="0.1" 
+                        placeholder="e.g. 2.5"
+                        className="pr-16"
+                        value={weight}
+                        onChange={(e) => setWeight(e.target.value)}
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-medium">
+                        Tonnes
+                      </div>
+                    </div>
+                    {parseFloat(weight) > trip.available_capacity_tonnes && (
+                      <p className="text-xs text-red-500 flex items-center mt-1">
+                        <AlertCircle className="h-3 w-3 mr-1" /> Exceeds available capacity
+                      </p>
+                    )}
+                  </div>
 
-              <Button 
-                onClick={handleRequest} 
-                className="w-full bg-orange-600 hover:bg-orange-700 h-12 text-lg font-bold"
-                disabled={submitting || !weight || parseFloat(weight) > trip.available_capacity_tonnes}
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending Request...
-                  </>
-                ) : 'Send Booking Request'}
-              </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Goods Description</Label>
+                    <Input 
+                      id="description"
+                      value={description} 
+                      onChange={(e) => setDescription(e.target.value)} 
+                      placeholder="e.g. Cotton fabric, Electronics, etc." 
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="pickup">Pickup Address</Label>
+                    <Input 
+                      id="pickup"
+                      value={pickupAddress} 
+                      onChange={(e) => setPickupAddress(e.target.value)} 
+                      placeholder="Full pickup address" 
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="delivery">Delivery Address</Label>
+                    <Input 
+                      id="delivery"
+                      value={deliveryAddress} 
+                      onChange={(e) => setDeliveryAddress(e.target.value)} 
+                      placeholder="Full delivery address" 
+                    />
+                  </div>
+
+                  <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-500">Estimated Cost:</span>
+                      <span className="font-bold text-gray-900">
+                        ₹{((parseFloat(weight) || 0) * (trip.price_per_tonne || 0)).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-gray-400 italic">
+                      * Final price to be confirmed with the trucker.
+                    </p>
+                  </div>
+
+                  <Button 
+                    onClick={handleRequest} 
+                    className="w-full bg-orange-600 hover:bg-orange-700 h-12 text-lg font-bold"
+                    disabled={submitting || !weight || parseFloat(weight) > trip.available_capacity_tonnes}
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sending Request...
+                      </>
+                    ) : 'Send Booking Request'}
+                  </Button>
+                </>
+              )}
             </CardContent>
           </Card>
         )}

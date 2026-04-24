@@ -30,6 +30,7 @@ import RouteMap from '@/components/RouteMap';
 import {
   notifyShipperOfRequestAccepted,
   notifyShipperOfRequestDeclined,
+  notifyShipperOfTripCompletion,
 } from '@/utils/notifications';
 
 const StatusBadge = ({ status }: { status: string }) => {
@@ -96,7 +97,7 @@ const TruckerTripDetail = () => {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleCompleteTrip = async () => {
-    if (!tripId) return;
+    if (!tripId || !trip) return;
     setActionLoading('complete');
     try {
       const supabase = await getAuthenticatedClient();
@@ -106,7 +107,23 @@ const TruckerTripDetail = () => {
         .eq('id', tripId);
 
       if (error) throw error;
-      showSuccess('Trip marked as completed!');
+
+      // Notify all shippers with accepted requests
+      const acceptedRequests = bookingRequests.filter(r => r.status === 'accepted');
+      const notificationPromises = acceptedRequests.map(request => 
+        notifyShipperOfTripCompletion({
+          shipperId: request.shipper_id,
+          truckerName: userProfile?.full_name || 'The trucker',
+          originCity: trip.origin_city,
+          destinationCity: trip.destination_city,
+          tripId: trip.id,
+          getToken: () => getToken({ template: 'supabase' }),
+        })
+      );
+
+      await Promise.all(notificationPromises);
+
+      showSuccess('Trip marked as completed! Shippers have been notified.');
       fetchData();
     } catch (err: any) {
       showError('Failed to complete trip');
