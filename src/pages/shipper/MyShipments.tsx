@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuth as useClerkAuth } from '@clerk/clerk-react';
-import { useSupabase } from '@/hooks/useSupabase';
+import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,11 +21,9 @@ import {
   CheckCircle,
   AlertCircle,
   Star,
-  Link,
   Plus
 } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
-import { supabase } from '@/lib/supabaseClient';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 
@@ -47,7 +45,6 @@ const StatusBadge = ({ status }: { status: string }) => {
 const MyShipments = () => {
   const { userProfile } = useAuth();
   const { getToken } = useClerkAuth();
-  const { getAuthenticatedClient } = useSupabase();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [filters, setFilters] = useState({
@@ -65,7 +62,9 @@ const MyShipments = () => {
     if (!userProfile?.id) return;
     
     try {
-      const supabase = await getAuthenticatedClient();
+      const token = await getToken({ template: 'supabase' });
+      if (!token) throw new Error('No Supabase token');
+      const supabase = createClerkSupabaseClient(token);
       
       let query = supabase
         .from('shipments')
@@ -98,7 +97,7 @@ const MyShipments = () => {
       }
       if (searchTerm) {
         query = query.or(
-          `origin_city.ilike.%${searchTerm}%,destination_city.ilike.%${searchTerm}%,goods_description.ilike.%${searchTerm}%,trucker.full_name.ilike.%${searchTerm}%`
+          `origin_city.ilike.%${searchTerm}%,destination_city.ilike.%${searchTerm}%,goods_description.ilike.%${searchTerm}%`
         );
       }
 
@@ -112,14 +111,16 @@ const MyShipments = () => {
     } finally {
       setLoading(false);
     }
-  }, [getToken, getAuthenticatedClient, userProfile?.id, filters, searchTerm]);
+  }, [getToken, userProfile?.id, filters, searchTerm]);
 
   useEffect(() => { loadShipments(); }, [loadShipments]);
 
   const handleAcceptOffer = async (shipmentId: string, requestId: string, price: number) => {
     setActionLoading(requestId);
     try {
-      const supabase = await getAuthenticatedClient();
+      const token = await getToken({ template: 'supabase' });
+      if (!token) throw new Error('No Supabase token');
+      const supabase = createClerkSupabaseClient(token);
       
       const { error } = await supabase
         .from('shipment_requests')
@@ -145,7 +146,9 @@ const MyShipments = () => {
   const handleDeclineOffer = async (requestId: string) => {
     setActionLoading(requestId);
     try {
-      const supabase = await getAuthenticatedClient();
+      const token = await getToken({ template: 'supabase' });
+      if (!token) throw new Error('No Supabase token');
+      const supabase = createClerkSupabaseClient(token);
       
       const { error } = await supabase
         .from('shipment_requests')

@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { 
   AlertCircle, 
@@ -19,7 +19,6 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
-import { supabase } from '@/lib/supabaseClient';
 
 interface HistoryItem {
   id: string;
@@ -48,25 +47,26 @@ const ShipperHistory = () => {
     if (!userProfile?.id) return;
     
     try {
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
+      const token = await getToken({ template: 'supabase' });
+      if (!token) throw new Error('No Supabase token');
+      const supabase = createClerkSupabaseClient(token);
       
-      const supabase = createClerkSupabaseClient(supabaseToken);
-      
+      // Fetch requests for shipments belonging to this shipper
       const { data, error } = await supabase
-        .from('requests')
+        .from('shipment_requests')
         .select(`
           *, 
-          shipment:shipments(
+          shipment:shipments!inner(
             origin_city,
             destination_city,
             weight_tonnes,
             budget_per_tonne,
             departure_date,
-            goods_description
+            goods_description,
+            shipper_id
           )
         `)
-        .eq('shipper_id', userProfile.id)
+        .eq('shipment.shipper_id', userProfile.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
