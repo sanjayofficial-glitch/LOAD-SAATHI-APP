@@ -22,7 +22,8 @@ import {
   Search,
   Loader2,
   Send,
-  IndianRupee
+  IndianRupee,
+  AlertCircle
 } from 'lucide-react';
 
 interface ActivityItem {
@@ -46,53 +47,109 @@ const ShipperHistory = () => {
     status: 'all'
   });
 
-  const { data: activities = [], isLoading } = useQuery({
+  const { data: activities = [], isLoading, error, refetch } = useQuery({
     queryKey: ["shipperHistory", userProfile?.id],
     queryFn: async () => {
-      if (!userProfile?.id) return [];
+      if (!userProfile?.id) {
+        console.log('[ShipperHistory] No user profile');
+        return [];
+      }
+      
+      console.log('[ShipperHistory] Fetching history for user:', userProfile.id);
       
       const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
+      if (!supabaseToken) {
+        console.error('[ShipperHistory] No Supabase token');
+        throw new Error('No Supabase token');
+      }
       const supabase = createClerkSupabaseClient(supabaseToken);
 
-      const [shipmentsRes, requestsRes] = await Promise.all([
-        supabase.from('shipments').select('*').eq('shipper_id', userProfile.id),
-        supabase.from('requests').select('*, trip:trips(*)').eq('shipper_id', userProfile.id)
-      ]);
+      try {
+        // Fetch shipments
+        const { data: shipmentsData, error: shipmentsError } = await supabase
+          .from('shipments')
+          .select('*')
+          .eq('shipper_id', userProfile.id)
+          .order('created_at', { ascending: false });
 
-      const items: ActivityItem[] = [];
+        if (shipmentsError) {
+          console.error('[ShipperHistory] Shipments error:', shipmentsError);
+        }
 
-      shipmentsRes.data?.forEach(s => {
-        items.push({
-          id: s.id,
-          type: 'shipment',
-          date: s.created_at || new Date().toISOString(),
-          title: `${s.origin_city || 'Unknown'} → ${s.destination_city || 'Unknown'}`,
-          description: s.goods_description || 'No description',
-          status: s.status || 'pending',
-          counterparty: 'Multiple Truckers',
-          amount: Number(s.budget_per_tonne) || 0,
-          weight: Number(s.weight_tonnes) || 0
-        });
-      });
+        // Fetch requests (booking requests sent to truckers)
+        const { data: requestsData, error: requestsError } = await supabase
+          .from('requests')
+          .select(`
+            id,
+            created_at,
+            status,
+            weight_tonnes,
+            goods_description,
+            trip:trips(
+              id,
+              origin_city,
+              destination_city,
+              price_per_tonne
+            )
+          `)
+          .eq('shipper_id', userProfile.id)
+          .order('created_at', { ascending: false });
 
-      requestsRes.data?.forEach(r => {
-        items.push({
-          id: r.id,
-          type: 'request',
-          date: r.created_at || new Date().toISOString(),
-          title: `Booking: ${r.trip?.origin_city || 'Unknown'} → ${r.trip?.destination_city || 'Unknown'}`,
-          description: r.goods_description || 'No description',
-          status: r.status || 'pending',
-          counterparty: 'Verified Trucker',
-          amount: Number(r.trip?.price_per_tonne) || 0,
-          weight: Number(r.weight_tonnes) || 0
-        });
-      });
+        if (requestsError) {
+          console.error('[ShipperHistory] Requests error:', requestsError);
+        }
 
-      return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        console.log('[ShipperHistory] Shipments:', shipmentsData?.length, 'Requests:', requestsData?.length);
+
+        const items: ActivityItem[] = [];
+
+        // Process shipments
+        if (shipmentsData) {
+          shipmentsData.forEach((s: any) => {
+            items.push({
+              id: s.id,
+              type: 'shipment',
+              date: s.created_at || new Date().toISOString(),
+              title: `${s.origin_city || 'Unknown'} → ${s.destination_city || 'Unknown'}`,
+              description: s.goods_description || 'No description',
+              status: s.status || 'pending',
+              counterparty: 'Multiple Truckers',
+              amount: Number(s.budget_per_tonne) || 0,
+              weight: Number(s.weight_tonnes) || 0
+            });
+          });
+        }
+
+        // Process requests
+        if (requestsData) {
+          requestsData.forEach((r: any) => {
+            items.push({
+              id: r.id,
+              type: 'request',
+              date: r.created_at || new Date().toISOString(),
+              title: `Booking: ${r.trip?.origin_city || 'Unknown'} → ${r.trip?.destination_city || 'Unknown'}`,
+              description: r.goods_description || 'No description',
+              status: r.status || 'pending',
+              counterparty: 'Verified Trucker',
+              amount: Number(r.trip?.price_per_tonne) || 0,
+              weight: Number(r.weight_tonnes) || 0
+            });
+          });
+        }
+
+        // Sort by date descending
+        items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+        console.log('[ShipperHistory] Total activities:', items.length);
+        return items;
+      } catch (err) {
+        console.error('[ShipperHistory] Error fetching data:', err);
+        throw err;
+      }
     },
-    enabled: !!userProfile?.id
+    enabled: !!userProfile?.id,
+    retry: 1,
+    staleTime: 30000,
   });
 
   const filteredActivities = activities.filter(activity => {
@@ -103,16 +160,17 @@ const ShipperHistory = () => {
 
   const getStatusBadge = (status: string = 'pending') => {
     const s = status.toLowerCase();
-    const statusConfig = {
-      completed: { variant: 'default' as const, className: 'bg-green-100 text-green-800' },
-      pending: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800' },
-      matched: { variant: 'default' as const, className: 'bg-blue-100 text-blue-800' },
-      accepted: { variant: 'default' as const, className: 'bg-green-100 text-green-800' },
-      declined: { variant: 'destructive' as const, className: 'bg-red-100 text-red-800' },
-      cancelled: { variant: 'outline' as const, className: 'bg-gray-100 text-gray-800' }
+    const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; className: string }> = {
+      completed: { variant: 'default', className: 'bg-green-100 text-green-800' },
+      pending: { variant: 'secondary', className: 'bg-yellow-100 text-yellow-800' },
+      matched: { variant: 'default', className: 'bg-blue-100 text-blue-800' },
+      accepted: { variant: 'default', className: 'bg-green-100 text-green-800' },
+      declined: { variant: 'destructive', className: 'bg-red-100 text-red-800' },
+      cancelled: { variant: 'outline', className: 'bg-gray-100 text-gray-800' },
+      active: { variant: 'default', className: 'bg-blue-100 text-blue-800' }
     };
 
-    const config = statusConfig[s as keyof typeof statusConfig] || statusConfig.pending;
+    const config = statusConfig[s] || statusConfig.pending;
     
     return (
       <Badge variant={config.variant} className={config.className}>
@@ -128,6 +186,23 @@ const ShipperHistory = () => {
           <Loader2 className="h-8 w-8 text-blue-600 animate-spin" />
           <span className="ml-3 text-gray-600">Loading history...</span>
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="border-red-200">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading History</h3>
+            <p className="text-gray-500 mb-4">There was a problem loading your activity history.</p>
+            <Button onClick={() => refetch()} variant="outline">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -156,7 +231,7 @@ const ShipperHistory = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {activities.filter(a => a.status === 'completed').length}
+              {activities.filter(a => a.status === 'completed' || a.status === 'accepted' || a.status === 'matched').length}
             </div>
           </CardContent>
         </Card>
@@ -234,7 +309,21 @@ const ShipperHistory = () => {
           <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-200">
             <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900">No activities found</h3>
-            <p className="text-gray-500">Try adjusting your filters or check back later.</p>
+            <p className="text-gray-500">
+              {activities.length === 0 
+                ? "You haven't posted any shipments or sent any requests yet." 
+                : "Try adjusting your filters."}
+            </p>
+            {activities.length === 0 && (
+              <div className="mt-4 flex justify-center gap-4">
+                <Button onClick={() => navigate('/shipper/post-shipment')} className="bg-blue-600 hover:bg-blue-700">
+                  Post a Shipment
+                </Button>
+                <Button onClick={() => navigate('/browse-trucks')} variant="outline">
+                  Find Trucks
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           filteredActivities.map((activity) => (

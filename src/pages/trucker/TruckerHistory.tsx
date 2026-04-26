@@ -21,9 +21,9 @@ import {
   CheckCircle,
   Search,
   Loader2,
-  IndianRupee
+  IndianRupee,
+  AlertCircle
 } from 'lucide-react';
-import { showError } from '@/utils/toast';
 import { useNavigate } from 'react-router-dom';
 
 interface ActivityItem {
@@ -47,53 +47,110 @@ const TruckerHistory = () => {
     status: 'all'
   });
 
-  const { data: activities = [], isLoading } = useQuery({
+  const { data: activities = [], isLoading, error, refetch } = useQuery({
     queryKey: ["truckerHistory", userProfile?.id],
     queryFn: async () => {
-      if (!userProfile?.id) return [];
+      if (!userProfile?.id) {
+        console.log('[TruckerHistory] No user profile');
+        return [];
+      }
+      
+      console.log('[TruckerHistory] Fetching history for user:', userProfile.id);
       
       const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
+      if (!supabaseToken) {
+        console.error('[TruckerHistory] No Supabase token');
+        throw new Error('No Supabase token');
+      }
       const supabase = createClerkSupabaseClient(supabaseToken);
 
-      const [tripsRes, offersRes] = await Promise.all([
-        supabase.from('trips').select('*').eq('trucker_id', userProfile.id),
-        supabase.from('shipment_requests').select('*, shipment:shipments(*)').eq('trucker_id', userProfile.id)
-      ]);
+      try {
+        // Fetch trips
+        const { data: tripsData, error: tripsError } = await supabase
+          .from('trips')
+          .select('*')
+          .eq('trucker_id', userProfile.id)
+          .order('created_at', { ascending: false });
 
-      const items: ActivityItem[] = [];
+        if (tripsError) {
+          console.error('[TruckerHistory] Trips error:', tripsError);
+        }
 
-      tripsRes.data?.forEach(t => {
-        items.push({
-          id: t.id,
-          type: 'trip',
-          date: t.created_at || new Date().toISOString(),
-          title: `${t.origin_city || 'Unknown'} → ${t.destination_city || 'Unknown'}`,
-          description: `Vehicle: ${t.vehicle_type || 'N/A'} (${t.vehicle_number || 'N/A'})`,
-          status: t.status || 'active',
-          counterparty: 'Multiple Shippers',
-          amount: Number(t.price_per_tonne) || 0,
-          capacity: Number(t.available_capacity_tonnes) || 0
-        });
-      });
+        // Fetch shipment_requests (offers sent to shippers)
+        const { data: offersData, error: offersError } = await supabase
+          .from('shipment_requests')
+          .select(`
+            id,
+            created_at,
+            status,
+            proposed_price_per_tonne,
+            message,
+            shipment:shipments(
+              id,
+              origin_city,
+              destination_city,
+              weight_tonnes,
+              goods_description
+            )
+          `)
+          .eq('trucker_id', userProfile.id)
+          .order('created_at', { ascending: false });
 
-      offersRes.data?.forEach(o => {
-        items.push({
-          id: o.id,
-          type: 'offer',
-          date: o.created_at || new Date().toISOString(),
-          title: `Offer: ${o.shipment?.origin_city || 'Unknown'} → ${o.shipment?.destination_city || 'Unknown'}`,
-          description: o.message || `Proposed price for ${o.shipment?.goods_description || 'goods'}`,
-          status: o.status || 'pending',
-          counterparty: 'Verified Shipper',
-          amount: Number(o.proposed_price_per_tonne) || 0,
-          capacity: Number(o.shipment?.weight_tonnes) || 0
-        });
-      });
+        if (offersError) {
+          console.error('[TruckerHistory] Offers error:', offersError);
+        }
 
-      return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        console.log('[TruckerHistory] Trips:', tripsData?.length, 'Offers:', offersData?.length);
+
+        const items: ActivityItem[] = [];
+
+        // Process trips
+        if (tripsData) {
+          tripsData.forEach((t: any) => {
+            items.push({
+              id: t.id,
+              type: 'trip',
+              date: t.created_at || new Date().toISOString(),
+              title: `${t.origin_city || 'Unknown'} → ${t.destination_city || 'Unknown'}`,
+              description: `Vehicle: ${t.vehicle_type || 'N/A'} (${t.vehicle_number || 'N/A'})`,
+              status: t.status || 'active',
+              counterparty: 'Multiple Shippers',
+              amount: Number(t.price_per_tonne) || 0,
+              capacity: Number(t.available_capacity_tonnes) || 0
+            });
+          });
+        }
+
+        // Process offers
+        if (offersData) {
+          offersData.forEach((o: any) => {
+            items.push({
+              id: o.id,
+              type: 'offer',
+              date: o.created_at || new Date().toISOString(),
+              title: `Offer: ${o.shipment?.origin_city || 'Unknown'} → ${o.shipment?.destination_city || 'Unknown'}`,
+              description: o.message || `Proposed price for ${o.shipment?.goods_description || 'goods'}`,
+              status: o.status || 'pending',
+              counterparty: 'Verified Shipper',
+              amount: Number(o.proposed_price_per_tonne) || 0,
+              capacity: Number(o.shipment?.weight_tonnes) || 0
+            });
+          });
+        }
+
+        // Sort by date descending
+        items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        
+        console.log('[TruckerHistory] Total activities:', items.length);
+        return items;
+      } catch (err) {
+        console.error('[TruckerHistory] Error fetching data:', err);
+        throw err;
+      }
     },
-    enabled: !!userProfile?.id
+    enabled: !!userProfile?.id,
+    retry: 1,
+    staleTime: 30000,
   });
 
   const filteredActivities = activities.filter(activity => {
@@ -104,16 +161,17 @@ const TruckerHistory = () => {
 
   const getStatusBadge = (status: string = 'pending') => {
     const s = status.toLowerCase();
-    const statusConfig = {
-      completed: { variant: 'default' as const, className: 'bg-green-100 text-green-800' },
-      pending: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800' },
-      active: { variant: 'default' as const, className: 'bg-blue-100 text-blue-800' },
-      accepted: { variant: 'default' as const, className: 'bg-green-100 text-green-800' },
-      declined: { variant: 'destructive' as const, className: 'bg-red-100 text-red-800' },
-      cancelled: { variant: 'outline' as const, className: 'bg-gray-100 text-gray-800' }
+    const statusConfig: Record<string, { variant: 'default' | 'secondary' | 'destructive' | 'outline'; className: string }> = {
+      completed: { variant: 'default', className: 'bg-green-100 text-green-800' },
+      pending: { variant: 'secondary', className: 'bg-yellow-100 text-yellow-800' },
+      active: { variant: 'default', className: 'bg-blue-100 text-blue-800' },
+      accepted: { variant: 'default', className: 'bg-green-100 text-green-800' },
+      declined: { variant: 'destructive', className: 'bg-red-100 text-red-800' },
+      cancelled: { variant: 'outline', className: 'bg-gray-100 text-gray-800' },
+      matched: { variant: 'default', className: 'bg-blue-100 text-blue-800' }
     };
 
-    const config = statusConfig[s as keyof typeof statusConfig] || statusConfig.pending;
+    const config = statusConfig[s] || statusConfig.pending;
     
     return (
       <Badge variant={config.variant} className={config.className}>
@@ -129,6 +187,23 @@ const TruckerHistory = () => {
           <Loader2 className="h-8 w-8 text-orange-600 animate-spin" />
           <span className="ml-3 text-gray-600">Loading history...</span>
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="border-red-200">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Error Loading History</h3>
+            <p className="text-gray-500 mb-4">There was a problem loading your activity history.</p>
+            <Button onClick={() => refetch()} variant="outline">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -171,7 +246,7 @@ const TruckerHistory = () => {
               {activities.filter(a => a.status === 'pending').length}
             </div>
           </CardContent>
-          </Card>
+        </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">This Month</CardTitle>
@@ -235,7 +310,21 @@ const TruckerHistory = () => {
           <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-200">
             <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900">No activities found</h3>
-            <p className="text-gray-500">Try adjusting your filters or check back later.</p>
+            <p className="text-gray-500">
+              {activities.length === 0 
+                ? "You haven't posted any trips or sent any offers yet." 
+                : "Try adjusting your filters."}
+            </p>
+            {activities.length === 0 && (
+              <div className="mt-4 flex justify-center gap-4">
+                <Button onClick={() => navigate('/trucker/post-trip')} className="bg-orange-600 hover:bg-orange-700">
+                  Post a Trip
+                </Button>
+                <Button onClick={() => navigate('/trucker/browse-shipments')} variant="outline">
+                  Find Shipments
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           filteredActivities.map((activity) => (
