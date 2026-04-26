@@ -40,7 +40,6 @@ interface HistoryItem {
 const ShipperHistory = () => {
   const { userProfile } = useAuth();
   const { getToken } = useClerkAuth();
-  const { getAuthenticatedClient } = useSupabase();
   const navigate = useNavigate();
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +48,10 @@ const ShipperHistory = () => {
     if (!userProfile?.id) return;
     
     try {
-      const supabase = await getAuthenticatedClient();
+      const supabaseToken = await getToken({ template: 'supabase' });
+      if (!supabaseToken) throw new Error('No Supabase token');
+      
+      const supabase = createClerkSupabaseClient(supabaseToken);
       
       const { data, error } = await supabase
         .from('requests')
@@ -100,6 +102,16 @@ const ShipperHistory = () => {
             </CardContent>
           </Card>
         ))}
+      </div>
+    );
+  }
+
+  if (history.length === 0) {
+    return (
+      <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+        <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-gray-900 mb-2">No history yet</h3>
+        <p className="text-gray-500">Your booking history will appear here</p>
       </div>
     );
   }
@@ -182,14 +194,6 @@ const ShipperHistory = () => {
           </CardContent>
         </Card>
       ))}
-
-      {history.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-gray-200">
-          <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">No history yet</h3>
-          <p className="text-gray-500">Your booking history will appear here</p>
-        </div>
-      )}
     </div>
   );
 };

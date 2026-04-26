@@ -22,11 +22,12 @@ import {
   AlertCircle,
   Star,
   Link,
-  Plus,
-  Input
+  Plus
 } from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
 import { supabase } from '@/lib/supabaseClient';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
 
 const StatusBadge = ({ status }: { status: string }) => {
   const cfg: Record<string, string> = {
@@ -66,7 +67,6 @@ const MyShipments = () => {
     try {
       const supabase = await getAuthenticatedClient();
       
-      // Build query for shipments posted by this shipper
       let query = supabase
         .from('shipments')
         .select(`
@@ -84,7 +84,6 @@ const MyShipments = () => {
         .eq('shipper_id', userProfile.id)
         .order('created_at', { ascending: false });
 
-      // Apply filters
       if (filters.status) {
         query = query.eq('status', filters.status);
       }
@@ -122,7 +121,6 @@ const MyShipments = () => {
     try {
       const supabase = await getAuthenticatedClient();
       
-      // Update the request status to accepted
       const { error } = await supabase
         .from('shipment_requests')
         .update({ status: 'accepted' })
@@ -130,7 +128,6 @@ const MyShipments = () => {
 
       if (error) throw error;
 
-      // Update shipment status to matched
       await supabase
         .from('shipments')
         .update({ status: 'matched' })
@@ -207,7 +204,6 @@ const MyShipments = () => {
         </Button>
       </div>
 
-      {/* Filters */}
       <Card className="border-orange-100 shadow-sm">
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-4">
@@ -245,7 +241,6 @@ const MyShipments = () => {
         </CardContent>
       </Card>
 
-      {/* Shipments List */}
       <div className="grid gap-4">
         {shipments.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-gray-200">
@@ -282,7 +277,7 @@ const MyShipments = () => {
                         })}
                       </div>
                       <div className="flex items-center">
-                        <PackageIcon className="h-4 w-4 mr-2 text-purple-600" />
+                        <Package className="h-4 w-4 mr-2 text-purple-600" />
                         {shipment.weight_tonnes}t
                       </div>
                       <div className="flex items-center">
@@ -313,7 +308,7 @@ const MyShipments = () => {
                   <div className="md:w-48 space-y-3">
                     {shipment.status === 'pending' && shipment.requests?.length > 0 ? (
                       <>
-                        {shipment.requests.map((request) => (
+                        {shipment.requests.map((request: any) => (
                           <div key={request.id} className="p-3 bg-gray-50 rounded-lg border border-gray-100">
                             <div className="flex justify-between items-start mb-2">
                               <div className="flex items-center gap-2">
@@ -386,7 +381,7 @@ const MyShipments = () => {
                       <div className="text-center py-8 text-gray-500">
                         {shipment.status === 'pending' ? (
                           <>
-                            <PackageIcon className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                            <Package className="h-8 w-8 mx-auto mb-2 text-gray-300" />
                             <p>No offers yet</p>
                             <p className="text-xs">Share your shipment to get offers from truckers</p>
                           </>
