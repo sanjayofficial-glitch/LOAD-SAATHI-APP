@@ -4,7 +4,6 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Trip, Shipment } from '@/types';
 
-// Expanded coordinate lookup for Indian cities
 const CITY_COORDS: Record<string, [number, number]> = {
   'mumbai': [19.0760, 72.8777],
   'delhi': [28.6139, 77.2090],
@@ -60,52 +59,57 @@ const CITY_COORDS: Record<string, [number, number]> = {
   'aalo': [28.1667, 94.8333],
 };
 
-// Helper to get coordinates safely
 const getCoords = (cityName: string): [number, number] | null => {
   if (!cityName) return null;
   const normalized = cityName.toLowerCase().trim();
-  // Handle common variations
   if (normalized === 'bangaluru') return CITY_COORDS['bangalore'];
   if (normalized === 'prayagraj') return CITY_COORDS['allahabad'];
   return CITY_COORDS[normalized] || null;
 };
 
-// Fix default icon issue
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+// Custom icons
+const truckIcon = new L.Icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/1048/1048313.png',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+  popupAnchor: [0, -12],
 });
 
-const createIcon = (color: 'orange' | 'blue') => {
-  const url = color === 'orange' 
-    ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png'
-    : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png';
+const boxIcon = new L.Icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/2830/2830305.png',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+  popupAnchor: [0, -12],
+});
 
-  return new L.Icon({
-    iconUrl: url,
-    iconSize: [20, 32],
-    iconAnchor: [10, 32],
-    popupAnchor: [1, -28],
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-    shadowSize: [32, 32],
-  });
-};
+const flagIcon = new L.Icon({
+  iconUrl: 'https://cdn-icons-png.flaticon.com/512/3233/3233005.png',
+  iconSize: [24, 24],
+  iconAnchor: [12, 24],
+  popupAnchor: [0, -24],
+});
+
+// Use Omit to avoid TypeScript interface extension errors
+interface ExtendedTrip extends Omit<Trip, 'trucker'> {
+  trucker?: { full_name: string };
+}
+
+interface ExtendedShipment extends Omit<Shipment, 'shipper'> {
+  shipper?: { full_name: string };
+}
 
 interface TripMapProps {
-  trips: Trip[];
-  shipments: Shipment[];
+  trips: ExtendedTrip[];
+  shipments: ExtendedShipment[];
 }
 
 const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
-  // Increase limit to show more lines
-  const visibleTrips = trips.filter(t => t.status !== 'cancelled').slice(0, 50);
-  const visibleShipments = shipments.filter(s => s.status !== 'cancelled').slice(0, 50);
+  const visibleTrips = trips.filter(t => t.status !== 'cancelled').slice(0, 40);
+  const visibleShipments = shipments.filter(s => s.status !== 'cancelled').slice(0, 40);
   const defaultCenter: [number, number] = [20.5937, 78.9629];
 
   return (
-    <div className="h-full w-full bg-slate-900">
+    <div className="h-full w-full bg-slate-900 border border-slate-800 overflow-hidden">
       <MapContainer
         center={defaultCenter}
         zoom={5}
@@ -113,32 +117,32 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
         scrollWheelZoom={false}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         />
         
-        {/* Trucker Trips - Orange */}
+        {/* Truckers - Orange lines and icons */}
         {visibleTrips.map(trip => {
           const origin = getCoords(trip.origin_city);
           const destination = getCoords(trip.destination_city);
-          
           if (!origin || !destination) return null;
           
           return (
             <React.Fragment key={`trip-${trip.id}`}>
-              <Marker position={origin} icon={createIcon('orange')}>
-                <Popup>
-                  <div className="text-xs">
-                    <p className="font-bold text-orange-600 uppercase">Trucker Origin</p>
-                    <p>{trip.origin_city}</p>
+              <Marker position={origin} icon={truckIcon}>
+                <Popup className="admin-map-popup">
+                  <div className="p-1">
+                    <p className="text-[10px] font-black uppercase text-orange-500 tracking-widest mb-1">Trucker Origin</p>
+                    <p className="text-sm font-bold text-slate-800">{trip.trucker?.full_name || 'Anonymous Trucker'}</p>
+                    <p className="text-[10px] text-slate-500">{trip.origin_city}</p>
                   </div>
                 </Popup>
               </Marker>
-              <Marker position={destination} icon={createIcon('orange')}>
-                <Popup>
-                  <div className="text-xs">
-                    <p className="font-bold text-orange-600 uppercase">Trucker Destination</p>
-                    <p>{trip.destination_city}</p>
+              <Marker position={destination} icon={flagIcon}>
+                <Popup className="admin-map-popup">
+                  <div className="p-1">
+                    <p className="text-[10px] font-black uppercase text-orange-500 tracking-widest mb-1">Destination</p>
+                    <p className="text-sm font-bold text-slate-800">{trip.destination_city}</p>
                   </div>
                 </Popup>
               </Marker>
@@ -147,36 +151,36 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
                 pathOptions={{ 
                   color: '#f97316', 
                   weight: 2, 
-                  dashArray: '6, 10',
-                  opacity: trip.status === 'completed' ? 0.3 : 0.7
+                  dashArray: '8, 12',
+                  opacity: 0.6
                 }}
               />
             </React.Fragment>
           );
         })}
 
-        {/* Shipper Shipments - Blue */}
+        {/* Shippers - Blue lines and icons */}
         {visibleShipments.map(shipment => {
           const origin = getCoords(shipment.origin_city);
           const destination = getCoords(shipment.destination_city);
-          
           if (!origin || !destination) return null;
           
           return (
             <React.Fragment key={`shipment-${shipment.id}`}>
-              <Marker position={origin} icon={createIcon('blue')}>
-                <Popup>
-                  <div className="text-xs">
-                    <p className="font-bold text-blue-600 uppercase">Shipper Origin</p>
-                    <p>{shipment.origin_city}</p>
+              <Marker position={origin} icon={boxIcon}>
+                <Popup className="admin-map-popup">
+                  <div className="p-1">
+                    <p className="text-[10px] font-black uppercase text-blue-500 tracking-widest mb-1">Shipper Origin</p>
+                    <p className="text-sm font-bold text-slate-800">{shipment.shipper?.full_name || 'Anonymous Shipper'}</p>
+                    <p className="text-[10px] text-slate-500">{shipment.origin_city}</p>
                   </div>
                 </Popup>
               </Marker>
-              <Marker position={destination} icon={createIcon('blue')}>
-                <Popup>
-                  <div className="text-xs">
-                    <p className="font-bold text-blue-600 uppercase">Shipper Destination</p>
-                    <p>{shipment.destination_city}</p>
+              <Marker position={destination} icon={flagIcon}>
+                <Popup className="admin-map-popup">
+                  <div className="p-1">
+                    <p className="text-[10px] font-black uppercase text-blue-500 tracking-widest mb-1">Destination</p>
+                    <p className="text-sm font-bold text-slate-800">{shipment.destination_city}</p>
                   </div>
                 </Popup>
               </Marker>
@@ -185,8 +189,8 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
                 pathOptions={{ 
                   color: '#3b82f6', 
                   weight: 2, 
-                  dashArray: '6, 10',
-                  opacity: shipment.status === 'completed' ? 0.3 : 0.7
+                  dashArray: '8, 12',
+                  opacity: 0.6
                 }}
               />
             </React.Fragment>
