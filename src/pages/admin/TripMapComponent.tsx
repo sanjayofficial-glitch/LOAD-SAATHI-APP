@@ -77,13 +77,14 @@ async function getCityCoords(city: string): Promise<[number, number] | null> {
   return null;
 }
 
-// Leaflet divIcon creators for reliable rendering
+// Create HTML-based icons using Leaflet divIcon (these will render reliably)
 const createTripIcon = (color: string) => L.divIcon({
   className: 'custom-trip-icon',
   html: `<div style="width:28px;height:28px;transform:translate(-50%,-50%)">
     <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="${color}" stroke-width="2">
       <rect x="1" y="3" width="15" height="13" rx="2" ry="2"/>
-      <circle cx="5" cy="18" r="2"/><circle cx="18" cy="18" r="2"/>
+      <circle cx="5" cy="18" r="2"/>
+      <circle cx="18" cy="18" r="2"/>
       <path d="M5 9l-1 4h12l-1-4"/>
     </svg>
   </div>`,
@@ -127,29 +128,24 @@ const createDestinationIcon = (color: string) => L.divIcon({
   iconAnchor: [12, 12]
 });
 
-const TripMap = () => {
-  // Data from Supabase (matches Business Performance metrics)
-  const [trips, setTrips] = useState<any[]>([]);
-  const [shipments, setShipments] = useState<any[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
+interface TripMapProps {
+  trips: any[];
+  shipments: any[];
+}
 
-  // Processed map data
+const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
   const [resolvedTrips, setResolvedTrips] = useState<any[]>([]);
   const [resolvedShipments, setResolvedShipments] = useState<any[]>([]);
   const [resolving, setResolving] = useState(false);
   const isMounted = useRef(true);
-
-  // Counts for legend (matches Business Performance)
   const [totalTrips, setTotalTrips] = useState(0);
   const [totalLoads, setTotalLoads] = useState(0);
 
-  // Fetch trip and shipment data from Supabase
   useEffect(() => {
     isMounted.current = true;
     const fetchData = async () => {
       setLoadingData(true);
       try {
-        // Fetch active trips (exclude cancelled, match Business Performance filters)
         const { data: tripsData, error: tripsError } = await supabase
           .from('trips')
           .select('*, trucker:users(full_name)')
@@ -158,7 +154,6 @@ const TripMap = () => {
         if (tripsError) console.error('Trip fetch error:', tripsError);
         else if (isMounted.current) setTrips(tripsData || []);
 
-        // Fetch active shipments (exclude cancelled, match Business Performance filters)
         const { data: shipmentsData, error: shipmentsError } = await supabase
           .from('shipments')
           .select('*, shipper:users(full_name)')
@@ -175,7 +170,6 @@ const TripMap = () => {
     return () => { isMounted.current = false; };
   }, []);
 
-  // Process trips and shipments to resolve coordinates
   useEffect(() => {
     isMounted.current = true;
     const processData = async () => {
@@ -184,13 +178,12 @@ const TripMap = () => {
       const tripsResult: any[] = [];
       const shipmentsResult: any[] = [];
 
-      // Process trips
       for (let i = 0; i < trips.length; i++) {
         if (!isMounted.current) break;
         const trip = trips[i];
+        if (trip.status === 'cancelled') continue;
         const origin = await getCityCoords(trip.origin_city);
         const dest = await getCityCoords(trip.destination_city);
-
         if (origin && dest) {
           tripsResult.push({
             ...trip,
@@ -202,13 +195,12 @@ const TripMap = () => {
         if (!coordCache[trip.origin_city?.toLowerCase()]) await sleep(1000);
       }
 
-      // Process shipments
       for (let i = 0; i < shipments.length; i++) {
         if (!isMounted.current) break;
         const shipment = shipments[i];
+        if (shipment.status === 'cancelled') continue;
         const origin = await getCityCoords(shipment.origin_city);
         const dest = await getCityCoords(shipment.destination_city);
-
         if (origin && dest) {
           shipmentsResult.push({
             ...shipment,
@@ -235,13 +227,13 @@ const TripMap = () => {
     <div className="absolute bottom-4 left-4 z-[1000] bg-slate-900/95 border border-slate-700 rounded-lg p-3 shadow-2xl">
       <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Route Summary</div>
       <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2 px-2 py-1 bg-orange-50 rounded">
+        <div className="flex items-center gap-2 bg-orange-50 rounded">
           <Truck className="h-5 w-5 text-orange-600" />
-          <span className="text-xs font-medium text-orange-500">Trips: {totalTrips}</span>
+          <span className="text-xs text-orange-500">Trips: {totalTrips}</span>
         </div>
-        <div className="flex items-center gap-2 px-2 py-1 bg-blue-50 rounded">
+        <div className="flex items-center gap-2 bg-blue-50 rounded">
           <Package className="h-5 w-5 text-blue-600" />
-          <span className="text-xs font-medium text-blue-500">Loads: {totalLoads}</span>
+          <span className="text-xs text-blue-500">Loads: {totalLoads}</span>
         </div>
       </div>
     </div>
@@ -265,91 +257,42 @@ const TripMap = () => {
         scrollWheelZoom={false}
         zoomControl={false}
       >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+        <TileLayer          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         />
 
-        {/* Render Trip Routes */}
         {resolvedTrips.map((trip) => (
           <React.Fragment key={`trip-${trip.id}`}>
             <Marker position={trip.origin} icon={createOriginIcon('#f97316')}>
-              <Popup>
-                <div className="p-2 bg-slate-900 border border-slate-700 min-w-[200px]">
-                  <p className="text-[10px] font-bold uppercase text-orange-400">Trip Origin</p>
-                  <p className="text-sm font-semibold text-slate-100">{trip.trucker?.full_name || 'Carrier'}</p>
-                  <p className="text-xs text-slate-400">{trip.origin_city}</p>
-                </div>
-              </Popup>
+              <Popup><div className="p-2 bg-slate-900 border border-slate-700 min-w-[200px]"><p className="text-[10px] font-bold uppercase text-orange-400">Trip Origin</p><p className="text-sm font-semibold text-slate-100">{trip.trucker?.full_name || 'Carrier'}</p><p className="text-xs text-slate-400">{trip.origin_city}</p></div></Popup>
             </Marker>
-
             <Marker position={trip.destination} icon={createDestinationIcon('#f97316')}>
-              <Popup>
-                <div className="p-2 bg-slate-900 border border-slate-700 min-w-[200px]">
-                  <p className="text-[10px] font-bold uppercase text-orange-400">Trip Destination</p>
-                  <p className="text-sm font-semibold text-slate-100">{trip.destination_city}</p>
-                </div>
-              </Popup>
+              <Popup><div className="p-2 bg-slate-900 border border-slate-700 min-w-[200px]"><p className="text-[10px] font-bold uppercase text-orange-400">Trip Destination</p><p className="text-sm font-semibold text-slate-100">{trip.destination_city}</p></div></Popup>
             </Marker>
-
-            <Polyline
-              positions={[trip.origin, trip.destination]}
-              pathOptions={{ color: '#f97316', weight: 3, opacity: 0.8, dashArray: '10, 10' }}
-            />
-
+            <Polyline positions={[trip.origin, trip.destination]} pathOptions={{ color: '#f97316', weight: 3, opacity: 0.8, dashArray: '10, 10' }} />
             <Marker
               position={[(trip.origin[0] + trip.destination[0]) / 2, (trip.origin[1] + trip.destination[1]) / 2]}
               icon={createTripIcon('#f97316')}
             >
-              <Popup>
-                <div className="p-2 bg-slate-900 border border-slate-700 min-w-[200px]">
-                  <p className="text-[10px] font-bold uppercase text-orange-400">Active Trip</p>
-                  <p className="text-sm font-semibold text-slate-100">{trip.origin_city} → {trip.destination_city}</p>
-                  <p className="text-xs text-slate-400 mt-1">Capacity: {trip.available_capacity_tonnes}t</p>
-                </div>
-              </Popup>
+              <Popup><div className="p-2 bg-slate-900 border border-slate-700 min-w-[200px]"><p className="text-[10px] font-bold uppercase text-orange-400">Active Trip</p><p className="text-sm font-semibold text-slate-100">{trip.origin_city} → {trip.destination_city}</p></div></Popup>
             </Marker>
           </React.Fragment>
         ))}
 
-        {/* Render Shipment Routes */}
         {resolvedShipments.map((shipment) => (
           <React.Fragment key={`shipment-${shipment.id}`}>
             <Marker position={shipment.origin} icon={createOriginIcon('#3b82f6')}>
-              <Popup>
-                <div className="p-2 bg-slate-900 border border-slate-700 min-w-[200px]">
-                  <p className="text-[10px] font-bold uppercase text-blue-400">Load Origin</p>
-                  <p className="text-sm font-semibold text-slate-100">{shipment.shipper?.full_name || 'Shipper'}</p>
-                  <p className="text-xs text-slate-400">{shipment.origin_city}</p>
-                </div>
-              </Popup>
+              <Popup><div className="p-2 bg-slate-900 border border-slate-700 min-w-[200px]"><p className="text-[10px] font-bold uppercase text-blue-400">Load Origin</p><p className="text-sm font-semibold text-slate-100">{shipment.shipper?.full_name || 'Shipper'}</p><p className="text-xs text-slate-400">{shipment.origin_city}</p></div></Popup>
             </Marker>
-
             <Marker position={shipment.destination} icon={createDestinationIcon('#3b82f6')}>
-              <Popup>
-                <div className="p-2 bg-slate-900 border border-slate-700 min-w-[200px]">
-                  <p className="text-[10px] font-bold uppercase text-blue-400">Load Destination</p>
-                  <p className="text-sm font-semibold text-slate-100">{shipment.destination_city}</p>
-                </div>
-              </Popup>
+              <Popup><div className="p-2 bg-slate-900 border border-slate-700 min-w-[200px]"><p className="text-[10px] font-bold uppercase text-blue-400">Load Destination</p><p className="text-sm font-semibold text-slate-100">{shipment.destination_city}</p></div></Popup>
             </Marker>
-
-            <Polyline
-              positions={[shipment.origin, shipment.destination]}
-              pathOptions={{ color: '#3b82f6', weight: 3, opacity: 0.8, dashArray: '5, 5' }}
-            />
-
+            <Polyline positions={[shipment.origin, shipment.destination]} pathOptions={{ color: '#3b82f6', weight: 3, opacity: 0.8, dashArray: '5, 5' }} />
             <Marker
               position={[(shipment.origin[0] + shipment.destination[0]) / 2, (shipment.origin[1] + shipment.destination[1]) / 2]}
               icon={createLoadIcon('#3b82f6')}
             >
-              <Popup>
-                <div className="p-2 bg-slate-900 border border-slate-700 min-w-[200px]">
-                  <p className="text-[10px] font-bold uppercase text-blue-400">Load Request</p>
-                  <p className="text-sm font-semibold text-slate-100">{shipment.origin_city} → {shipment.destination_city}</p>
-                  <p className="text-xs text-slate-400 mt-1">Weight: {shipment.weight_tonnes}t</p>
-                </div>
-              </Popup>
+              <Popup><div className="p-2 bg-slate-900 border border-slate-700 min-w-[200px]"><p className="text-[10px] font-bold uppercase text-blue-400">Load Request</p><p className="text-sm font-semibold text-slate-100">{shipment.origin_city} → {shipment.destination_city}</p></div></Popup>
             </Marker>
           </React.Fragment>
         ))}
