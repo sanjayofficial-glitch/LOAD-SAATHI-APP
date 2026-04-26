@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Loader2, Truck, Package } from 'lucide-react';
+import { Loader2, Truck, Package, Badge } from 'lucide-react';
 import { Trip, Shipment } from '@/types';
 
 const coordCache: Record<string, [number, number]> = {
@@ -76,6 +76,7 @@ async function getCityCoords(city: string): Promise<[number, number] | null> {
   return null;
 }
 
+// Custom SVG icons
 const createTripIcon = (color: string) => {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <rect x="1" y="3" width="15" height="13" rx="2" ry="2"/>
@@ -103,7 +104,6 @@ const createOriginIcon = (color: string) => {
   return `data:image/svg+xml;base64,${btoa(svg)}`;
 };
 
-// FIXED: Properly closed template literal
 const createDestinationIcon = (color: string) => {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="${color}" stroke-width="2">
     <circle cx="12" cy="12" r="10" stroke="${color}" fill="none"/>
@@ -195,6 +195,7 @@ const TripMap: React.FC<{ trips: any[]; shipments: any[] }> = ({ trips, shipment
             </Marker>
           </React.Fragment>
         ))}
+
         {resolvedShipments.map((shipment) => (
           <React.Fragment key={`shipment-${shipment.id}`}>
             <Marker position={shipment.origin} icon={L.icon({ iconUrl: createOriginIcon('#3b82f6'), iconSize: [24, 24], iconAnchor: [12, 12] })}>
@@ -209,6 +210,7 @@ const TripMap: React.FC<{ trips: any[]; shipments: any[] }> = ({ trips, shipment
             </Marker>
           </React.Fragment>
         ))}
+
         <Legend />
       </MapContainer>
     </div>
