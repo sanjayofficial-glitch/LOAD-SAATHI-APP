@@ -3,22 +3,49 @@ import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet'
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Trip, Shipment } from '@/types';
+import { Loader2 } from 'lucide-react';
 
-// Coordinate cache to avoid redundant lookups and respect API limits
+// Expanded coordinate cache to ensure common locations work instantly
 const coordCache: Record<string, [number, number]> = {
   'mumbai': [19.0760, 72.8777],
   'delhi': [28.6139, 77.2090],
+  'new delhi': [28.6139, 77.2090],
   'bangalore': [12.9716, 77.5946],
+  'bengaluru': [12.9716, 77.5946],
   'hyderabad': [17.3850, 78.4867],
   'ahmedabad': [23.0225, 72.5714],
   'chennai': [13.0827, 80.2707],
   'kolkata': [22.5726, 88.3639],
   'pune': [18.5204, 73.8567],
+  'jaipur': [26.9124, 75.7873],
+  'surat': [21.1702, 72.8311],
+  'lucknow': [26.8467, 80.9462],
+  'kanpur': [26.4499, 80.3319],
+  'nagpur': [21.1458, 79.0882],
+  'indore': [22.7196, 75.8577],
+  'thane': [19.2183, 72.9781],
+  'bhopal': [23.2599, 77.4126],
+  'visakhapatnam': [17.6868, 83.2185],
+  'patna': [25.5941, 85.1376],
+  'vadodara': [22.3072, 73.1812],
+  'ghaziabad': [28.6692, 77.4538],
+  'ludhiana': [30.9010, 75.8573],
+  'agra': [27.1767, 78.0081],
+  'nashik': [19.9975, 73.7898],
+  'ranchi': [23.3441, 85.3096],
+  'jamshedpur': [22.8046, 86.2029],
+  'dhanbad': [23.7957, 86.4304],
+  'godda': [24.8256, 87.2114],
+  'daltonganj': [23.9933, 84.0722],
+  'medininagar': [23.9933, 84.0722],
+  'hazaribagh': [23.9925, 85.3633],
+  'bokaro': [23.6693, 86.1511],
+  'giridih': [24.1917, 86.3039],
 };
 
 // Helper to add a slight random jitter to coordinates to prevent exact overlapping
 const applyJitter = (coord: [number, number], index: number): [number, number] => {
-  const jitter = 0.015; // Roughly 1.5km offset
+  const jitter = 0.015; 
   const angle = (index * 137.5) % 360; 
   const rad = (angle * Math.PI) / 180;
   const offsetLat = Math.sin(rad) * (jitter * (1 + (index % 5) * 0.1));
@@ -26,15 +53,21 @@ const applyJitter = (coord: [number, number], index: number): [number, number] =
   return [coord[0] + offsetLat, coord[1] + offsetLon];
 };
 
-// Geocoding function using Nominatim
+// Geocoding function using Nominatim with better headers
 async function getCityCoords(city: string): Promise<[number, number] | null> {
   const normalized = city.toLowerCase().trim();
   if (coordCache[normalized]) return coordCache[normalized];
 
   try {
+    // Nominatim requires a User-Agent or it might block the request
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city + ', India')}&format=json&limit=1`,
-      { headers: { 'Accept-Language': 'en' } }
+      { 
+        headers: { 
+          'Accept-Language': 'en',
+          'User-Agent': 'LoadSaathi-Admin-Dashboard/1.0'
+        } 
+      }
     );
     const data = await res.json();
     if (data && data.length > 0) {
@@ -86,10 +119,14 @@ interface TripMapProps {
 const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
   const [resolvedTrips, setResolvedTrips] = useState<any[]>([]);
   const [resolvedShipments, setResolvedShipments] = useState<any[]>([]);
+  const [resolving, setResolving] = useState(false);
   const defaultCenter: [number, number] = [20.5937, 78.9629];
 
   useEffect(() => {
+    let active = true;
     const resolveData = async () => {
+      setResolving(true);
+      
       // Resolve trips
       const tripPromises = trips
         .filter(t => t.status !== 'cancelled')
@@ -122,18 +159,24 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
           return null;
         });
 
-      const rTrips = (await Promise.all(tripPromises)).filter(Boolean);
-      const rShipments = (await Promise.all(shipmentPromises)).filter(Boolean);
-      
-      setResolvedTrips(rTrips);
-      setResolvedShipments(rShipments);
+      const [rTrips, rShipments] = await Promise.all([
+        Promise.all(tripPromises),
+        Promise.all(shipmentPromises)
+      ]);
+
+      if (active) {
+        setResolvedTrips(rTrips.filter(Boolean));
+        setResolvedShipments(rShipments.filter(Boolean));
+        setResolving(false);
+      }
     };
 
     resolveData();
+    return () => { active = false; };
   }, [trips, shipments]);
 
   return (
-    <div className="h-full w-full bg-slate-900 border border-slate-800 overflow-hidden">
+    <div className="h-full w-full bg-slate-900 border border-slate-800 overflow-hidden relative">
       <MapContainer
         center={defaultCenter}
         zoom={5}
@@ -209,6 +252,13 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
           </React.Fragment>
         ))}
       </MapContainer>
+
+      {resolving && (
+        <div className="absolute bottom-4 right-4 z-[1000] bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-full backdrop-blur-sm flex items-center gap-2">
+          <Loader2 className="h-3 w-3 text-orange-500 animate-spin" />
+          <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Updating Logistics Map</span>
+        </div>
+      )}
     </div>
   );
 };
