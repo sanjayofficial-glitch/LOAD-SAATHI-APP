@@ -26,11 +26,19 @@ import BusinessMetricsPanel from './BusinessMetricsPanel';
 import LiveEventFeed from './LiveEventFeed';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
+interface Event {
+  id: string;
+  type: 'trip' | 'booking' | 'user' | 'chat' | 'alert';
+  message: string;
+  time: string;
+  raw_date?: string;
+}
+
 const MonitoringDashboard = () => {
   const { getAuthenticatedClient } = useSupabase();
   const [users, setUsers] = useState([]);
   const [trips, setTrips] = useState([]);
-  const [events, setEvents] = useState([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [metrics, setMetrics] = useState({ 
     active_connections: 0, 
     api_response_time: 0, 
@@ -92,6 +100,53 @@ const MonitoringDashboard = () => {
         success_rate: successRate
       });
 
+      // Populate Historical Events for the feed
+      const [
+        { data: histTrips },
+        { data: histShipments },
+        { data: histRequests },
+        { data: histOffers }
+      ] = await Promise.all([
+        supabaseClient.from('trips').select('id, origin_city, destination_city, created_at, status').order('created_at', { ascending: false }).limit(5),
+        supabaseClient.from('shipments').select('id, origin_city, created_at').order('created_at', { ascending: false }).limit(5),
+        supabaseClient.from('requests').select('id, weight_tonnes, status, created_at').order('created_at', { ascending: false }).limit(5),
+        supabaseClient.from('shipment_requests').select('id, status, created_at').order('created_at', { ascending: false }).limit(5)
+      ]);
+
+      const formattedHist: Event[] = [
+        ...(histTrips || []).map(t => ({
+          id: `t-${t.id}`,
+          type: 'trip' as const,
+          message: t.status === 'completed' ? `Trip completed: ${t.origin_city} → ${t.destination_city}` : `New trip: ${t.origin_city} → ${t.destination_city}`,
+          time: new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          raw_date: t.created_at
+        })),
+        ...(histShipments || []).map(s => ({
+          id: `s-${s.id}`,
+          type: 'trip' as const,
+          message: `New load posted from ${s.origin_city}`,
+          time: new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          raw_date: s.created_at
+        })),
+        ...(histRequests || []).map(r => ({
+          id: `r-${r.id}`,
+          type: 'booking' as const,
+          message: r.status === 'accepted' ? `Booking accepted for ${r.weight_tonnes}t load` : `Booking request: ${r.weight_tonnes}t load`,
+          time: new Date(r.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          raw_date: r.created_at
+        })),
+        ...(histOffers || []).map(o => ({
+          id: `o-${o.id}`,
+          type: 'booking' as const,
+          message: o.status === 'accepted' ? `Offer accepted by shipper` : `New offer sent to shipper`,
+          time: new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          raw_date: o.created_at
+        }))
+      ]
+      .sort((a, b) => new Date(b.raw_date || '').getTime() - new Date(a.raw_date || '').getTime())
+      .slice(0, 15);
+
+      setEvents(formattedHist);
       setLastUpdated(new Date());
     } catch (err) {
       console.error('[Monitoring] Fetch error:', err);
@@ -103,7 +158,6 @@ const MonitoringDashboard = () => {
   useEffect(() => {
     fetchData();
     
-    // Set up real-time subscriptions for immediate visual feedback
     const channel = supabase
       .channel('admin-monitor-all')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trips' }, (payload) => {
@@ -113,6 +167,17 @@ const MonitoringDashboard = () => {
           message: `New trip: ${payload.new.origin_city} → ${payload.new.destination_city}`,
           time: 'JUST NOW'
         }, ...prev].slice(0, 15));
+        fetchData();
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips' }, (payload) => {
+        if (payload.new.status === 'completed' && payload.old.status !== 'completed') {
+          setEvents(prev => [{
+            id: `trip-comp-${Date.now()}`,
+            type: 'trip',
+            message: `Trip COMPLETED: ${payload.new.origin_city} → ${payload.new.destination_city}`,
+            time: 'JUST NOW'
+          }, ...prev].slice(0, 15));
+        }
         fetchData();
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shipments' }, (payload) => {
@@ -141,8 +206,17 @@ const MonitoringDashboard = () => {
             message: `Booking accepted for ${payload.new.weight_tonnes}t load`,
             time: 'JUST NOW'
           }, ...prev].slice(0, 15));
-          fetchData();
         }
+        fetchData();
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shipment_requests' }, (payload) => {
+        setEvents(prev => [{
+          id: `offer-${Date.now()}`,
+          type: 'booking',
+          message: `Trucker sent new offer to shipper`,
+          time: 'JUST NOW'
+        }, ...prev].slice(0, 15));
+        fetchData();
       })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'users' }, (payload) => {
         setEvents(prev => [{
@@ -155,7 +229,6 @@ const MonitoringDashboard = () => {
       })
       .subscribe();
 
-    // Set up 15-second interval refresh as requested
     const interval = setInterval(fetchData, 15000);
     
     return () => {
