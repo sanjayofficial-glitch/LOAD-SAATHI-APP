@@ -1,8 +1,11 @@
+"use client";
+
 import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Loader2 } from 'lucide-react';
+import { Trip, Shipment } from '@/types';
 
 // Massive coordinate cache for instant loading of common locations
 const coordCache: Record<string, [number, number]> = {
@@ -65,6 +68,7 @@ const coordCache: Record<string, [number, number]> = {
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+// Helper to add a slight jitter to coordinates to prevent exact overlapping
 const applyJitter = (coord: [number, number], index: number): [number, number] => {
   const jitter = 0.02; 
   const angle = (index * 137.5) % 360; 
@@ -97,7 +101,18 @@ const truckIcon = new L.Icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/
 const boxIcon = new L.Icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/2830/2830305.png', iconSize: [24, 24], iconAnchor: [12, 12] });
 const flagIcon = new L.Icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/3233/3233005.png', iconSize: [24, 24], iconAnchor: [12, 24] });
 
-interface TripMapProps { trips: any[]; shipments: any[]; }
+interface ExtendedTrip extends Omit<Trip, 'trucker'> {
+  trucker?: { full_name: string };
+}
+
+interface ExtendedShipment extends Omit<Shipment, 'shipper'> {
+  shipper?: { full_name: string };
+}
+
+interface TripMapProps { 
+  trips: ExtendedTrip[]; 
+  shipments: ExtendedShipment[]; 
+}
 
 const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
   const [resolvedTrips, setResolvedTrips] = useState<any[]>([]);
@@ -116,6 +131,7 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
       const tripsResult: any[] = [];
       const shipmentsResult: any[] = [];
 
+      // Process trips sequentially to respect Nominatim's 1 req/sec limit
       for (let i = 0; i < tList.length; i++) {
         if (!isMounted) break;
         const trip = tList[i];
@@ -127,11 +143,16 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
         if (!coordCache[trip.destination_city.toLowerCase()]) await sleep(500);
 
         if (origin && dest) {
-          tripsResult.push({ ...trip, origin: applyJitter(origin, i), destination: applyJitter(dest, i + 10) });
+          tripsResult.push({ 
+            ...trip, 
+            origin: applyJitter(origin, i), 
+            destination: applyJitter(dest, i + 100) 
+          });
           if (isMounted) setResolvedTrips([...tripsResult]);
         }
       }
 
+      // Process shipments sequentially
       for (let i = 0; i < sList.length; i++) {
         if (!isMounted) break;
         const ship = sList[i];
@@ -143,7 +164,11 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
         if (!coordCache[ship.destination_city.toLowerCase()]) await sleep(500);
 
         if (origin && dest) {
-          shipmentsResult.push({ ...ship, origin: applyJitter(origin, i + 50), destination: applyJitter(dest, i + 60) });
+          shipmentsResult.push({ 
+            ...ship, 
+            origin: applyJitter(origin, i + 500), 
+            destination: applyJitter(dest, i + 600) 
+          });
           if (isMounted) setResolvedShipments([...shipmentsResult]);
         }
       }
@@ -156,23 +181,71 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
   }, [trips, shipments]);
 
   return (
-    <div className="h-full w-full bg-slate-900 overflow-hidden relative">
+    <div className="h-full w-full bg-slate-900 border border-slate-800 overflow-hidden relative">
       <MapContainer center={[20.5937, 78.9629]} zoom={5} style={{ height: '100%', width: '100%', background: '#020617' }} scrollWheelZoom={false}>
         <TileLayer attribution='&copy; OSM' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
         
-        {resolvedTrips.map(t => (
-          <React.Fragment key={`t-${t.id}`}>
-            <Marker position={t.origin} icon={truckIcon}><Popup>{t.trucker?.full_name}: {t.origin_city}</Popup></Marker>
-            <Marker position={t.destination} icon={flagIcon}><Popup>To: {t.destination_city}</Popup></Marker>
-            <Polyline positions={[t.origin, t.destination]} pathOptions={{ color: '#f97316', weight: 2, dashArray: '5, 10', opacity: 0.7 }} />
+        {/* Trucker Trips - Orange lines */}
+        {resolvedTrips.map((trip) => (
+          <React.Fragment key={`trip-${trip.id}`}>
+            <Marker position={trip.origin} icon={truckIcon}>
+              <Popup>
+                <div className="p-1">
+                  <p className="text-[10px] font-black uppercase text-orange-500 tracking-widest mb-1">Trucker Origin</p>
+                  <p className="text-sm font-bold text-slate-800">{trip.trucker?.full_name || 'Anonymous Trucker'}</p>
+                  <p className="text-[10px] text-slate-500">{trip.origin_city}</p>
+                </div>
+              </Popup>
+            </Marker>
+            <Marker position={trip.destination} icon={flagIcon}>
+              <Popup>
+                <div className="p-1">
+                  <p className="text-[10px] font-black uppercase text-orange-500 tracking-widest mb-1">Destination</p>
+                  <p className="text-sm font-bold text-slate-800">{trip.destination_city}</p>
+                </div>
+              </Popup>
+            </Marker>
+            <Polyline 
+              positions={[trip.origin, trip.destination]} 
+              pathOptions={{ 
+                color: '#f97316', 
+                weight: 2, 
+                dashArray: '8, 12', 
+                opacity: 0.6 
+              }} 
+            />
           </React.Fragment>
         ))}
 
-        {resolvedShipments.map(s => (
-          <React.Fragment key={`s-${s.id}`}>
-            <Marker position={s.origin} icon={boxIcon}><Popup>{s.shipper?.full_name}: {s.origin_city}</Popup></Marker>
-            <Marker position={s.destination} icon={flagIcon}><Popup>To: {s.destination_city}</Popup></Marker>
-            <Polyline positions={[s.origin, s.destination]} pathOptions={{ color: '#3b82f6', weight: 2, dashArray: '5, 10', opacity: 0.7 }} />
+        {/* Shipper Shipments - Blue lines */}
+        {resolvedShipments.map((shipment) => (
+          <React.Fragment key={`shipment-${shipment.id}`}>
+            <Marker position={shipment.origin} icon={boxIcon}>
+              <Popup>
+                <div className="p-1">
+                  <p className="text-[10px] font-black uppercase text-blue-500 tracking-widest mb-1">Shipper Origin</p>
+                  <p className="text-sm font-bold text-slate-800">{shipment.shipper?.full_name || 'Anonymous Shipper'}</p>
+                  <p className="text-[10px] text-slate-500">{shipment.origin_city}</p>
+                </div>
+              </Popup>
+            </Marker>
+            <Marker position={shipment.destination} icon={flagIcon}>
+              <Popup>
+                <div className="p-1">
+                  <p className="text-[10px] font-black uppercase text-blue-500 tracking-widest mb-1">Destination</p>
+                  <p className="text-sm font-bold text-slate-800">{shipment.destination_city}</p>
+                </div>
+              </Popup>
+            </Marker>
+            <Polyline 
+              positions={[shipment.origin, shipment.destination]} 
+              pathOptions={{ 
+                color: '#3b82f6', 
+                weight: 2, 
+                dashArray: '8, 12', 
+                opacity: 0.6 
+              }} 
+            />
           </React.Fragment>
         ))}
       </MapContainer>
