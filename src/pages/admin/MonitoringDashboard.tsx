@@ -2,6 +2,12 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useSupabase } from '@/hooks/useSupabase';
+import { supabase } from '@/lib/supabaseClient';
+import { 
+  ResizableHandle, 
+  ResizablePanel, 
+  ResizablePanelGroup 
+} from "@/components/ui/resizable";
 import { 
   Activity, 
   Map as MapIcon, 
@@ -181,50 +187,78 @@ const MonitoringDashboard = () => {
       </header>
 
       <main className="flex-grow overflow-hidden">
-        <TripMapComponent {...{ trips, shipments } as any} />
-        
-        <div className="p-6 grid md:grid-cols-2 gap-8">
-          <div className="h-full flex flex-col border-r border-slate-800 pr-4">
-            <div className="flex items-center gap-2 mb-4 shrink-0">
-              <BarChart3 className="h-4 w-4 text-blue-400" />
-              <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">System</h2>
+        <ResizablePanelGroup direction="vertical">
+          <ResizablePanel defaultSize={45} minSize={30}>
+            <div className="h-full relative bg-slate-900">
+              <TripMapComponent trips={trips} shipments={shipments} />
+              <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-slate-950/80 border border-slate-800 p-2 rounded-lg backdrop-blur-md shadow-2xl">
+                <MapIcon className="h-4 w-4 text-green-400" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-200">Global Logistics Flow</span>
+              </div>
             </div>
-            <ScrollArea className="flex-grow">
-              <SystemMetricsPanel metrics={metrics} />
-            </ScrollArea>
-          </div>
-          
-          <div className="h-full flex flex-col border-r border-slate-800 pr-4">
-            <div className="flex items-center gap-2 mb-4 shrink-0">
-              <Briefcase className="h-4 w-4 text-purple-400" />
-              <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Business</h2>
-            </div>
-            <ScrollArea className="flex-grow">
-              <BusinessMetricsPanel metrics={businessMetrics} />
-            </ScrollArea>
-          </div>
+          </ResizablePanel>
 
-          <div className="h-full flex flex-col">
-            <div className="flex items-center gap-2 mb-4 shrink-0">
-              <Terminal className="h-4 w-4 text-green-400" />
-              <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Console</h2>
-            </div>
-            <LiveEventFeed events={events} />
-          </div>
-        </div>
+          <ResizableHandle withHandle className="bg-slate-800" />
 
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-4 shrink-0">
-            <div className="flex items-center gap-2">
-              <Activity className="h-4 w-4 text-orange-400" />
-              <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Live Traffic</h2>
-            </div>
-            <Badge variant="outline" className="border-slate-800 bg-slate-900 text-slate-500 font-mono text-[9px] px-1.5 py-0">
-              {users.length} OPS
-            </Badge>
-          </div>
-          <UserActivityTable users={users} />
-        </div>
+          <ResizablePanel defaultSize={55}>
+            <ResizablePanelGroup direction="horizontal">
+              <ResizablePanel defaultSize={20} minSize={15}>
+                <div className="h-full flex flex-col border-r border-slate-800 p-4 bg-slate-950/50">
+                  <div className="flex items-center gap-2 mb-4 shrink-0">
+                    <BarChart3 className="h-4 w-4 text-blue-400" />
+                    <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">System</h2>
+                  </div>
+                  <ScrollArea className="flex-grow">
+                    <SystemMetricsPanel metrics={metrics} />
+                  </ScrollArea>
+                </div>
+              </ResizablePanel>
+              
+              <ResizableHandle withHandle className="bg-slate-800" />
+
+              <ResizablePanel defaultSize={20} minSize={15}>
+                <div className="h-full flex flex-col border-r border-slate-800 p-4 bg-slate-950/50">
+                  <div className="flex items-center gap-2 mb-4 shrink-0">
+                    <Briefcase className="h-4 w-4 text-purple-400" />
+                    <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Business</h2>
+                  </div>
+                  <ScrollArea className="flex-grow">
+                    <BusinessMetricsPanel metrics={businessMetrics} />
+                  </ScrollArea>
+                </div>
+              </ResizablePanel>
+
+              <ResizableHandle withHandle className="bg-slate-800" />
+
+              <ResizablePanel defaultSize={30} minSize={20}>
+                <div className="h-full flex flex-col border-r border-slate-800 p-4 bg-slate-950/50">
+                  <div className="flex items-center gap-2 mb-4 shrink-0">
+                    <Terminal className="h-4 w-4 text-green-400" />
+                    <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Console</h2>
+                  </div>
+                  <LiveEventFeed events={events} />
+                </div>
+              </ResizablePanel>
+
+              <ResizableHandle withHandle className="bg-slate-800" />
+
+              <ResizablePanel defaultSize={30} minSize={25}>
+                <div className="h-full flex flex-col p-4 bg-slate-950/50">
+                  <div className="flex items-center justify-between mb-4 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-orange-400" />
+                      <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Live Traffic</h2>
+                    </div>
+                    <Badge variant="outline" className="border-slate-800 bg-slate-900 text-slate-500 font-mono text-[9px] px-1.5 py-0">
+                      {users.length} OPS
+                    </Badge>
+                  </div>
+                  <UserActivityTable users={users} />
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </main>
     </div>
   );
