@@ -191,9 +191,25 @@ const MonitoringDashboard = () => {
           <ResizablePanel defaultSize={45} minSize={30}>
             <div className="h-full relative bg-slate-900">
               <TripMapComponent trips={trips} shipments={shipments} />
+              
+              {/* Map Title Overlay */}
               <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-slate-950/80 border border-slate-800 p-2 rounded-lg backdrop-blur-md shadow-2xl">
                 <MapIcon className="h-4 w-4 text-green-400" />
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-200">Global Logistics Flow</span>
+              </div>
+
+              {/* Map Counters Overlay */}
+              <div className="absolute top-4 right-4 z-10 flex gap-2">
+                <div className="flex items-center gap-2 bg-slate-950/80 border border-orange-500/30 p-2 rounded-lg backdrop-blur-md shadow-2xl">
+                  <Truck className="h-4 w-4 text-orange-500" />
+                  <span className="text-xs font-mono font-bold text-orange-500">{trips.length}</span>
+                  <span className="text-[8px] font-black uppercase tracking-tighter text-slate-400">TRIPS</span>
+                </div>
+                <div className="flex items-center gap-2 bg-slate-950/80 border border-blue-500/30 p-2 rounded-lg backdrop-blur-md shadow-2xl">
+                  <Package className="h-4 w-4 text-blue-500" />
+                  <span className="text-xs font-mono font-bold text-blue-500">{shipments.length}</span>
+                  <span className="text-[8px] font-black uppercase tracking-tighter text-slate-400">LOADS</span>
+                </div>
               </div>
             </div>
           </ResizablePanel>
