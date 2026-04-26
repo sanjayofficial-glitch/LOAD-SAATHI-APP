@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Truck, Package, CheckCircle, ArrowRight, MapPin, Calendar, IndianRupee } from 'lucide-react';
+import { Truck, Package, CheckCircle, ArrowRight, Calendar, IndianRupee } from 'lucide-react';
 import { useUser } from '@clerk/clerk-react';
 import { supabase } from '@/integrations/supabase/client';
 import IndexSkeleton from '@/components/IndexSkeleton';
@@ -54,6 +54,12 @@ const Index = () => {
     if (hasSeen) {
       setShowSplash(false);
       setVideoEnded(true);
+    } else {
+      // Safety timeout: if animation doesn't finish in 5 seconds, skip it
+      const timer = setTimeout(() => {
+        handleAnimationEnd();
+      }, 5000);
+      return () => clearTimeout(timer);
     }
   }, []);
 

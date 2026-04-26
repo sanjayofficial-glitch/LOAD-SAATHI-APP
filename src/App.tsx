@@ -1,7 +1,9 @@
+"use client";
+
 import { ClerkProvider } from "@clerk/clerk-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
 import { Toaster } from "sonner";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Skeleton } from "./components/ui/skeleton";
@@ -37,13 +39,26 @@ const AdminMonitoringDashboard = lazy(() => import("./pages/admin/MonitoringDash
 
 const queryClient = new QueryClient();
 
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+
 function App() {
+  if (!CLERK_PUBLISHABLE_KEY) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="bg-white p-8 rounded-xl shadow-lg text-center max-w-md">
+          <h1 className="text-xl font-bold text-red-600 mb-2">Configuration Error</h1>
+          <p className="text-gray-600">Clerk Publishable Key is missing. Please check your environment variables.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <ClerkProvider publishableKey={import.meta.env.VITE_CLERK_PUBLISHABLE_KEY}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <BrowserRouter>
-            <ErrorBoundary>
+    <ErrorBoundary>
+      <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <BrowserRouter>
               <Suspense fallback={<Skeleton className="h-screen w-full" />}>
                 <Routes>
                   {/* Public routes */}
@@ -153,12 +168,12 @@ function App() {
                   </Route>
                 </Routes>
               </Suspense>
-            </ErrorBoundary>
-          </BrowserRouter>
-        </AuthProvider>
-      </QueryClientProvider>
+            </BrowserRouter>
+          </AuthProvider>
+        </QueryClientProvider>
+      </ClerkProvider>
       <Toaster position="top-center" richColors />
-    </ClerkProvider>
+    </ErrorBoundary>
   );
 }
 
