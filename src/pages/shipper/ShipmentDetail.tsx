@@ -33,6 +33,7 @@ const ShipmentDetail = () => {
   const [loading, setLoading] = useState(true);
   const [offerCount, setOfferCount] = useState(0);
   const [hasReview, setHasReview] = useState(false);
+  const [matchedTrucker, setMatchedTrucker] = useState<any>(null);
 
   // Offer dialog state (for truckers)
   const [offerOpen, setOfferOpen] = useState(false);
@@ -66,12 +67,27 @@ const ShipmentDetail = () => {
           .select('*', { count: 'exact', head: true })
           .eq('shipment_id', id);
         setOfferCount(count ?? 0);
+
+        // If matched or completed, get the trucker info
+        if (shipmentData.status === 'matched' || shipmentData.status === 'completed') {
+          const { data: acceptedOffer } = await supabase
+            .from('shipment_requests')
+            .select('*, trucker:users(*)')
+            .eq('shipment_id', id)
+            .eq('status', 'accepted')
+            .maybeSingle();
+          
+          if (acceptedOffer) {
+            setMatchedTrucker(acceptedOffer.trucker);
+          }
+        }
         
         // Check if already reviewed if completed
         if (shipmentData.status === 'completed') {
           const { data: review } = await supabase
             .from('reviews')
             .select('id')
+            .eq('trip_id', shipmentData.id)
             .eq('shipper_id', userProfile.id)
             .limit(1);
           setHasReview(!!review?.length);
@@ -157,7 +173,7 @@ const ShipmentDetail = () => {
               </Button>
             </Link>
           )}
-          {isOwner && isCompleted && !hasReview && (
+          {isOwner && isCompleted && !hasReview && matchedTrucker && (
             <Button 
               className="bg-yellow-500 hover:bg-yellow-600 text-white"
               onClick={() => setReviewOpen(true)}
@@ -311,7 +327,7 @@ const ShipmentDetail = () => {
                     </div>
                     <p className="font-bold text-gray-900">Trip Completed!</p>
                     <p>This shipment has been successfully delivered.</p>
-                    {!hasReview && (
+                    {!hasReview && matchedTrucker && (
                       <Button 
                         className="w-full bg-yellow-500 hover:bg-yellow-600 mt-2"
                         onClick={() => setReviewOpen(true)}
@@ -407,14 +423,14 @@ const ShipmentDetail = () => {
       </Dialog>
 
       {/* Review Dialog */}
-      {reviewOpen && (
+      {reviewOpen && matchedTrucker && (
         <ReviewDialog
           isOpen={reviewOpen}
           onClose={() => setReviewOpen(false)}
-          tripId={shipment.id} // Using shipment ID as trip context for review
-          truckerId="" // This would need to be fetched from the accepted offer
+          tripId={shipment.id}
+          truckerId={matchedTrucker.id}
           shipperId={userProfile?.id || ''}
-          truckerName="the trucker"
+          truckerName={matchedTrucker.full_name || "the trucker"}
           onSuccess={fetchData}
         />
       )}

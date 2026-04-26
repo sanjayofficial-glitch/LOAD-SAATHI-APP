@@ -2,71 +2,69 @@
 
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { TrendingUp, Package, Truck, CheckCircle2, ArrowUpRight, AlertCircle } from 'lucide-react';
+import { 
+  TrendingUp, 
+  Package, 
+  CheckCircle2, 
+  IndianRupee,
+  ArrowUpRight,
+  Truck
+} from 'lucide-react';
 
 interface BusinessMetricsProps {
-  tripsCount: number;
-  shipmentsCount: number;
-  pendingRequests: number;
-  acceptedRequests: number;
-  estimatedRevenue: number;
-  successRate: number;
+  metrics: {
+    total_shipments: number;
+    total_trips: number;
+    pending_requests: number;
+    accepted_requests: number;
+    estimated_revenue: number;
+    success_rate: number;
+  };
 }
 
-const BusinessMetricsPanel: React.FC<BusinessMetricsProps> = ({
-  tripsCount,
-  shipmentsCount,
-  pendingRequests,
-  acceptedRequests,
-  estimatedRevenue,
-  successRate
-}) => {
+const BusinessMetricsPanel: React.FC<BusinessMetricsProps> = ({ metrics }) => {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <Card className="bg-slate-900 border-slate-800 shadow-inner">
-          <CardContent className="p-3 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] text-slate-400 uppercase font-black tracking-tighter">Total Trips</p>
-              <div className="flex items-center gap-2">
-                <Truck className="h-4 w-4 text-orange-500" />
-                <p className="text-2xl font-mono font-bold text-orange-400">{tripsCount}</p>
-              </div>
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              <Truck className="h-3 w-3 text-orange-400" />
+              <div className="h-1.5 w-1.5 rounded-full bg-orange-500" />
             </div>
-            <ArrowUpRight className="h-5 w-5 text-orange-600/60" />
+            <p className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Total Trips</p>
+            <p className="text-lg font-mono font-bold text-slate-100">{metrics.total_trips}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-slate-900 border-slate-800 shadow-inner">
-          <CardContent className="p-3 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] text-slate-400 uppercase font-black tracking-tighter">Total Loads</p>
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-blue-500" />
-                <p className="text-2xl font-mono font-bold text-blue-400">{shipmentsCount}</p>
-              </div>
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              <Package className="h-3 w-3 text-blue-400" />
+              <div className="h-1.5 w-1.5 rounded-full bg-blue-500" />
             </div>
-            <ArrowUpRight className="h-5 w-5 text-blue-600/60" />
+            <p className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Total Loads</p>
+            <p className="text-lg font-mono font-bold text-slate-100">{metrics.total_shipments}</p>
           </CardContent>
         </Card>
       </div>
 
-      <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-800 shadow-2xl">
+      <div className="p-4 bg-slate-900/50 rounded-xl border border-slate-800 space-y-4 shadow-2xl">
         <div className="flex justify-between items-end">
           <div>
-            <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mb-1">Booking Conversion</p>
-            <p className="text-2xl font-mono font-bold text-green-400">{successRate}%</p>
+            <p className="text-[9px] text-slate-500 uppercase font-black tracking-widest mb-1">Booking Conversion</p>
+            <p className="text-2xl font-mono font-bold text-green-400">{metrics.success_rate}%</p>
           </div>
           <div className="text-right">
             <p className="text-[9px] text-slate-500 uppercase font-black tracking-widest mb-1">GMV Estimator</p>
-            <p className="text-sm font-mono font-bold text-slate-300">₹{(estimatedRevenue / 1000).toFixed(1)}k</p>
+            <p className="text-sm font-mono font-bold text-slate-300">₹{(metrics.estimated_revenue / 1000).toFixed(1)}k</p>
           </div>
         </div>
-
-        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden flex mt-3">
-          <div
-            className="bg-green-500 h-full transition-all duration-1000 shadow-[0_0_10px_rgba(34,197,94,0.5)]"
-            style={{ width: `${successRate}%` }}
+        
+        <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden flex">
+          <div 
+            className="bg-green-500 h-full transition-all duration-1000 shadow-[0_0_10px_rgba(34,197,94,0.5)]" 
+            style={{ width: `${metrics.success_rate}%` }} 
           />
         </div>
       </div>
@@ -79,7 +77,7 @@ const BusinessMetricsPanel: React.FC<BusinessMetricsProps> = ({
             </div>
             <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Active Requests</span>
           </div>
-          <span className="text-xs font-mono text-slate-200">{pendingRequests}</span>
+          <span className="text-xs font-mono text-slate-200">{metrics.pending_requests}</span>
         </div>
       </div>
     </div>
