@@ -5,10 +5,10 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, User, ArrowRight, Loader2 } from 'lucide-react';
+import { MessageSquare, User, ArrowRight, Loader2, Clock } from 'lucide-react';
 import { showError } from '@/utils/toast';
 
 interface ChatConversation {
@@ -48,13 +48,17 @@ const ChatList = () => {
             *,
             request:requests(
               id,
-              shipper:users!requests_shipper_id_fkey(id, full_name, user_type),
-              receiver:users!requests_receiver_id_fkey(id, full_name, user_type)
-            ),
-            s_request:shipment_requests(
-              id,
-              shipper:users!shipment_requests_shipper_id_fkey(id, full_name, user_type),
-              trucker:users!shipment_requests_trucker_id_fkey(id, full_name, user_type)
+              trip:trips(
+                id,
+                origin_city,
+                destination_city
+              ),
+              shipper:users!requests_shipper_id_fkey(
+                id,
+                full_name,
+                user_type
+              ),
+              trip:trip_id
             )
           `)
           .or(`sender_id.eq.${userProfile.id},recipient_id.eq.${userProfile.id}`)
@@ -73,21 +77,9 @@ const ChatList = () => {
           const isFromMe = msg.sender_id === userProfile.id;
           const otherUserId = isFromMe ? msg.recipient_id : msg.sender_id;
           
-          // Determine other user info based on who is viewing and what type of request it is
-          let otherUser: any = null;
-          
-          if (msg.request) {
-            const req = msg.request as any;
-            otherUser = req.shipper?.id === userProfile.id ? req.receiver : req.shipper;
-          } else if (msg.s_request) {
-            const sReq = msg.s_request as any;
-            otherUser = sReq.shipper?.id === userProfile.id ? sReq.trucker : sReq.shipper;
-          }
-
-          // Fallback if relations didn't load
-          if (!otherUser) {
-            otherUser = { id: otherUserId, full_name: 'User', user_type: '' };
-          }
+          // Get other user info from request
+          const request = msg.request as any;
+          const otherUser = request?.shipper || { id: otherUserId, full_name: 'Unknown', user_type: '' };
 
           if (!existing) {
             conversationMap.set(requestId, {
@@ -125,6 +117,11 @@ const ChatList = () => {
 
     fetchConversations();
   }, [userProfile, getToken]);
+
+  const getRequestTitle = (conv: ChatConversation) => {
+    // Try to get trip info from the request
+    return `${conv.other_user.full_name}`;
+  };
 
   if (loading) {
     return (
@@ -174,7 +171,7 @@ const ChatList = () => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
                         <h3 className="font-bold text-gray-900 truncate">
-                          {conv.other_user.full_name}
+                          {getRequestTitle(conv)}
                         </h3>
                         <span className="text-xs text-gray-400 ml-2">
                           {new Date(conv.last_message_time).toLocaleDateString('en-IN', { 

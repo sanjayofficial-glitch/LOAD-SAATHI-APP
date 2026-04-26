@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useSupabase } from '@/hooks/useSupabase';
+import { supabase } from '@/lib/supabaseClient';
 import { 
   ResizableHandle, 
   ResizablePanel, 
@@ -16,7 +17,8 @@ import {
   Briefcase,
   Terminal,
   Truck,
-  Package
+  Package,
+  CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,7 +28,6 @@ import SystemMetricsPanel from './SystemMetricsPanel';
 import BusinessMetricsPanel from './BusinessMetricsPanel';
 import LiveEventFeed from './LiveEventFeed';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { showError } from '@/utils/toast';
 
 interface Event {
   id: string;
@@ -57,50 +58,50 @@ const MonitoringDashboard = () => {
     success_rate: 0
   });
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState(new Date());
 
   const fetchData = useCallback(async () => {
     try {
       const supabaseClient = await getAuthenticatedClient();
 
-      // Fetch core data in parallel
-      const [
-        { data: userData }, 
-        { data: tripData }, 
-        { data: shipmentData }, 
-        { data: metricsData, error: metricsError },
-        { data: requests }
-      ] = await Promise.all([
-        supabaseClient.from('users').select('*').order('created_at', { ascending: false }).limit(50),
-        supabaseClient.from('trips').select('*, trucker:users!trips_trucker_id_fkey(full_name)').order('created_at', { ascending: false }),
-        supabaseClient.from('shipments').select('*, shipper:users!shipments_shipper_id_fkey(full_name)').order('created_at', { ascending: false }),
-        supabaseClient.rpc('get_system_metrics'),
-        supabaseClient.from('requests').select('status, weight_tonnes, trip:trips(price_per_tonne)')
-      ]);
+      // Fetch active users
+      const { data: userData } = await supabaseClient
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50);
       
       if (userData) setUsers(userData);
+
+      // Fetch trips with trucker info
+      const { data: tripData } = await supabaseClient
+        .from('trips')
+        .select('*, trucker:users!trips_trucker_id_fkey(full_name)')
+        .order('created_at', { ascending: false });
+      
       if (tripData) setTrips(tripData);
+
+      // Fetch shipments with shipper info
+      const { data: shipmentData } = await supabaseClient
+        .from('shipments')
+        .select('*, shipper:users!shipments_shipper_id_fkey(full_name)')
+        .order('created_at', { ascending: false });
+      
       if (shipmentData) setShipments(shipmentData);
 
-      // System Metrics Handling
+      // Fetch system metrics
+      const { data: metricsData, error: metricsError } = await supabaseClient.rpc('get_system_metrics');
       if (!metricsError && metricsData) {
         const m = Array.isArray(metricsData) ? metricsData[0] : metricsData;
-        setMetrics({
-          active_connections: Number(m.active_connections || 0),
-          api_response_time: Number(m.api_response_time || 0),
-          error_rate: Number(m.error_rate || 0),
-          active_requests: Number(m.active_requests || 0)
-        });
+        setMetrics(m);
       }
 
-      // Business Metrics Calculation
+      // Calculate Business Metrics
+      const { data: requests } = await supabaseClient.from('requests').select('status, weight_tonnes, trip:trips(price_per_tonne)');
+      
       const pending = requests?.filter(r => r.status === 'pending').length || 0;
       const accepted = requests?.filter(r => r.status === 'accepted') || [];
-      const revenue = accepted.reduce((sum, r: any) => {
-        const weight = Number(r.weight_tonnes) || 0;
-        const rate = Number(r.trip?.price_per_tonne) || 0;
-        return sum + (weight * rate);
-      }, 0);
-      
+      const revenue = accepted.reduce((sum, r: any) => sum + (r.weight_tonnes * (r.trip?.price_per_tonne || 0)), 0);
       const successRate = requests?.length ? Math.round((accepted.length / requests.length) * 100) : 0;
 
       setBusinessMetrics({
@@ -112,31 +113,34 @@ const MonitoringDashboard = () => {
         success_rate: successRate
       });
 
-      // Construct Event Feed from actual recent data
-      const recentTrips = (tripData || []).slice(0, 5).map(t => ({
-        id: `t-${t.id}`,
-        type: 'trip' as const,
-        message: `Trip Active: ${t.origin_city} to ${t.destination_city}`,
-        time: new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        raw_date: t.created_at
-      }));
+      // Historical events
+      const [{ data: hTrips }, { data: hShips }] = await Promise.all([
+        supabaseClient.from('trips').select('id, origin_city, destination_city, created_at').limit(3),
+        supabaseClient.from('shipments').select('id, origin_city, created_at').limit(3)
+      ]);
 
-      const recentLoads = (shipmentData || []).slice(0, 5).map(s => ({
-        id: `s-${s.id}`,
-        type: 'booking' as const,
-        message: `New Load: ${s.weight_tonnes}t at ${s.origin_city}`,
-        time: new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        raw_date: s.created_at
-      }));
+      const formattedHist: Event[] = [
+        ...(hTrips || []).map(t => ({
+          id: `t-${t.id}`,
+          type: 'trip' as const,
+          message: `Trip activity: ${t.origin_city} → ${t.destination_city}`,
+          time: new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          raw_date: t.created_at
+        })),
+        ...(hShips || []).map(s => ({
+          id: `s-${s.id}`,
+          type: 'trip' as const,
+          message: `New load detected at ${s.origin_city}`,
+          time: new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          raw_date: s.created_at
+        }))
+      ]
+      .sort((a, b) => new Date(b.raw_date || '').getTime() - new Date(a.raw_date || '').getTime());
 
-      const combinedEvents = [...recentTrips, ...recentLoads]
-        .sort((a, b) => new Date(b.raw_date || '').getTime() - new Date(a.raw_date || '').getTime())
-        .slice(0, 10);
-
-      setEvents(combinedEvents);
+      setEvents(formattedHist);
+      setLastUpdated(new Date());
     } catch (err) {
-      console.error('[Monitoring] Error:', err);
-      showError('Failed to refresh system dashboard');
+      console.error('[Monitoring] Fetch error:', err);
     } finally {
       setLoading(false);
     }
@@ -144,7 +148,7 @@ const MonitoringDashboard = () => {
 
   useEffect(() => {
     fetchData();
-    const interval = setInterval(fetchData, 30000); // 30s refresh for stability
+    const interval = setInterval(fetchData, 15000);
     return () => clearInterval(interval);
   }, [fetchData]);
 
@@ -166,8 +170,8 @@ const MonitoringDashboard = () => {
 
         <div className="flex items-center gap-4">
           <div className="text-right hidden sm:block border-r border-slate-800 pr-4 mr-2">
-            <p className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Status</p>
-            <p className="text-[11px] font-mono text-slate-300">AUTHORIZED</p>
+            <p className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Sync Token</p>
+            <p className="text-[11px] font-mono text-slate-300">ACTIVE_OK</p>
           </div>
           <Button 
             variant="outline" 
@@ -188,11 +192,13 @@ const MonitoringDashboard = () => {
             <div className="h-full relative bg-slate-900">
               <TripMapComponent trips={trips} shipments={shipments} />
               
+              {/* Map Title Overlay */}
               <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-slate-950/80 border border-slate-800 p-2 rounded-lg backdrop-blur-md shadow-2xl">
                 <MapIcon className="h-4 w-4 text-green-400" />
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-200">Global Logistics Flow</span>
               </div>
 
+              {/* Map Counters Overlay */}
               <div className="absolute top-4 right-4 z-10 flex gap-2">
                 <div className="flex items-center gap-2 bg-slate-950/80 border border-orange-500/30 p-2 rounded-lg backdrop-blur-md shadow-2xl">
                   <Truck className="h-4 w-4 text-orange-500" />
@@ -216,7 +222,7 @@ const MonitoringDashboard = () => {
                 <div className="h-full flex flex-col border-r border-slate-800 p-4 bg-slate-950/50">
                   <div className="flex items-center gap-2 mb-4 shrink-0">
                     <BarChart3 className="h-4 w-4 text-blue-400" />
-                    <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">System Health</h2>
+                    <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">System</h2>
                   </div>
                   <ScrollArea className="flex-grow">
                     <SystemMetricsPanel metrics={metrics} />
@@ -230,7 +236,7 @@ const MonitoringDashboard = () => {
                 <div className="h-full flex flex-col border-r border-slate-800 p-4 bg-slate-950/50">
                   <div className="flex items-center gap-2 mb-4 shrink-0">
                     <Briefcase className="h-4 w-4 text-purple-400" />
-                    <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Business performance</h2>
+                    <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Business</h2>
                   </div>
                   <ScrollArea className="flex-grow">
                     <BusinessMetricsPanel metrics={businessMetrics} />
@@ -244,7 +250,7 @@ const MonitoringDashboard = () => {
                 <div className="h-full flex flex-col border-r border-slate-800 p-4 bg-slate-950/50">
                   <div className="flex items-center gap-2 mb-4 shrink-0">
                     <Terminal className="h-4 w-4 text-green-400" />
-                    <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">System Console</h2>
+                    <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Console</h2>
                   </div>
                   <LiveEventFeed events={events} />
                 </div>
@@ -257,10 +263,10 @@ const MonitoringDashboard = () => {
                   <div className="flex items-center justify-between mb-4 shrink-0">
                     <div className="flex items-center gap-2">
                       <Activity className="h-4 w-4 text-orange-400" />
-                      <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Network Traffic</h2>
+                      <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Live Traffic</h2>
                     </div>
                     <Badge variant="outline" className="border-slate-800 bg-slate-900 text-slate-500 font-mono text-[9px] px-1.5 py-0">
-                      {users.length} NODES
+                      {users.length} OPS
                     </Badge>
                   </div>
                   <UserActivityTable users={users} />
