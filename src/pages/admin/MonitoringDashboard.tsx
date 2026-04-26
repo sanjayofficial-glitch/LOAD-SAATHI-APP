@@ -173,7 +173,7 @@ const MonitoringDashboard = () => {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trips' }, (payload) => {
         setEvents(prev => [{
           id: `trip-${Date.now()}`,
-          type: 'trip',
+          type: 'trip' as const,
           message: `New trip: ${payload.new.origin_city} → ${payload.new.destination_city}`,
           time: 'JUST NOW'
         }, ...prev].slice(0, 15));
@@ -183,7 +183,7 @@ const MonitoringDashboard = () => {
         if (payload.new.status === 'completed' && payload.old.status !== 'completed') {
           setEvents(prev => [{
             id: `trip-comp-${Date.now()}`,
-            type: 'trip',
+            type: 'trip' as const,
             message: `Trip COMPLETED: ${payload.new.origin_city} → ${payload.new.destination_city}`,
             time: 'JUST NOW'
           }, ...prev].slice(0, 15));
@@ -193,7 +193,7 @@ const MonitoringDashboard = () => {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shipments' }, (payload) => {
         setEvents(prev => [{
           id: `shipment-${Date.now()}`,
-          type: 'trip',
+          type: 'trip' as const,
           message: `New load posted from ${payload.new.origin_city}`,
           time: 'JUST NOW'
         }, ...prev].slice(0, 15));
@@ -202,7 +202,7 @@ const MonitoringDashboard = () => {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'requests' }, (payload) => {
         setEvents(prev => [{
           id: `request-sent-${Date.now()}`,
-          type: 'booking',
+          type: 'booking' as const,
           message: `New booking request sent for ${payload.new.weight_tonnes}t`,
           time: 'JUST NOW'
         }, ...prev].slice(0, 15));
@@ -212,7 +212,7 @@ const MonitoringDashboard = () => {
         if (payload.new.status === 'accepted' && payload.old.status !== 'accepted') {
           setEvents(prev => [{
             id: `booking-accepted-${Date.now()}`,
-            type: 'booking',
+            type: 'booking' as const,
             message: `Booking accepted for ${payload.new.weight_tonnes}t load`,
             time: 'JUST NOW'
           }, ...prev].slice(0, 15));
@@ -222,7 +222,7 @@ const MonitoringDashboard = () => {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shipment_requests' }, (payload) => {
         setEvents(prev => [{
           id: `offer-${Date.now()}`,
-          type: 'booking',
+          type: 'booking' as const,
           message: `Trucker sent new offer to shipper`,
           time: 'JUST NOW'
         }, ...prev].slice(0, 15));
@@ -231,7 +231,7 @@ const MonitoringDashboard = () => {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'users' }, (payload) => {
         setEvents(prev => [{
           id: `user-${Date.now()}`,
-          type: 'user',
+          type: 'user' as const,
           message: `New ${payload.new.user_type} joined: ${payload.new.full_name}`,
           time: 'JUST NOW'
         }, ...prev].slice(0, 15));
@@ -309,7 +309,7 @@ const MonitoringDashboard = () => {
                     <Truck className="h-3 w-3 text-orange-500" /> Active Trips
                   </p>
                   <p className="text-xl font-mono font-bold text-orange-500">
-                    {trips.filter(t => t.status === 'active').length}
+                    {trips.filter((t: any) => t.status === 'active').length}
                   </p>
                 </div>
                 <div className="bg-slate-900/90 border border-slate-700 p-3 rounded-xl backdrop-blur-sm shadow-2xl min-w-[140px]">
@@ -317,7 +317,7 @@ const MonitoringDashboard = () => {
                     <Package className="h-3 w-3 text-blue-500" /> Pending Loads
                   </p>
                   <p className="text-xl font-mono font-bold text-blue-500">
-                    {shipments.filter(s => s.status === 'pending').length}
+                    {shipments.filter((s: any) => s.status === 'pending').length}
                   </p>
                 </div>
               </div>
