@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import 'leaflet/dist/leaflet.css'; // Ensure this import is present
 import { Loader2, Truck, Package } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
