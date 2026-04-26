@@ -11,7 +11,7 @@ const MonitoringDashboard = () => {
 
   return (
     <div className="h-full relative bg-slate-900">
-      <TripMap trips={trips} shipments={shipments} /> // Now valid
+      <TripMap trips={trips} shipments={shipments} /> {/* Now valid */}
     </div>
   );
 };
