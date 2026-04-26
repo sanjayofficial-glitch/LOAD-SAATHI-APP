@@ -2,9 +2,9 @@ import React from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Trip } from '@/types';
+import { Trip, Shipment } from '@/types';
 
-// Simple coordinate lookup for major Indian cities to visualize flow
+// Simple coordinate lookup for major Indian cities
 const CITY_COORDS: Record<string, [number, number]> = {
   'Mumbai': [19.0760, 72.8777],
   'Delhi': [28.6139, 77.2090],
@@ -36,8 +36,33 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-const TripMap: React.FC<{ trips: Trip[] }> = ({ trips }) => {
+const createIcon = (color: 'orange' | 'blue' | 'green' | 'red') => {
+  const url = color === 'orange' 
+    ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png'
+    : color === 'blue' 
+    ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png'
+    : color === 'green'
+    ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png'
+    : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png';
+
+  return new L.Icon({
+    iconUrl: url,
+    iconSize: [18, 30],
+    iconAnchor: [9, 30],
+    popupAnchor: [1, -26],
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    shadowSize: [30, 30],
+  });
+};
+
+interface TripMapProps {
+  trips: Trip[];
+  shipments: Shipment[];
+}
+
+const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
   const activeTrips = trips.filter(trip => trip.status === 'active').slice(0, 15);
+  const activeShipments = shipments.filter(s => s.status === 'pending').slice(0, 15);
   const defaultCenter: [number, number] = [20.5937, 78.9629];
 
   return (
@@ -53,31 +78,77 @@ const TripMap: React.FC<{ trips: Trip[] }> = ({ trips }) => {
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         />
         
+        {/* Trucker Trips - Orange */}
         {activeTrips.map(trip => {
-          const origin = CITY_COORDS[trip.origin_city] || defaultCenter;
-          const destination = CITY_COORDS[trip.destination_city] || [defaultCenter[0] + 2, defaultCenter[1] + 2];
+          const origin = CITY_COORDS[trip.origin_city];
+          const destination = CITY_COORDS[trip.destination_city];
+          
+          if (!origin || !destination) return null;
           
           return (
-            <React.Fragment key={trip.id}>
-              <Marker
-                position={origin}
-                icon={new L.Icon({
-                  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png',
-                  iconSize: [15, 25],
-                  iconAnchor: [7, 25],
-                })}
-              >
-                <Popup className="dark-popup">
-                  <div className="text-xs font-bold">Origin: {trip.origin_city}</div>
+            <React.Fragment key={`trip-${trip.id}`}>
+              <Marker position={origin} icon={createIcon('orange')}>
+                <Popup>
+                  <div className="text-xs">
+                    <p className="font-bold text-orange-600 uppercase">Trucker Trip</p>
+                    <p>Origin: {trip.origin_city}</p>
+                    <p>Capacity: {trip.available_capacity_tonnes}t</p>
+                  </div>
+                </Popup>
+              </Marker>
+              <Marker position={destination} icon={createIcon('orange')}>
+                <Popup>
+                  <div className="text-xs">
+                    <p className="font-bold text-orange-600 uppercase">Trucker Destination</p>
+                    <p>{trip.destination_city}</p>
+                  </div>
                 </Popup>
               </Marker>
               <Polyline
                 positions={[origin, destination]}
                 pathOptions={{ 
                   color: '#f97316', 
-                  weight: 1, 
-                  dashArray: '5, 5',
-                  opacity: 0.5
+                  weight: 2, 
+                  dashArray: '10, 10',
+                  opacity: 0.6
+                }}
+              />
+            </React.Fragment>
+          );
+        })}
+
+        {/* Shipper Shipments - Blue */}
+        {activeShipments.map(shipment => {
+          const origin = CITY_COORDS[shipment.origin_city];
+          const destination = CITY_COORDS[shipment.destination_city];
+          
+          if (!origin || !destination) return null;
+          
+          return (
+            <React.Fragment key={`shipment-${shipment.id}`}>
+              <Marker position={origin} icon={createIcon('blue')}>
+                <Popup>
+                  <div className="text-xs">
+                    <p className="font-bold text-blue-600 uppercase">Shipper Load</p>
+                    <p>Origin: {shipment.origin_city}</p>
+                    <p>Weight: {shipment.weight_tonnes}t</p>
+                  </div>
+                </Popup>
+              </Marker>
+              <Marker position={destination} icon={createIcon('blue')}>
+                <Popup>
+                  <div className="text-xs">
+                    <p className="font-bold text-blue-600 uppercase">Delivery Point</p>
+                    <p>{shipment.destination_city}</p>
+                  </div>
+                </Popup>
+              </Marker>
+              <Polyline
+                positions={[origin, destination]}
+                pathOptions={{ 
+                  color: '#3b82f6', 
+                  weight: 2, 
+                  opacity: 0.6
                 }}
               />
             </React.Fragment>
