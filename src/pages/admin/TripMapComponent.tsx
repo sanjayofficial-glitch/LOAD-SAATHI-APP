@@ -182,10 +182,16 @@ const TripMap: React.FC = () => {
       setLoadingData(true);
       try {
         const { data: tripData } = await supabase.from('trips').select('*, trucker:users(full_name)').neq('status', 'cancelled');
-        if (isMounted.current) setTrips(tripData || []);
+        if (isMounted.current) {
+          setTrips(tripData || []);
+          dataRef.current.trips = tripData || [];
+        }
 
         const { data: shipmentData } = await supabase.from('shipments').select('*, shipper:users(full_name)').neq('status', 'cancelled');
-        if (isMounted.current) setShipments(shipmentData || []);
+        if (isMounted.current) {
+          setShipments(shipmentData || []);
+          dataRef.current.shipments = shipmentData || [];
+        }
       } finally {
         if (isMounted.current) setLoadingData(false);
       }
@@ -336,7 +342,7 @@ const TripMap: React.FC = () => {
               </Popup>
             </Marker>
           </React.Fragment>
-        </React.Fragment>
+        ))}
       </MapContainer>
 
       <div className="absolute bottom-4 right-4 z-[1000]">
