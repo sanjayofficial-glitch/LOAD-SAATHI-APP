@@ -165,51 +165,77 @@ interface Shipment {
   created_at?: string;
 }
 
-const TripMap: React.FC<{ trips: Trip[]; shipments: Shipment[] }> = ({ trips, shipments }) => {
+const TripMap: React.FC = () => {
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [shipments, setShipments] = useState<Shipment[]>([]);
+  const [loadingData, setLoadingData] = useState<boolean>(true);
   const [resolvedTrips, setResolvedTrips] = useState<any[]>([]);
   const [resolvedShipments, setResolvedShipments] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [resolving, setResolving] = useState<boolean>(false);
+  const dataRef = useRef<{ trips: Trip[]; shipments: Shipment[] }>({ trips: [], shipments: [] });
   const isMounted = useRef(true);
 
   useEffect(() => {
     isMounted.current = true;
+    const fetchData = async () => {
+      setLoadingData(true);
+      try {
+        const { data: tripData } = await supabase.from('trips').select('*, trucker:users(full_name)').neq('status', 'cancelled');
+        if (isMounted.current) setTrips(tripData || []);
+
+        const { data: shipmentData } = await supabase.from('shipments').select('*, shipper:users(full_name)').neq('status', 'cancelled');
+        if (isMounted.current) setShipments(shipmentData || []);
+      } finally {
+        if (isMounted.current) setLoadingData(false);
+      }
+    };
+    fetchData();
+    return () => { isMounted.current = false; };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
     const processData = async () => {
+      if (loadingData) return;
+      setResolving(true);
+      const { trips: tList, shipments: sList } = dataRef.current;
+
       const tripsResult: any[] = [];
       const shipmentsResult: any[] = [];
 
-      for (let i = 0; i < trips.length; i++) {
-        if (!isMounted.current) break;
-        const trip = trips[i];
+      for (let i = 0; i < tList.length; i++) {
+        if (!isMounted) break;
+        const trip = tList[i];
         const origin = await getCityCoords(trip.origin_city);
         if (!coordCache[trip.origin_city.toLowerCase()]) await sleep(500);
         const dest = await getCityCoords(trip.destination_city);
         if (!coordCache[trip.destination_city.toLowerCase()]) await sleep(500);
         if (origin && dest) {
           tripsResult.push({ ...trip, origin: applyJitter(origin, i), destination: applyJitter(dest, i + 100) });
-          if (isMounted.current) setResolvedTrips([...tripsResult]);
+          if (isMounted) setResolvedTrips([...tripsResult]);
         }
       }
 
-      for (let i = 0; i < shipments.length; i++) {
-        if (!isMounted.current) break;
-        const ship = shipments[i];
+      for (let i = 0; i < sList.length; i++) {
+        if (!isMounted) break;
+        const ship = sList[i];
         const origin = await getCityCoords(ship.origin_city);
         if (!coordCache[ship.origin_city.toLowerCase()]) await sleep(500);
         const dest = await getCityCoords(ship.destination_city);
         if (!coordCache[ship.destination_city.toLowerCase()]) await sleep(500);
         if (origin && dest) {
           shipmentsResult.push({ ...ship, origin: applyJitter(origin, i + 500), destination: applyJitter(dest, i + 600) });
-          if (isMounted.current) setResolvedShipments([...shipmentsResult]);
+          if (isMounted) setResolvedShipments([...shipmentsResult]);
         }
         if (!coordCache[ship.origin_city?.toLowerCase()]) await sleep(1000);
       }
 
-      if (isMounted.current) setLoading(false);
+      if (isMounted) setResolving(false);
     };
 
     processData();
-    return () => { isMounted.current = false; };
-  }, [trips, shipments]);
+    return () => { isMounted = false; };
+  }, [loadingData]);
 
   const Legend = () => (
     <div className="absolute bottom-4 left-4 z-[1000] bg-slate-900/95 border border-slate-700 rounded-lg p-3 shadow-2xl">
@@ -227,7 +253,7 @@ const TripMap: React.FC<{ trips: Trip[]; shipments: Shipment[] }> = ({ trips, sh
     </div>
   );
 
-  if (loading) {
+  if (loadingData || resolving) {
     return (
       <div className="h-full w-full bg-slate-950 border border-slate-800 flex items-center justify-center">
         <Loader2 className="h-8 w-8 text-orange-500 animate-spin" />
