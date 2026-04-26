@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +9,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Package, Search, Clock, TrendingUp, PlusCircle, DollarSign, Calendar, MapPin } from 'lucide-react';
+import { 
+  Package, 
+  Search, 
+  Clock, 
+  TrendingUp, 
+  PlusCircle, 
+  DollarSign, 
+  Calendar, 
+  MapPin,
+  Truck,
+  ArrowRight
+} from 'lucide-react';
 import { showError, showSuccess } from '@/utils/toast';
 
 // Skeleton for the 4 stat cards shown while loading
@@ -51,16 +64,16 @@ const ShipperDashboard = () => {
         .eq('shipper_id', userProfile.id).eq('status', 'completed');
       
       const { count: pendingRequests } = await supabase
-        .from('requests').select('*', { count: 'exact', head: true })
+        .from('shipment_requests').select('*', { count: 'exact', head: true })
         .eq('shipper_id', userProfile.id).eq('status', 'pending');
 
       const { data: completedShipmentsData } = await supabase
         .from('shipments')
-        .select('budget_per_tonne, requests!inner(weight_tonnes)')
+        .select('budget_per_tonne, shipment_requests(weight_tonnes)')
         .eq('shipper_id', userProfile.id).eq('status', 'completed');
 
       const totalSpent = completedShipmentsData?.reduce((sum, shipment: any) => {
-        const request = shipment.requests[0];
+        const request = shipment.shipment_requests[0];
         return sum + (request ? shipment.budget_per_tonne * request.weight_tonnes : 0);
       }, 0) || 0;
 
@@ -120,33 +133,33 @@ const ShipperDashboard = () => {
           </>
         ) : (
           <>
-            <Card>
+            <Card className="border-blue-100 shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Active Shipments</CardTitle>
+                <CardTitle className="text-sm font-medium text-gray-600">Active Shipments</CardTitle>
                 <Package className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent><div className="text-2xl font-bold">{stats.activeShipments}</div></CardContent>
             </Card>
-            <Card>
+            <Card className="border-yellow-100 shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
+                <CardTitle className="text-sm font-medium text-gray-600">Pending Requests</CardTitle>
                 <Clock className="h-4 w-4 text-yellow-600" />
               </CardHeader>
               <CardContent><div className="text-2xl font-bold">{stats.pendingRequests}</div></CardContent>
             </Card>
-            <Card>
+            <Card className="border-green-100 shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Completed Shipments</CardTitle>
+                <CardTitle className="text-sm font-medium text-gray-600">Completed Shipments</CardTitle>
                 <TrendingUp className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent><div className="text-2xl font-bold">{stats.completedShipments}</div></CardContent>
             </Card>
-            <Card>
+            <Card className="border-green-100 shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
-                <DollarSign className="h-4 w-4 text-blue-600" />
+                <CardTitle className="text-sm font-medium text-gray-600">Total Spent</CardTitle>
+                <DollarSign className="h-4 w-4 text-green-600" />
               </CardHeader>
-              <CardContent><div className="text-2xl font-bold text-blue-600">₹{stats.totalSpent.toLocaleString()}</div></CardContent>
+              <CardContent><div className="text-2xl font-bold text-green-600">₹{stats.totalSpent.toLocaleString()}</div></CardContent>
             </Card>
           </>
         )}
@@ -154,8 +167,8 @@ const ShipperDashboard = () => {
 
       {/* Quick Actions */}
       <div className="grid md:grid-cols-2 gap-6 mb-8">
-        <Card className="border-blue-100">
-          <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
+        <Card className="border-blue-100 shadow-sm">
+          <CardHeader><CardTitle className="text-lg font-bold">Quick Actions</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <Link to="/shipper/post-shipment">
               <Button className="w-full bg-blue-600 hover:bg-blue-700">
@@ -189,7 +202,7 @@ const ShipperDashboard = () => {
 
       {/* Upcoming Shipments */}
       {!loading && stats.upcomingShipments.length > 0 && (
-        <Card className="border-blue-100">
+        <Card className="border-blue-100 shadow-sm">
           <CardHeader><CardTitle>Upcoming Shipments</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-4">

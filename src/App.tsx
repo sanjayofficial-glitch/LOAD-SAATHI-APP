@@ -8,7 +8,6 @@ import { Skeleton } from "./components/ui/skeleton";
 import Layout from "./components/Layout";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
 import { lazy, Suspense } from "react";
-import AdminMonitoringDashboard from "./pages/admin/MonitoringDashboard";
 
 const Index = lazy(() => import("./pages/Index"));
 const Login = lazy(() => import("./pages/Login"));
@@ -20,7 +19,7 @@ const PostTrip = lazy(() => import("./pages/trucker/PostTrip"));
 const TruckerHub = lazy(() => import("./pages/trucker/TruckerHub"));
 const EditTrip = lazy(() => import("./pages/trucker/EditTrip"));
 const TruckerTripDetail = lazy(() => import("./pages/trucker/TruckerTripDetail"));
-const BrowseShipments = lazy(() => import("./pages/shipper/BrowseTrips"));
+const BrowseShipments = lazy(() => import("./pages/trucker/BrowseShipments"));
 const BrowseTrips = lazy(() => import("./pages/shipper/BrowseTrips"));
 const TruckerHistory = lazy(() => import("./pages/trucker/TruckerHistory"));
 const ShipperDashboard = lazy(() => import("./pages/shipper/Dashboard"));
@@ -34,6 +33,7 @@ const Chat = lazy(() => import("./pages/Chat"));
 const ChatList = lazy(() => import("./pages/ChatList"));
 const Profile = lazy(() => import("./pages/Profile"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const AdminMonitoringDashboard = lazy(() => import("./pages/admin/MonitoringDashboard"));
 
 const queryClient = new QueryClient();
 
@@ -101,6 +101,11 @@ function App() {
                     <Route path="/trucker/history" element={
                       <RoleProtectedRoute allowedRole="trucker">
                         <TruckerHistory />
+                      </RoleProtectedRoute>
+                    } />
+                    <Route path="/trucker/browse-shipments" element={
+                      <RoleProtectedRoute allowedRole="trucker">
+                        <BrowseShipments />
                       </RoleProtectedRoute>
                     } />
 

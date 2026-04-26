@@ -13,41 +13,42 @@ import {
   Truck, 
   Clock, 
   TrendingUp, 
-  DollarSign, 
   Calendar, 
   MapPin, 
   Filter,
   Eye,
   Package,
   CheckCircle,
-  AlertCircle,
-  Star
+  Search,
+  Loader2,
+  IndianRupee
 } from 'lucide-react';
-import { showError, showSuccess } from '@/utils/toast';
+import { showError } from '@/utils/toast';
+import { useNavigate } from 'react-router-dom';
 
 interface ActivityItem {
   id: string;
-  activity_type: string;
-  reference_id: string;
-  activity_date: string;
+  type: 'trip' | 'offer';
+  date: string;
+  title: string;
   description: string;
   status: string;
-  title: string;
-  counterparty_name: string;
-  trip_details?: string;
-  shipment_details?: string;
+  counterparty: string;
+  amount: number;
+  capacity: number;
 }
 
 const TruckerHistory = () => {
   const { userProfile } = useAuth();
   const { getToken } = useClerkAuth();
+  const navigate = useNavigate();
   const [filters, setFilters] = useState({
-    activityType: '',
-    status: ''
+    type: 'all',
+    status: 'all'
   });
 
-  const { data: activities = [], isLoading, refetch } = useQuery({
-    queryKey: ["truckerHistory", filters.activityType, filters.status],
+  const { data: activities = [], isLoading } = useQuery({
+    queryKey: ["truckerHistory", userProfile?.id],
     queryFn: async () => {
       if (!userProfile?.id) return [];
       
@@ -55,91 +56,78 @@ const TruckerHistory = () => {
       if (!supabaseToken) throw new Error('No Supabase token');
       const supabase = createClerkSupabaseClient(supabaseToken);
 
-      const { data, error } = await supabase
-        .from("trucker_history")
-        .select("*")
-        .eq("user_id", userProfile.id);
+      const [tripsRes, offersRes] = await Promise.all([
+        supabase.from('trips').select('*').eq('trucker_id', userProfile.id),
+        supabase.from('shipment_requests').select('*, shipment:shipments(*)').eq('trucker_id', userProfile.id)
+      ]);
 
-      if (error) throw error;
-      return (data as ActivityItem[]) || [];
+      const items: ActivityItem[] = [];
+
+      tripsRes.data?.forEach(t => {
+        items.push({
+          id: t.id,
+          type: 'trip',
+          date: t.created_at || new Date().toISOString(),
+          title: `${t.origin_city || 'Unknown'} → ${t.destination_city || 'Unknown'}`,
+          description: `Vehicle: ${t.vehicle_type || 'N/A'} (${t.vehicle_number || 'N/A'})`,
+          status: t.status || 'active',
+          counterparty: 'Multiple Shippers',
+          amount: Number(t.price_per_tonne) || 0,
+          capacity: Number(t.available_capacity_tonnes) || 0
+        });
+      });
+
+      offersRes.data?.forEach(o => {
+        items.push({
+          id: o.id,
+          type: 'offer',
+          date: o.created_at || new Date().toISOString(),
+          title: `Offer: ${o.shipment?.origin_city || 'Unknown'} → ${o.shipment?.destination_city || 'Unknown'}`,
+          description: o.message || `Proposed price for ${o.shipment?.goods_description || 'goods'}`,
+          status: o.status || 'pending',
+          counterparty: 'Verified Shipper',
+          amount: Number(o.proposed_price_per_tonne) || 0,
+          capacity: Number(o.shipment?.weight_tonnes) || 0
+        });
+      });
+
+      return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     },
     enabled: !!userProfile?.id
   });
 
   const filteredActivities = activities.filter(activity => {
-    if (filters.activityType && activity.activity_type !== filters.activityType) return false;
-    if (filters.status && activity.status !== filters.status) return false;
+    if (filters.type !== 'all' && activity.type !== filters.type) return false;
+    if (filters.status !== 'all' && activity.status !== filters.status) return false;
     return true;
   });
 
-  const getStatusIcon = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-600" />;
-      case 'active':
-        return <TrendingUp className="h-4 w-4 text-blue-600" />;
-      case 'failed':
-        return <AlertCircle className="h-4 w-4 text-red-600" />;
-      default:
-        return <Clock className="h-4 w-4 text-gray-600" />;
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string = 'pending') => {
+    const s = status.toLowerCase();
     const statusConfig = {
       completed: { variant: 'default' as const, className: 'bg-green-100 text-green-800' },
       pending: { variant: 'secondary' as const, className: 'bg-yellow-100 text-yellow-800' },
       active: { variant: 'default' as const, className: 'bg-blue-100 text-blue-800' },
-      failed: { variant: 'destructive' as const, className: 'bg-red-100 text-red-800' },
+      accepted: { variant: 'default' as const, className: 'bg-green-100 text-green-800' },
+      declined: { variant: 'destructive' as const, className: 'bg-red-100 text-red-800' },
       cancelled: { variant: 'outline' as const, className: 'bg-gray-100 text-gray-800' }
     };
 
-    const config = statusConfig[status.toLowerCase() as keyof typeof statusConfig] || statusConfig.pending;
+    const config = statusConfig[s as keyof typeof statusConfig] || statusConfig.pending;
     
     return (
       <Badge variant={config.variant} className={config.className}>
-        {status}
+        {status.toUpperCase()}
       </Badge>
     );
   };
-
-  const getActivityIcon = (activityType: string) => {
-    switch (activityType.toLowerCase()) {
-      case 'trip':
-        return <Truck className="h-5 w-5 text-blue-600" />;
-      case 'shipment':
-        return <Package className="h-5 w-5 text-purple-600" />;
-      case 'request':
-        return <Clock className="h-5 w-5 text-orange-600" />;
-      case 'payment':
-        return <DollarSign className="h-5 w-5 text-green-600" />;
-      default:
-        return <Eye className="h-5 w-5 text-gray-600" />;
-    }
-  };
-
-  const formatCurrency = (amount: number) => `₹${amount.toLocaleString()}`;
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const uniqueActivityTypes = [...new Set(activities.map(a => a.activity_type))].filter(Boolean);
-  const uniqueStatuses = [...new Set(activities.map(a => a.status))].filter(Boolean);
 
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center h-64">
-          <span className="text-orange-600 animate-spin">Loading history...</span>
+          <Loader2 className="h-8 w-8 text-orange-600 animate-spin" />
+          <span className="ml-3 text-gray-600">Loading history...</span>
         </div>
       </div>
     );
@@ -148,64 +136,10 @@ const TruckerHistory = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">My Activity History</h1>
-        <p className="text-gray-600">View all your past trips, shipments, and activities</p>
+        <h1 className="text-3xl font-bold text-gray-900">Activity History</h1>
+        <p className="text-gray-600">View all your past trips and sent offers</p>
       </div>
 
-      {/* Filters */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Filter className="mr-2 h-5 w-5" />
-            Filters
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Activity Type</label>
-              <Select 
-                value={filters.activityType || "all"} 
-                onValueChange={(value) => setFilters(prev => ({ ...prev, activityType: value === "all" ? "" : value }))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="All activity types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All activity types</SelectItem>
-                  {uniqueActivityTypes.map(type => (
-                    <SelectItem key={type} value={type}>{type}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-              <Select 
-                value={filters.status || "all"} 
-                onValueChange={(value) => setFilters(prev => ({ ...prev, status: value === "all" ? "" : value }))}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All statuses</SelectItem>
-                  {uniqueStatuses.map(status => (
-                    <SelectItem key={status} value={status}>{status}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-end">
-              <Button onClick={() => setFilters({ activityType: '', status: '' })} variant="outline" className="w-full">
-                Clear Filters
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Stats Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -223,7 +157,7 @@ const TruckerHistory = () => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {activities.filter(a => a.status === 'completed').length}
+              {activities.filter(a => a.status === 'completed' || a.status === 'accepted').length}
             </div>
           </CardContent>
         </Card>
@@ -237,7 +171,7 @@ const TruckerHistory = () => {
               {activities.filter(a => a.status === 'pending').length}
             </div>
           </CardContent>
-        </Card>
+          </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">This Month</CardTitle>
@@ -246,88 +180,111 @@ const TruckerHistory = () => {
           <CardContent>
             <div className="text-2xl font-bold text-purple-600">
               {activities.filter(a => {
-                const activityDate = new Date(a.activity_date);
+                const d = new Date(a.date);
                 const now = new Date();
-                return activityDate.getMonth() === now.getMonth() && 
-                       activityDate.getFullYear() === now.getFullYear();
+                return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
               }).length}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Activities List */}
-      <Card>
+      <Card className="mb-8">
         <CardHeader>
-          <CardTitle>Activity History ({filteredActivities.length})</CardTitle>
+          <CardTitle className="text-sm font-bold flex items-center gap-2">
+            <Filter className="h-4 w-4" /> Filters
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {filteredActivities.length === 0 ? (
-            <div className="text-center py-12">
-              <Eye className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No activities found</h3>
-              <p className="text-gray-500">
-                {activities.length === 0 
-                  ? "You don't have any activity history yet." 
-                  : "Try adjusting your filters to see more activities."
-                }
-              </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-500 uppercase">Type</label>
+              <Select value={filters.type} onValueChange={(v) => setFilters({...filters, type: v})}>
+                <SelectTrigger><SelectValue placeholder="All Types" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="trip">Posted Trips</SelectItem>
+                  <SelectItem value="offer">Sent Offers</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredActivities.map((activity) => (
-                <div key={activity.id} className="border rounded-lg p-6 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-4">
-                      <div className="bg-blue-100 p-3 rounded-full">
-                        {getActivityIcon(activity.activity_type)}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900">{activity.title}</h3>
-                          {getStatusIcon(activity.status)}
-                          <span className="text-sm text-gray-500">{formatDate(activity.activity_date)}</span>
-                        </div>
-                        
-                        <p className="text-gray-600 mb-3">{activity.description}</p>
-                        
-                        <div className="flex flex-wrap items-center gap-4 text-sm">
-                          <div className="flex items-center space-x-1">
-                            <MapPin className="h-4 w-4 text-gray-500" />
-                            <span className="text-gray-700">{activity.counterparty_name}</span>
-                          </div>
-                          
-                          {activity.trip_details && (
-                            <div className="flex items-center space-x-1">
-                              <Truck className="h-4 w-4 text-gray-500" />
-                              <span className="text-gray-700">{activity.trip_details}</span>
-                            </div>
-                          )}
-                          
-                          {activity.shipment_details && (
-                            <div className="flex items-center space-x-1">
-                              <Package className="h-4 w-4 text-gray-500" />
-                              <span className="text-gray-700">{activity.shipment_details}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex flex-col items-end space-y-2">
-                      {getStatusBadge(activity.status)}
-                      <Button variant="outline" size="sm" className="text-blue-600 border-blue-200 hover:bg-blue-50">
-                        <Eye className="mr-1 h-4 w-4" />
-                        View Details
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-500 uppercase">Status</label>
+              <Select value={filters.status} onValueChange={(v) => setFilters({...filters, status: v})}>
+                <SelectTrigger><SelectValue placeholder="All Statuses" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="accepted">Accepted</SelectItem>
+                  <SelectItem value="declined">Declined</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          )}
+            <div className="flex items-end">
+              <Button variant="outline" className="w-full" onClick={() => setFilters({type: 'all', status: 'all'})}>
+                Clear Filters
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
+
+      <div className="space-y-4">
+        {filteredActivities.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-xl border-2 border-dashed border-gray-200">
+            <Search className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900">No activities found</h3>
+            <p className="text-gray-500">Try adjusting your filters or check back later.</p>
+          </div>
+        ) : (
+          filteredActivities.map((activity) => (
+            <Card key={activity.id} className="hover:shadow-md transition-shadow border-orange-100">
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row justify-between gap-6">
+                  <div className="flex-1 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-full ${activity.type === 'trip' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                          {activity.type === 'trip' ? <Truck className="h-5 w-5" /> : <Package className="h-5 w-5" />}
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900">{activity.title}</h3>
+                          <p className="text-sm text-gray-500">{new Date(activity.date).toLocaleDateString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+                        </div>
+                      </div>
+                      {getStatusBadge(activity.status)}
+                    </div>
+                    
+                    <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">{activity.description}</p>
+                    
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-gray-400" />
+                        <span className="text-gray-700">{activity.counterparty}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Package className="h-4 w-4 text-gray-400" />
+                        <span className="text-gray-700">{activity.capacity}t capacity</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <IndianRupee className="h-4 w-4 text-green-600" />
+                        <span className="font-bold text-green-700">₹{activity.amount.toLocaleString('en-IN')} /t</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col justify-center gap-2 min-w-[120px]">
+                    <Button variant="outline" size="sm" onClick={() => navigate(activity.type === 'trip' ? `/trucker/trips/${activity.id}` : `/trucker/my-trips?tab=sent`)}>
+                      <Eye className="h-4 w-4 mr-2" /> Details
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   );
 };
