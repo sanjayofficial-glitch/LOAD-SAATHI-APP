@@ -63,7 +63,11 @@ const CITY_COORDS: Record<string, [number, number]> = {
 // Helper to get coordinates safely
 const getCoords = (cityName: string): [number, number] | null => {
   if (!cityName) return null;
-  return CITY_COORDS[cityName.toLowerCase().trim()] || null;
+  const normalized = cityName.toLowerCase().trim();
+  // Handle common variations
+  if (normalized === 'bangaluru') return CITY_COORDS['bangalore'];
+  if (normalized === 'prayagraj') return CITY_COORDS['allahabad'];
+  return CITY_COORDS[normalized] || null;
 };
 
 // Fix default icon issue
@@ -95,9 +99,9 @@ interface TripMapProps {
 }
 
 const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
-  // Include both active and completed for visualization
-  const visibleTrips = trips.filter(t => t.status !== 'cancelled').slice(0, 30);
-  const visibleShipments = shipments.filter(s => s.status !== 'cancelled').slice(0, 30);
+  // Increase limit to show more lines
+  const visibleTrips = trips.filter(t => t.status !== 'cancelled').slice(0, 50);
+  const visibleShipments = shipments.filter(s => s.status !== 'cancelled').slice(0, 50);
   const defaultCenter: [number, number] = [20.5937, 78.9629];
 
   return (
@@ -127,7 +131,6 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
                   <div className="text-xs">
                     <p className="font-bold text-orange-600 uppercase">Trucker Origin</p>
                     <p>{trip.origin_city}</p>
-                    <p className="text-[10px] text-gray-500">Status: {trip.status}</p>
                   </div>
                 </Popup>
               </Marker>
@@ -143,9 +146,9 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
                 positions={[origin, destination]}
                 pathOptions={{ 
                   color: '#f97316', 
-                  weight: 3, 
-                  dashArray: '8, 12',
-                  opacity: trip.status === 'completed' ? 0.3 : 0.8
+                  weight: 2, 
+                  dashArray: '6, 10',
+                  opacity: trip.status === 'completed' ? 0.3 : 0.7
                 }}
               />
             </React.Fragment>
@@ -166,7 +169,6 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
                   <div className="text-xs">
                     <p className="font-bold text-blue-600 uppercase">Shipper Origin</p>
                     <p>{shipment.origin_city}</p>
-                    <p className="text-[10px] text-gray-500">Status: {shipment.status}</p>
                   </div>
                 </Popup>
               </Marker>
@@ -182,9 +184,9 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
                 positions={[origin, destination]}
                 pathOptions={{ 
                   color: '#3b82f6', 
-                  weight: 3, 
-                  dashArray: '8, 12',
-                  opacity: shipment.status === 'completed' ? 0.3 : 0.8
+                  weight: 2, 
+                  dashArray: '6, 10',
+                  opacity: shipment.status === 'completed' ? 0.3 : 0.7
                 }}
               />
             </React.Fragment>
