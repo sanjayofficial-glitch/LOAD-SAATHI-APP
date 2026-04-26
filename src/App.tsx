@@ -1,7 +1,7 @@
 import { ClerkProvider } from "@clerk/clerk-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { BrowserRouter, Routes, Route, Outlet } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { Toaster } from "sonner";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Skeleton } from "./components/ui/skeleton";
@@ -20,7 +20,8 @@ const PostTrip = lazy(() => import("./pages/trucker/PostTrip"));
 const TruckerHub = lazy(() => import("./pages/trucker/TruckerHub"));
 const EditTrip = lazy(() => import("./pages/trucker/EditTrip"));
 const TruckerTripDetail = lazy(() => import("./pages/trucker/TruckerTripDetail"));
-const BrowseShipments = lazy(() => import("./pages/trucker/BrowseShipments"));
+const BrowseShipments = lazy(() => import("./pages/shipper/BrowseTrips"));
+const BrowseTrips = lazy(() => import("./pages/shipper/BrowseTrips"));
 const TruckerHistory = lazy(() => import("./pages/trucker/TruckerHistory"));
 const ShipperDashboard = lazy(() => import("./pages/shipper/Dashboard"));
 const PostShipments = lazy(() => import("./pages/shipper/PostShipments"));
@@ -28,7 +29,6 @@ const MyShipments = lazy(() => import("./pages/shipper/MyShipments"));
 const ShipmentDetail = lazy(() => import("./pages/shipper/ShipmentDetail"));
 const EditShipment = lazy(() => import("./pages/shipper/EditShipment"));
 const ShipperHistory = lazy(() => import("./pages/shipper/ShipperHistory"));
-const BrowseTrips = lazy(() => import("./pages/shipper/BrowseTrips"));
 const TripDetail = lazy(() => import("./pages/TripDetail"));
 const Chat = lazy(() => import("./pages/Chat"));
 const ChatList = lazy(() => import("./pages/ChatList"));
@@ -98,11 +98,6 @@ function App() {
                         <TruckerTripDetail />
                       </RoleProtectedRoute>
                     } />
-                    <Route path="/trucker/browse-shipments" element={
-                      <RoleProtectedRoute allowedRole="trucker">
-                        <BrowseShipments />
-                      </RoleProtectedRoute>
-                    } />
                     <Route path="/trucker/history" element={
                       <RoleProtectedRoute allowedRole="trucker">
                         <TruckerHistory />
@@ -136,6 +131,11 @@ function App() {
                         <ShipperHistory />
                       </RoleProtectedRoute>
                     } />
+                    <Route path="/browse-trucks" element={
+                      <RoleProtectedRoute allowedRole="both">
+                        <BrowseTrips />
+                      </RoleProtectedRoute>
+                    } />
 
                     {/* Common authenticated routes */}
                     <Route path="/trips/:tripId" element={<TripDetail />} />
@@ -147,12 +147,12 @@ function App() {
                     <Route path="*" element={<NotFound />} />
                   </Route>
                 </Routes>
-                <Toaster position="top-center" richColors />
               </Suspense>
             </ErrorBoundary>
           </BrowserRouter>
         </AuthProvider>
       </QueryClientProvider>
+      <Toaster position="top-center" richColors />
     </ClerkProvider>
   );
 }

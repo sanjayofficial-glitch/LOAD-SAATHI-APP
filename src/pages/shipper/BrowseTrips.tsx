@@ -1,7 +1,5 @@
-"use client";
-
-import { useState, useMemo, useEffect, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
@@ -17,17 +15,18 @@ import {
   Package, 
   ArrowRight, 
   Loader2, 
-  IndianRupee, 
-  Sparkles, 
-  Truck, 
-  User,
+  IndianRupee,
+  Filter,
+  Truck,
   MapPin,
-  Star
+  Package as PackageIcon,
+  AlertCircle,
+  Plus
 } from 'lucide-react';
-import { showSuccess, showError } from '@/utils/toast';
-import { parseNaturalLanguageSearch } from '@/lib/gemini';
+import { showError, showSuccess } from '@/utils/toast';
+import { supabase } from '@/lib/supabaseClient';
 
-const BrowseTrips = () => {
+const TripList = () => {
   const { userProfile } = useAuth();
   const { getToken } = useClerkAuth();
   const navigate = useNavigate();
@@ -35,31 +34,74 @@ const BrowseTrips = () => {
   const [trips, setTrips] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [aiSearchQuery, setAiSearchQuery] = useState('');
-  const [aiLoading, setAiLoading] = useState(false);
+  const [filters, setFilters] = useState({
+    origin: '',
+    destination: '',
+    minCapacity: '',
+    maxPrice: ''
+  });
 
+  // Fetch trips with proper error handling
   const fetchTrips = useCallback(async () => {
+    if (!userProfile?.id) return;
+    
+    setLoading(true);
     try {
       const token = await getToken({ template: 'supabase' });
-      if (!token) return;
+      if (!token) {
+        showError('Authentication required');
+        return;
+      }
+
       const supabaseClient = createClerkSupabaseClient(token);
-      
-      // Fetch all active trips and join with the users table to get trucker details
-      const { data, error } = await supabaseClient
+
+      // Build query with proper filtering
+      let query = supabaseClient
         .from('trips')
-        .select('*, trucker:users!trips_trucker_id_fkey(*)')
+        .select(`
+          *, 
+          trucker:users!trips_trucker_id_fkey(
+            full_name,
+            rating,
+            total_trips
+          )
+        `)
         .eq('status', 'active')
         .order('departure_date', { ascending: true });
-        
-      if (error) throw error;
-      if (data) setTrips(data);
+
+      // Apply filters
+      if (filters.origin) {
+        query = query.ilike('origin_city', `%${filters.origin}%`);
+      }
+      if (filters.destination) {
+        query = query.ilike('destination_city', `%${filters.destination}%`);
+      }
+      if (filters.minCapacity) {
+        query = query.gte('available_capacity_tonnes', parseFloat(filters.minCapacity));
+      }
+      if (filters.maxPrice) {
+        query = query.lte('price_per_tonne', parseFloat(filters.maxPrice));
+      }
+      if (searchTerm) {
+        query = query.or(`origin_city.ilike.%${searchTerm}%,destination_city.ilike.%${searchTerm}%,trucker.full_name.ilike.%${searchTerm}%`);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Trips fetch error:', error);
+        showError('Failed to load available trucks');
+        return;
+      }
+
+      setTrips(data || []);
     } catch (err: any) {
-      console.error('[BrowseTrips] Error:', err);
-      showError('Failed to load available trucks');
+      console.error('Trips error:', err);
+      showError(err.message || 'Failed to load trips');
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, filters, searchTerm, userProfile?.id]);
 
   useEffect(() => {
     fetchTrips();
@@ -67,143 +109,230 @@ const BrowseTrips = () => {
 
   const filteredTrips = useMemo(() => {
     return trips.filter(t => {
-      const search = searchTerm.toLowerCase();
-      return t.origin_city.toLowerCase().includes(search) || 
-             t.destination_city.toLowerCase().includes(search) ||
-             t.vehicle_type.toLowerCase().includes(search);
+      const matchesSearch = !searchTerm || 
+        t.origin_city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        t.destination_city.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (t.trucker?.full_name || '').toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesOrigin = !filters.origin || t.origin_city.toLowerCase().includes(filters.origin.toLowerCase());
+      const matchesDest = !filters.destination || t.destination_city.toLowerCase().includes(filters.destination.toLowerCase());
+      const matchesCapacity = !filters.minCapacity || t.available_capacity_tonnes >= parseFloat(filters.minCapacity);
+      const matchesPrice = !filters.maxPrice || t.price_per_tonne <= parseFloat(filters.maxPrice);
+
+      return matchesSearch && matchesOrigin && matchesDest && matchesCapacity && matchesPrice;
     });
-  }, [trips, searchTerm]);
+  }, [trips, searchTerm, filters]);
 
-  const handleAiSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!aiSearchQuery.trim()) return;
-    setAiLoading(true);
-    try {
-      const result = await parseNaturalLanguageSearch(aiSearchQuery);
-      if (result.origin) setSearchTerm(result.origin);
-      showSuccess('AI parsed your search!');
-    } catch (err) {
-      showError('AI search failed');
-    } finally {
-      setAiLoading(false);
-    }
-  };
-
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">Find Available Trucks</h1>
-        <p className="text-gray-600 mt-2">Browse trucks posted by truckers and book space for your goods</p>
+  if (!userProfile) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <AlertCircle className="h-12 w-12 text-orange-600 mb-4" />
+        <p className="text-lg font-medium text-gray-900">Please log in to browse trucks</p>
       </div>
+    );
+  }
 
-      <div className="grid lg:grid-cols-4 gap-8">
-        <div className="lg:col-span-1 space-y-6">
-          <Card className="border-orange-100 shadow-sm overflow-hidden">
-            <CardContent className="p-5 space-y-4">
-              <Label className="text-sm font-semibold text-gray-700">AI Search</Label>
-              <form onSubmit={handleAiSearch} className="space-y-3">
-                <div className="relative">
-                  <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-orange-500" />
-                  <Input 
-                    placeholder="e.g. 'Truck from Mumbai'" 
-                    className="pl-10 border-orange-100"
-                    value={aiSearchQuery}
-                    onChange={(e) => setAiSearchQuery(e.target.value)}
-                  />
-                </div>
-                <Button type="submit" className="w-full bg-orange-600" disabled={aiLoading}>
-                  {aiLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
-                  AI Search
-                </Button>
-              </form>
+  if (loading) {
+    return (
+      <div className="space-y-4 py-8">
+        {[1, 2, 3].map((i) => (
+          <Card key={i} className="border-orange-100">
+            <CardContent className="p-6">
+              <Skeleton className="h-6 w-3/4 mb-4" />
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-2/3" />
             </CardContent>
           </Card>
-        </div>
+        ))}
+      </div>
+    );
+  }
 
-        <div className="lg:col-span-3 space-y-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input 
-              placeholder="Search by city or vehicle type..." 
-              className="pl-10 py-6 rounded-xl border-gray-200"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+  return (
+    <div className="space-y-6">
+      {/* Search and Filters */}
+      <Card className="border-orange-100 shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search by city, trucker name..."
+                className="pl-10 border-orange-100"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setFilters({ origin: '', destination: '', minCapacity: '', maxPrice: '' });
+                  setSearchTerm('');
+                }}
+                className="border-gray-200"
+              >
+                Clear
+              </Button>
+              <Button 
+                variant="outline" 
+                className="border-orange-200 text-orange-700 hover:bg-orange-50"
+                onClick={fetchTrips}
+                disabled={loading}
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Filter className="h-4 w-4 mr-2" />}
+                Apply Filters
+              </Button>
+            </div>
           </div>
 
-          {loading ? (
-            <div className="grid gap-6">
-              {[1, 2, 3].map((i) => <Skeleton key={i} className="h-48 w-full rounded-xl" />)}
+          {/* Filter inputs */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-gray-500 uppercase">Origin</Label>
+              <Input
+                placeholder="e.g. Mumbai"
+                value={filters.origin}
+                onChange={(e) => setFilters({ ...filters, origin: e.target.value })}
+                className="border-orange-100"
+              />
             </div>
-          ) : filteredTrips.length === 0 ? (
-            <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-gray-200">
-              <Truck className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900">No trucks found</h3>
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-gray-500 uppercase">Destination</Label>
+              <Input
+                placeholder="e.g. Delhi"
+                value={filters.destination}
+                onChange={(e) => setFilters({ ...filters, destination: e.target.value })}
+                className="border-orange-100"
+              />
             </div>
-          ) : (
-            <div className="grid gap-6">
-              {filteredTrips.map((trip) => (
-                <Card key={trip.id} className="overflow-hidden border-orange-100 hover:shadow-lg transition-all">
-                  <CardContent className="p-0">
-                    <div className="flex flex-col md:flex-row">
-                      <div className="flex-1 p-6 space-y-4">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center space-x-3">
-                            <div className="bg-orange-100 p-3 rounded-full">
-                              <Truck className="h-6 w-6 text-orange-600" />
-                            </div>
-                            <div>
-                              <h3 className="text-lg font-bold text-gray-900">
-                                {trip.origin_city} <ArrowRight className="h-4 w-4 inline mx-1 text-gray-400" /> {trip.destination_city}
-                              </h3>
-                              <p className="text-sm text-gray-600">{trip.vehicle_type} • {trip.vehicle_number}</p>
-                            </div>
-                          </div>
-                          <Badge className="bg-blue-100 text-blue-700">
-                            {trip.available_capacity_tonnes}t Available
-                          </Badge>
-                        </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-gray-500 uppercase">Min Capacity</Label>
+              <Input
+                type="number"
+                placeholder="e.g. 5"
+                value={filters.minCapacity}
+                onChange={(e) => setFilters({ ...filters, minCapacity: e.target.value })}
+                className="border-orange-100"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-gray-500 uppercase">Max Price</Label>
+              <Input
+                type="number"
+                placeholder="e.g. 2000"
+                value={filters.maxPrice}
+                onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
+                className="border-orange-100"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-                          <div className="flex items-center">
-                            <Calendar className="h-4 w-4 mr-2 text-orange-600" />
-                            <div>
-                              <p className="text-gray-500 text-xs">Departure</p>
-                              <p className="font-medium">{new Date(trip.departure_date).toLocaleDateString()}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center">
-                            <IndianRupee className="h-4 w-4 mr-2 text-green-600" />
-                            <div>
-                              <p className="text-gray-500 text-xs">Price</p>
-                              <p className="font-bold text-green-600">₹{trip.price_per_tonne.toLocaleString()} /t</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center">
-                            <User className="h-4 w-4 mr-2 text-blue-600" />
-                            <div>
-                              <p className="text-gray-500 text-xs">Trucker</p>
-                              <p className="font-medium">{trip.trucker?.full_name || 'Verified Trucker'}</p>
-                            </div>
-                          </div>
+      {/* Results */}
+      <div className="grid gap-4">
+        {filteredTrips.length === 0 ? (
+          <Card className="border-dashed border-2 border-gray-200">
+            <CardContent className="py-20 text-center">
+              <Truck className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No trucks found</h3>
+              <p className="text-gray-500 mb-6">Try adjusting your search or filters</p>
+              <div className="flex gap-4 justify-center">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setFilters({ origin: '', destination: '', minCapacity: '', maxPrice: '' })}
+                  className="border-gray-200"
+                >
+                  Clear All Filters
+                </Button>
+                <Link to="/trucker/post-trip">
+                  <Button className="bg-orange-600 hover:bg-orange-700">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Post Your Own Trip
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4">
+            {filteredTrips.map((trip) => (
+              <Card 
+                key={trip.id} 
+                className="border-orange-100 hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => navigate(`/trips/${trip.id}`)}
+              >
+                <CardContent className="p-6">
+                  <div className="flex flex-col md:flex-row justify-between gap-6">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="flex items-center text-xl font-bold text-gray-900">
+                          <MapPin className="h-5 w-5 text-orange-600 mr-2" />
+                          {trip.origin_city}
+                          <ArrowRight className="h-4 w-4 mx-2 text-gray-400" />
+                          {trip.destination_city}
                         </div>
+                        <Badge 
+                          variant={trip.status === 'active' ? 'default' : 'secondary'}
+                          className="text-xs font-semibold"
+                        >
+                          {trip.status.toUpperCase()}
+                        </Badge>
                       </div>
 
-                      <div className="md:w-48 bg-gray-50 p-6 border-t md:border-t-0 md:border-l border-gray-100 flex flex-col justify-center gap-2">
-                        <Link to={`/trips/${trip.id}`}>
-                          <Button className="w-full bg-orange-600">View & Book</Button>
-                        </Link>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                        <div className="flex items-center">
+                          <Calendar className="h-4 w-4 mr-2 text-orange-600" />
+                          <span>{new Date(trip.departure_date).toLocaleDateString('en-IN', { 
+                            day: 'numeric', 
+                            month: 'short', 
+                            year: 'numeric' 
+                          })}</span>
+                        </div>
+                        <div className="flex items-center">
+                          <PackageIcon className="h-4 w-4 mr-2 text-purple-600" />
+                          <span>{trip.available_capacity_tonnes}t</span>
+                        </div>
+                        <div className="flex items-center">
+                          <IndianRupee className="h-4 w-4 mr-1 text-green-600" />
+                          <span className="font-semibold">₹{trip.price_per_tonne.toLocaleString()} /t</span>
+                        </div>
+                        <div className="flex items-center md:col-span-3">
+                          <Truck className="h-4 w-4 mr-2 text-gray-400" />
+                          <span className="text-sm text-gray-600">
+                            {trip.trucker?.full_name || 'Verified Trucker'}
+                          </span>
+                        </div>
+                        <div className="flex items-center md:col-span-3">
+                          <span className="text-xs text-gray-500">
+                            {trip.trucker?.rating ? `⭐ ${trip.trucker.rating.toFixed(1)} Rating` : 'No ratings yet'}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </div>
+
+                    <div className="md:w-48 flex flex-col gap-2">
+                      <Button 
+                        className="w-full bg-orange-600 hover:bg-orange-700"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/trips/${trip.id}`);
+                        }}
+                      >
+                        View Details
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-export default BrowseTrips;
+export default TripList;

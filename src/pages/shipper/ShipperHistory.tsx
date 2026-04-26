@@ -1,240 +1,195 @@
 "use client";
 
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { createClerkSupabaseClient } from '@/utils/supabaseClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Filter, Clock, TrendingUp, DollarSign, Calendar, Package, CheckCircle, AlertCircle, Eye, Truck, Send } from 'lucide-react';
-import { showError } from '@/utils/toast';
+import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  AlertCircle, 
+  Calendar, 
+  IndianRupee, 
+  Loader2, 
+  Package, 
+  Truck,
+  CheckCircle,
+  XCircle,
+  MessageSquare
+} from 'lucide-react';
+import { showError, showSuccess } from '@/utils/toast';
+import { supabase } from '@/lib/supabaseClient';
 
-interface NotificationItem {
+interface HistoryItem {
   id: string;
-  message: string;
-  type: string;
-  is_read: boolean;
+  shipment_id: string;
+  status: string;
+  proposed_price_per_tonne: number;
+  shipment: {
+    origin_city: string;
+    destination_city: string;
+    weight_tonnes: number;
+    budget_per_tonne: number;
+    departure_date: string;
+    goods_description?: string;
+  };
   created_at: string;
-  related_trip_id?: string;
-  related_shipment_request_id?: string;
 }
 
 const ShipperHistory = () => {
   const { userProfile } = useAuth();
   const { getToken } = useClerkAuth();
-  const [filters, setFilters] = useState({ type: '', read: '' });
+  const { getAuthenticatedClient } = useSupabase();
+  const navigate = useNavigate();
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const { data: notifications = [], isLoading, refetch } = useQuery({
-    queryKey: ['shipperHistory', filters.type, filters.read],
-    queryFn: async () => {
-      if (!userProfile?.id) return [];
-      const supabaseToken = await getToken({ template: 'supabase' });
-      if (!supabaseToken) throw new Error('No Supabase token');
-      const supabase = createClerkSupabaseClient(supabaseToken);
+  const loadHistory = useCallback(async () => {
+    if (!userProfile?.id) return;
+    
+    try {
+      const supabase = await getAuthenticatedClient();
+      
       const { data, error } = await supabase
-        .from('notifications')
-        .select('*')
-        .eq('user_id', userProfile.id)
+        .from('requests')
+        .select(`
+          *, 
+          shipment:shipments(
+            origin_city,
+            destination_city,
+            weight_tonnes,
+            budget_per_tonne,
+            departure_date,
+            goods_description
+          )
+        `)
+        .eq('shipper_id', userProfile.id)
         .order('created_at', { ascending: false });
+
       if (error) throw error;
-      return data as NotificationItem[];
-    },
-    enabled: !!userProfile?.id,
-  });
-
-  const filtered = notifications.filter((n) => {
-    if (filters.type && n.type !== filters.type) return false;
-    if (filters.read) {
-      const wantRead = filters.read === 'read';
-      if (wantRead !== n.is_read) return false;
+      setHistory(data || []);
+    } catch (err: any) {
+      console.error('History load error:', err);
+      showError('Failed to load history');
+    } finally {
+      setLoading(false);
     }
-    return true;
-  });
+  }, [getToken, userProfile?.id]);
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'REQUEST':
-        return <Send className="h-5 w-5 text-orange-600" />;
-      case 'ACCEPT':
-        return <CheckCircle className="h-5 w-5 text-green-600" />;
-      case 'REJECT':
-        return <AlertCircle className="h-5 w-5 text-red-600" />;
-      default:
-        return <Eye className="h-5 w-5 text-gray-600" />;
-    }
-  };
+  useEffect(() => { loadHistory(); }, [loadHistory]);
 
-  const formatDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-
-  if (isLoading) {
+  if (!userProfile) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-center h-64">
-          <span className="text-orange-600 animate-spin">Loading history...</span>
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <AlertCircle className="h-12 w-12 text-orange-600 mb-4" />
+        <p className="text-lg font-medium text-gray-900">Please log in to view history</p>
       </div>
     );
   }
 
-  const uniqueTypes = Array.from(new Set(notifications.map((n) => n.type)));
-  const uniqueRead = ['read', 'unread'];
+  if (loading) {
+    return (
+      <div className="space-y-4 py-8">
+        {[1, 2, 3].map((i) => (
+          <Card key={i} className="border-orange-100">
+            <CardContent className="p-6">
+              <Skeleton className="h-6 w-3/4 mb-4" />
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-2/3" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">My Activity History</h1>
-        <p className="text-gray-600">View all your past notifications and actions</p>
-      </div>
+    <div className="space-y-4">
+      {history.map((item) => (
+        <Card key={item.id} className="border-orange-100">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row justify-between gap-4">
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="text-xl font-bold text-gray-900">
+                    Shipment {item.shipment_id.slice(-6)}
+                  </div>
+                  {item.status === 'accepted' && (
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  )}
+                  {item.status === 'declined' && (
+                    <XCircle className="h-5 w-5 text-red-600" />
+                  )}
+                </div>
 
-      {/* Filters */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Filter className="mr-2 h-5 w-5" />
-            Filters
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-              <Select
-                value={filters.type || 'all'}
-                onValueChange={(v) => setFilters((p) => ({ ...p, type: v === 'all' ? '' : v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All types" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All types</SelectItem>
-                  {uniqueTypes.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Read Status</label>
-              <Select
-                value={filters.read || 'all'}
-                onValueChange={(v) => setFilters((p) => ({ ...p, read: v === 'all' ? '' : v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  {uniqueRead.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {r.charAt(0).toUpperCase() + r.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-end">
-              <Button onClick={() => setFilters({ type: '', read: '' })} variant="outline" className="w-full">
-                Clear Filters
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Notifications</CardTitle>
-            <Clock className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{notifications.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Unread</CardTitle>
-            <AlertCircle className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {notifications.filter((n) => !n.is_read).length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">This Month</CardTitle>
-            <Calendar className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-600">
-              {notifications.filter((n) => {
-                const d = new Date(n.created_at);
-                const now = new Date();
-                return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-              }).length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Accepted</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {notifications.filter((n) => n.type === 'ACCEPT').length}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Notifications ({filtered.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filtered.length === 0 ? (
-            <div className="text-center py-12">
-              <Eye className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No notifications</h3>
-              <p className="text-gray-500">Adjust filters or wait for new activity.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filtered.map((n) => (
-                <div key={n.id} className="border rounded-lg p-4 hover:shadow-md flex justify-between items-start">
-                  <div className="flex items-start space-x-4">
-                    <div className="bg-gray-100 p-2 rounded-full">{getIcon(n.type)}</div>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  <div className="flex items-center">
+                    <Calendar className="h-4 w-4 mr-2 text-orange-600" />
                     <div>
-                      <p className="font-medium text-gray-900">{n.message}</p>
-                      <p className="text-sm text-gray-500 mt-1">{formatDate(n.created_at)}</p>
+                      <p className="text-gray-500 text-xs">Date</p>
+                      <p className="font-medium">
+                        {new Date(item.created_at).toLocaleDateString('en-IN')}
+                      </p>
                     </div>
                   </div>
-                  <Badge variant={n.is_read ? 'secondary' : 'default'} className={n.is_read ? 'bg-gray-200 text-gray-800' : 'bg-orange-600 text-white'}>
-                    {n.is_read ? 'Read' : 'New'}
-                  </Badge>
+                  <div className="flex items-center">
+                    <Package className="h-4 w-4 mr-2 text-purple-600" />
+                    <div>
+                      <p className="text-gray-500 text-xs">Load</p>
+                      <p className="font-medium">{item.shipment.weight_tonnes}t</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    <IndianRupee className="h-4 w-4 mr-1 text-green-600" />
+                    <div>
+                      <p className="text-gray-500 text-xs">Offer</p>
+                      <p className="font-bold text-green-600">
+                        ₹{item.proposed_price_per_tonne.toLocaleString()} /t
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center md:col-span-3">
+                    <Truck className="h-4 w-4 mr-2 text-gray-400" />
+                    <div>
+                      <p className="text-xs text-gray-500">Route</p>
+                      <p className="font-medium">
+                        {item.shipment.origin_city} → {item.shipment.destination_city}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center md:col-span-3">
+                    <div className="flex items-center gap-2">
+                      {item.status === 'accepted' ? (
+                        <CheckCircle className="h-4 w-4 text-green-600" />
+                      ) : item.status === 'declined' ? (
+                        <XCircle className="h-4 w-4 text-red-600" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-yellow-600" />
+                      )}
+                      <span className="font-medium capitalize">{item.status}</span>
+                    </div>
+                  </div>
+                  {item.shipment.goods_description && (
+                    <div className="md:col-span-3">
+                      <p className="text-xs text-gray-500 uppercase font-bold mb-1">Description</p>
+                      <p className="text-sm text-gray-700">{item.shipment.goods_description}</p>
+                    </div>
+                  )}
                 </div>
-              ))}
+              </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ))}
+
+      {history.length === 0 && (
+        <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-gray-200">
+          <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No history yet</h3>
+          <p className="text-gray-500">Your booking history will appear here</p>
+        </div>
+      )}
     </div>
   );
 };
