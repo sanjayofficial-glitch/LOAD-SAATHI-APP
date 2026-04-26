@@ -4,7 +4,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Trip, Shipment } from '@/types';
 
-// Simple coordinate lookup for major Indian cities
+// Expanded coordinate lookup for Indian cities
 const CITY_COORDS: Record<string, [number, number]> = {
   'Mumbai': [19.0760, 72.8777],
   'Delhi': [28.6139, 77.2090],
@@ -26,6 +26,38 @@ const CITY_COORDS: Record<string, [number, number]> = {
   'Patna': [25.5941, 85.1376],
   'Vadodara': [22.3072, 73.1812],
   'Ghaziabad': [28.6692, 77.4538],
+  'Ludhiana': [30.9010, 75.8573],
+  'Agra': [27.1767, 78.0081],
+  'Nashik': [19.9975, 73.7898],
+  'Faridabad': [28.4089, 77.3178],
+  'Meerut': [28.9845, 77.7064],
+  'Rajkot': [22.3039, 70.8022],
+  'Kalyan-Dombivli': [19.2403, 73.1305],
+  'Vasai-Virar': [19.3919, 72.8397],
+  'Varanasi': [25.3176, 82.9739],
+  'Srinagar': [34.0837, 74.7973],
+  'Aurangabad': [19.8762, 75.3433],
+  'Dhanbad': [23.7957, 86.4304],
+  'Amritsar': [31.6340, 74.8723],
+  'Navi Mumbai': [19.0330, 73.0297],
+  'Allahabad': [25.4358, 81.8463],
+  'Ranchi': [23.3441, 85.3096],
+  'Howrah': [22.5958, 88.2636],
+  'Coimbatore': [11.0168, 76.9558],
+  'Jabalpur': [23.1815, 79.9864],
+  'Gwalior': [26.2124, 78.1772],
+  'Vijayawada': [16.5062, 80.6480],
+  'Jodhpur': [26.2389, 73.0243],
+  'Madurai': [9.9252, 78.1198],
+  'Raipur': [21.2514, 81.6296],
+  'Kota': [25.2138, 75.8648],
+  'Guwahati': [26.1445, 91.7362],
+  'Chandigarh': [30.7333, 76.7794],
+  'Solapur': [17.6599, 75.9064],
+  'Hubli-Dharwad': [15.3647, 75.1240],
+  'Bareilly': [28.3670, 79.4304],
+  'Hindupur': [13.8289, 77.4908],
+  'Aalo': [28.1667, 94.8333],
 };
 
 // Fix default icon issue
@@ -36,22 +68,18 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-const createIcon = (color: 'orange' | 'blue' | 'green' | 'red') => {
+const createIcon = (color: 'orange' | 'blue') => {
   const url = color === 'orange' 
     ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-orange.png'
-    : color === 'blue' 
-    ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png'
-    : color === 'green'
-    ? 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-green.png'
-    : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png';
+    : 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png';
 
   return new L.Icon({
     iconUrl: url,
-    iconSize: [18, 30],
-    iconAnchor: [9, 30],
-    popupAnchor: [1, -26],
+    iconSize: [20, 32],
+    iconAnchor: [10, 32],
+    popupAnchor: [1, -28],
     shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-    shadowSize: [30, 30],
+    shadowSize: [32, 32],
   });
 };
 
@@ -61,8 +89,8 @@ interface TripMapProps {
 }
 
 const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
-  const activeTrips = trips.filter(trip => trip.status === 'active').slice(0, 15);
-  const activeShipments = shipments.filter(s => s.status === 'pending').slice(0, 15);
+  const activeTrips = trips.filter(trip => trip.status === 'active').slice(0, 20);
+  const activeShipments = shipments.filter(s => s.status === 'pending').slice(0, 20);
   const defaultCenter: [number, number] = [20.5937, 78.9629];
 
   return (
@@ -90,9 +118,8 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
               <Marker position={origin} icon={createIcon('orange')}>
                 <Popup>
                   <div className="text-xs">
-                    <p className="font-bold text-orange-600 uppercase">Trucker Trip</p>
-                    <p>Origin: {trip.origin_city}</p>
-                    <p>Capacity: {trip.available_capacity_tonnes}t</p>
+                    <p className="font-bold text-orange-600 uppercase">Trucker Origin</p>
+                    <p>{trip.origin_city}</p>
                   </div>
                 </Popup>
               </Marker>
@@ -108,9 +135,9 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
                 positions={[origin, destination]}
                 pathOptions={{ 
                   color: '#f97316', 
-                  weight: 2, 
-                  dashArray: '10, 10',
-                  opacity: 0.6
+                  weight: 3, 
+                  dashArray: '8, 12',
+                  opacity: 0.8
                 }}
               />
             </React.Fragment>
@@ -129,16 +156,15 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
               <Marker position={origin} icon={createIcon('blue')}>
                 <Popup>
                   <div className="text-xs">
-                    <p className="font-bold text-blue-600 uppercase">Shipper Load</p>
-                    <p>Origin: {shipment.origin_city}</p>
-                    <p>Weight: {shipment.weight_tonnes}t</p>
+                    <p className="font-bold text-blue-600 uppercase">Shipper Origin</p>
+                    <p>{shipment.origin_city}</p>
                   </div>
                 </Popup>
               </Marker>
               <Marker position={destination} icon={createIcon('blue')}>
                 <Popup>
                   <div className="text-xs">
-                    <p className="font-bold text-blue-600 uppercase">Delivery Point</p>
+                    <p className="font-bold text-blue-600 uppercase">Shipper Destination</p>
                     <p>{shipment.destination_city}</p>
                   </div>
                 </Popup>
@@ -147,8 +173,9 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
                 positions={[origin, destination]}
                 pathOptions={{ 
                   color: '#3b82f6', 
-                  weight: 2, 
-                  opacity: 0.6
+                  weight: 3, 
+                  dashArray: '8, 12',
+                  opacity: 0.8
                 }}
               />
             </React.Fragment>
