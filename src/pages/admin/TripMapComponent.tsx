@@ -6,58 +6,64 @@ import { Trip, Shipment } from '@/types';
 
 // Expanded coordinate lookup for Indian cities
 const CITY_COORDS: Record<string, [number, number]> = {
-  'Mumbai': [19.0760, 72.8777],
-  'Delhi': [28.6139, 77.2090],
-  'Bangalore': [12.9716, 77.5946],
-  'Hyderabad': [17.3850, 78.4867],
-  'Ahmedabad': [23.0225, 72.5714],
-  'Chennai': [13.0827, 80.2707],
-  'Kolkata': [22.5726, 88.3639],
-  'Pune': [18.5204, 73.8567],
-  'Jaipur': [26.9124, 75.7873],
-  'Lucknow': [26.8467, 80.9462],
-  'Kanpur': [26.4499, 80.3319],
-  'Nagpur': [21.1458, 79.0882],
-  'Indore': [22.7196, 75.8577],
-  'Thane': [19.2183, 72.9781],
-  'Bhopal': [23.2599, 77.4126],
-  'Visakhapatnam': [17.6868, 83.2185],
-  'Pimpri-Chinchwad': [18.6298, 73.7997],
-  'Patna': [25.5941, 85.1376],
-  'Vadodara': [22.3072, 73.1812],
-  'Ghaziabad': [28.6692, 77.4538],
-  'Ludhiana': [30.9010, 75.8573],
-  'Agra': [27.1767, 78.0081],
-  'Nashik': [19.9975, 73.7898],
-  'Faridabad': [28.4089, 77.3178],
-  'Meerut': [28.9845, 77.7064],
-  'Rajkot': [22.3039, 70.8022],
-  'Kalyan-Dombivli': [19.2403, 73.1305],
-  'Vasai-Virar': [19.3919, 72.8397],
-  'Varanasi': [25.3176, 82.9739],
-  'Srinagar': [34.0837, 74.7973],
-  'Aurangabad': [19.8762, 75.3433],
-  'Dhanbad': [23.7957, 86.4304],
-  'Amritsar': [31.6340, 74.8723],
-  'Navi Mumbai': [19.0330, 73.0297],
-  'Allahabad': [25.4358, 81.8463],
-  'Ranchi': [23.3441, 85.3096],
-  'Howrah': [22.5958, 88.2636],
-  'Coimbatore': [11.0168, 76.9558],
-  'Jabalpur': [23.1815, 79.9864],
-  'Gwalior': [26.2124, 78.1772],
-  'Vijayawada': [16.5062, 80.6480],
-  'Jodhpur': [26.2389, 73.0243],
-  'Madurai': [9.9252, 78.1198],
-  'Raipur': [21.2514, 81.6296],
-  'Kota': [25.2138, 75.8648],
-  'Guwahati': [26.1445, 91.7362],
-  'Chandigarh': [30.7333, 76.7794],
-  'Solapur': [17.6599, 75.9064],
-  'Hubli-Dharwad': [15.3647, 75.1240],
-  'Bareilly': [28.3670, 79.4304],
-  'Hindupur': [13.8289, 77.4908],
-  'Aalo': [28.1667, 94.8333],
+  'mumbai': [19.0760, 72.8777],
+  'delhi': [28.6139, 77.2090],
+  'bangalore': [12.9716, 77.5946],
+  'hyderabad': [17.3850, 78.4867],
+  'ahmedabad': [23.0225, 72.5714],
+  'chennai': [13.0827, 80.2707],
+  'kolkata': [22.5726, 88.3639],
+  'pune': [18.5204, 73.8567],
+  'jaipur': [26.9124, 75.7873],
+  'lucknow': [26.8467, 80.9462],
+  'kanpur': [26.4499, 80.3319],
+  'nagpur': [21.1458, 79.0882],
+  'indore': [22.7196, 75.8577],
+  'thane': [19.2183, 72.9781],
+  'bhopal': [23.2599, 77.4126],
+  'visakhapatnam': [17.6868, 83.2185],
+  'pimpri-chinchwad': [18.6298, 73.7997],
+  'patna': [25.5941, 85.1376],
+  'vadodara': [22.3072, 73.1812],
+  'ghaziabad': [28.6692, 77.4538],
+  'ludhiana': [30.9010, 75.8573],
+  'agra': [27.1767, 78.0081],
+  'nashik': [19.9975, 73.7898],
+  'faridabad': [28.4089, 77.3178],
+  'meerut': [28.9845, 77.7064],
+  'rajkot': [22.3039, 70.8022],
+  'kalyan-dombivli': [19.2403, 73.1305],
+  'vasai-virar': [19.3919, 72.8397],
+  'varanasi': [25.3176, 82.9739],
+  'srinagar': [34.0837, 74.7973],
+  'aurangabad': [19.8762, 75.3433],
+  'dhanbad': [23.7957, 86.4304],
+  'amritsar': [31.6340, 74.8723],
+  'navi mumbai': [19.0330, 73.0297],
+  'allahabad': [25.4358, 81.8463],
+  'ranchi': [23.3441, 85.3096],
+  'howrah': [22.5958, 88.2636],
+  'coimbatore': [11.0168, 76.9558],
+  'jabalpur': [23.1815, 79.9864],
+  'gwalior': [26.2124, 78.1772],
+  'vijayawada': [16.5062, 80.6480],
+  'jodhpur': [26.2389, 73.0243],
+  'madurai': [9.9252, 78.1198],
+  'raipur': [21.2514, 81.6296],
+  'kota': [25.2138, 75.8648],
+  'guwahati': [26.1445, 91.7362],
+  'chandigarh': [30.7333, 76.7794],
+  'solapur': [17.6599, 75.9064],
+  'hubli-dharwad': [15.3647, 75.1240],
+  'bareilly': [28.3670, 79.4304],
+  'hindupur': [13.8289, 77.4908],
+  'aalo': [28.1667, 94.8333],
+};
+
+// Helper to get coordinates safely
+const getCoords = (cityName: string): [number, number] | null => {
+  if (!cityName) return null;
+  return CITY_COORDS[cityName.toLowerCase().trim()] || null;
 };
 
 // Fix default icon issue
@@ -89,8 +95,9 @@ interface TripMapProps {
 }
 
 const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
-  const activeTrips = trips.filter(trip => trip.status === 'active').slice(0, 20);
-  const activeShipments = shipments.filter(s => s.status === 'pending').slice(0, 20);
+  // Include both active and completed for visualization
+  const visibleTrips = trips.filter(t => t.status !== 'cancelled').slice(0, 30);
+  const visibleShipments = shipments.filter(s => s.status !== 'cancelled').slice(0, 30);
   const defaultCenter: [number, number] = [20.5937, 78.9629];
 
   return (
@@ -107,9 +114,9 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
         />
         
         {/* Trucker Trips - Orange */}
-        {activeTrips.map(trip => {
-          const origin = CITY_COORDS[trip.origin_city];
-          const destination = CITY_COORDS[trip.destination_city];
+        {visibleTrips.map(trip => {
+          const origin = getCoords(trip.origin_city);
+          const destination = getCoords(trip.destination_city);
           
           if (!origin || !destination) return null;
           
@@ -120,6 +127,7 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
                   <div className="text-xs">
                     <p className="font-bold text-orange-600 uppercase">Trucker Origin</p>
                     <p>{trip.origin_city}</p>
+                    <p className="text-[10px] text-gray-500">Status: {trip.status}</p>
                   </div>
                 </Popup>
               </Marker>
@@ -137,7 +145,7 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
                   color: '#f97316', 
                   weight: 3, 
                   dashArray: '8, 12',
-                  opacity: 0.8
+                  opacity: trip.status === 'completed' ? 0.3 : 0.8
                 }}
               />
             </React.Fragment>
@@ -145,9 +153,9 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
         })}
 
         {/* Shipper Shipments - Blue */}
-        {activeShipments.map(shipment => {
-          const origin = CITY_COORDS[shipment.origin_city];
-          const destination = CITY_COORDS[shipment.destination_city];
+        {visibleShipments.map(shipment => {
+          const origin = getCoords(shipment.origin_city);
+          const destination = getCoords(shipment.destination_city);
           
           if (!origin || !destination) return null;
           
@@ -158,6 +166,7 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
                   <div className="text-xs">
                     <p className="font-bold text-blue-600 uppercase">Shipper Origin</p>
                     <p>{shipment.origin_city}</p>
+                    <p className="text-[10px] text-gray-500">Status: {shipment.status}</p>
                   </div>
                 </Popup>
               </Marker>
@@ -175,7 +184,7 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
                   color: '#3b82f6', 
                   weight: 3, 
                   dashArray: '8, 12',
-                  opacity: 0.8
+                  opacity: shipment.status === 'completed' ? 0.3 : 0.8
                 }}
               />
             </React.Fragment>

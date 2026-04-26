@@ -17,7 +17,8 @@ import {
   Briefcase,
   Terminal,
   Truck,
-  Package
+  Package,
+  CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -310,6 +311,14 @@ const MonitoringDashboard = () => {
                   </p>
                   <p className="text-xl font-mono font-bold text-orange-500">
                     {trips.filter((t: any) => t.status === 'active').length}
+                  </p>
+                </div>
+                <div className="bg-slate-900/90 border border-slate-700 p-3 rounded-xl backdrop-blur-sm shadow-2xl min-w-[140px]">
+                  <p className="text-[9px] text-slate-500 uppercase font-black mb-1 flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3 text-green-500" /> Completed
+                  </p>
+                  <p className="text-xl font-mono font-bold text-green-500">
+                    {trips.filter((t: any) => t.status === 'completed').length}
                   </p>
                 </div>
                 <div className="bg-slate-900/90 border border-slate-700 p-3 rounded-xl backdrop-blur-sm shadow-2xl min-w-[140px]">
