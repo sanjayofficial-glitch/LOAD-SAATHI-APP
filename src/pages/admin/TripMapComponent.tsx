@@ -166,6 +166,11 @@ interface Shipment {
   created_at?: string;
 }
 
+interface DataRef {
+  trips: Trip[];
+  shipments: Shipment[];
+}
+
 const TripMap: React.FC = () => {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [shipments, setShipments] = useState<Shipment[]>([]);
@@ -174,6 +179,7 @@ const TripMap: React.FC = () => {
   const [resolvedShipments, setResolvedShipments] = useState<any[]>([]);
   const [resolving, setResolving] = useState<boolean>(false);
   const isMounted = useRef(true);
+  const dataRef = useRef<DataRef>({ trips: [], shipments: [] });
 
   useEffect(() => {
     isMounted.current = true;
@@ -233,7 +239,7 @@ const TripMap: React.FC = () => {
       if (isMounted) setResolving(false);
     };
 
-    const dataRef = { trips: trips, shipments: shipments };
+    dataRef.current = { trips, shipments };
     processData();
     return () => { isMounted = false; };
   }, [loadingData]);
