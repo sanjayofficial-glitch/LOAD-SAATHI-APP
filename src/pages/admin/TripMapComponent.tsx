@@ -96,7 +96,6 @@ async function getCityCoords(city: string): Promise<[number, number] | null> {
   return null;
 }
 
-// Icons
 const createTripIcon = (color: string) => L.divIcon({
   className: 'custom-trip-icon',
   html: `<div style="width:28px;height:28px;transform:translate(-50%,-50%)">
@@ -166,83 +165,51 @@ interface Shipment {
   created_at?: string;
 }
 
-interface DataRef {
-  trips: Trip[];
-  shipments: Shipment[];
-}
-
-const TripMap: React.FC = () => {
-  const [trips, setTrips] = useState<Trip[]>([]);
-  const [shipments, setShipments] = useState<Shipment[]>([]);
-  const [loadingData, setLoadingData] = useState<boolean>(true);
+const TripMap: React.FC<{ trips: Trip[]; shipments: Shipment[] }> = ({ trips, shipments }) => {
   const [resolvedTrips, setResolvedTrips] = useState<any[]>([]);
   const [resolvedShipments, setResolvedShipments] = useState<any[]>([]);
-  const [resolving, setResolving] = useState<boolean>(false);
+  const [loading, setLoading] = useState(true);
   const isMounted = useRef(true);
-  const dataRef = useRef<DataRef>({ trips: [], shipments: [] });
 
   useEffect(() => {
     isMounted.current = true;
-    const fetchData = async () => {
-      setLoadingData(true);
-      try {
-        const { data: tripData } = await supabase.from('trips').select('*, trucker:users(full_name)').neq('status', 'cancelled');
-        if (isMounted.current) setTrips(tripData || []);
-
-        const { data: shipmentData } = await supabase.from('shipments').select('*, shipper:users(full_name)').neq('status', 'cancelled');
-        if (isMounted.current) setShipments(shipmentData || []);
-      } finally {
-        if (isMounted.current) setLoadingData(false);
-      }
-    };
-    fetchData();
-    return () => { isMounted.current = false; };
-  }, []);
-
-  useEffect(() => {
-    let isMounted = true;
     const processData = async () => {
-      if (loadingData) return;
-      setResolving(true);
-      const { trips: tList, shipments: sList } = dataRef.current;
-
       const tripsResult: any[] = [];
       const shipmentsResult: any[] = [];
 
-      for (let i = 0; i < tList.length; i++) {
-        if (!isMounted) break;
-        const trip = tList[i];
+      for (let i = 0; i < trips.length; i++) {
+        if (!isMounted.current) break;
+        const trip = trips[i];
         const origin = await getCityCoords(trip.origin_city);
         if (!coordCache[trip.origin_city.toLowerCase()]) await sleep(500);
         const dest = await getCityCoords(trip.destination_city);
         if (!coordCache[trip.destination_city.toLowerCase()]) await sleep(500);
         if (origin && dest) {
           tripsResult.push({ ...trip, origin: applyJitter(origin, i), destination: applyJitter(dest, i + 100) });
-          if (isMounted) setResolvedTrips([...tripsResult]);
+          if (isMounted.current) setResolvedTrips([...tripsResult]);
         }
       }
 
-      for (let i = 0; i < sList.length; i++) {
-        if (!isMounted) break;
-        const ship = sList[i];
+      for (let i = 0; i < shipments.length; i++) {
+        if (!isMounted.current) break;
+        const ship = shipments[i];
         const origin = await getCityCoords(ship.origin_city);
         if (!coordCache[ship.origin_city.toLowerCase()]) await sleep(500);
         const dest = await getCityCoords(ship.destination_city);
         if (!coordCache[ship.destination_city.toLowerCase()]) await sleep(500);
         if (origin && dest) {
           shipmentsResult.push({ ...ship, origin: applyJitter(origin, i + 500), destination: applyJitter(dest, i + 600) });
-          if (isMounted) setResolvedShipments([...shipmentsResult]);
+          if (isMounted.current) setResolvedShipments([...shipmentsResult]);
         }
         if (!coordCache[ship.origin_city?.toLowerCase()]) await sleep(1000);
       }
 
-      if (isMounted) setResolving(false);
+      if (isMounted.current) setLoading(false);
     };
 
-    dataRef.current = { trips, shipments };
     processData();
-    return () => { isMounted = false; };
-  }, [loadingData]);
+    return () => { isMounted.current = false; };
+  }, [trips, shipments]);
 
   const Legend = () => (
     <div className="absolute bottom-4 left-4 z-[1000] bg-slate-900/95 border border-slate-700 rounded-lg p-3 shadow-2xl">
@@ -260,7 +227,7 @@ const TripMap: React.FC = () => {
     </div>
   );
 
-  if (loadingData || resolving) {
+  if (loading) {
     return (
       <div className="h-full w-full bg-slate-950 border border-slate-800 flex items-center justify-center">
         <Loader2 className="h-8 w-8 text-orange-500 animate-spin" />
@@ -294,10 +261,7 @@ const TripMap: React.FC = () => {
               </Popup>
             </Marker>
             <Polyline positions={[trip.origin, trip.destination]} pathOptions={{ color: '#f97316', weight: 3, opacity: 0.8, dashArray: '10, 10' }} />
-            <Marker
-              position={[(trip.origin[0] + trip.destination[0]) / 2, (trip.origin[1] + trip.destination[1]) / 2]}
-              icon={createTripIcon('#f97316')}
-            >
+            <Marker position={[(trip.origin[0] + trip.destination[0]) / 2, (trip.origin[1] + trip.destination[1]) / 2]} icon={createTripIcon('#f97316')}>
               <Popup>
                 <div className="p-2 bg-slate-900 border border-slate-700 min-w-[200px]">
                   <p className="text-[10px] font-bold uppercase text-orange-400">Active Trip</p>
@@ -329,10 +293,7 @@ const TripMap: React.FC = () => {
               </Popup>
             </Marker>
             <Polyline positions={[shipment.origin, shipment.destination]} pathOptions={{ color: '#3b82f6', weight: 3, opacity: 0.8, dashArray: '5, 5' }} />
-            <Marker
-              position={[(shipment.origin[0] + shipment.destination[0]) / 2, (shipment.origin[1] + shipment.destination[1]) / 2]}
-              icon={createLoadIcon('#3b82f6')}
-            >
+            <Marker position={[(shipment.origin[0] + shipment.destination[0]) / 2, (shipment.origin[1] + shipment.destination[1]) / 2]} icon={createLoadIcon('#3b82f6')}>
               <Popup>
                 <div className="p-2 bg-slate-900 border border-slate-700 min-w-[200px]">
                   <p className="text-[10px] font-bold uppercase text-blue-400">Load Request</p>
