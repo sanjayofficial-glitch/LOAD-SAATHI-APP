@@ -96,6 +96,7 @@ async function getCityCoords(city: string): Promise<[number, number] | null> {
   return null;
 }
 
+// Icons
 const createTripIcon = (color: string) => L.divIcon({
   className: 'custom-trip-icon',
   html: `<div style="width:28px;height:28px;transform:translate(-50%,-50%)">
@@ -287,7 +288,10 @@ const TripMap: React.FC = () => {
               </Popup>
             </Marker>
             <Polyline positions={[trip.origin, trip.destination]} pathOptions={{ color: '#f97316', weight: 3, opacity: 0.8, dashArray: '10, 10' }} />
-            <Marker position={[(trip.origin[0] + trip.destination[0]) / 2, (trip.origin[1] + trip.destination[1]) / 2]} icon={createTripIcon('#f97316')}>
+            <Marker
+              position={[(trip.origin[0] + trip.destination[0]) / 2, (trip.origin[1] + trip.destination[1]) / 2]}
+              icon={createTripIcon('#f97316')}
+            >
               <Popup>
                 <div className="p-2 bg-slate-900 border border-slate-700 min-w-[200px]">
                   <p className="text-[10px] font-bold uppercase text-orange-400">Active Trip</p>
@@ -319,7 +323,10 @@ const TripMap: React.FC = () => {
               </Popup>
             </Marker>
             <Polyline positions={[shipment.origin, shipment.destination]} pathOptions={{ color: '#3b82f6', weight: 3, opacity: 0.8, dashArray: '5, 5' }} />
-            <Marker position={[(shipment.origin[0] + shipment.destination[0]) / 2, (shipment.origin[1] + shipment.destination[1]) / 2]} icon={createLoadIcon('#3b82f6')}>
+            <Marker
+              position={[(shipment.origin[0] + shipment.destination[0]) / 2, (shipment.origin[1] + shipment.destination[1]) / 2]}
+              icon={createLoadIcon('#3b82f6')}
+            >
               <Popup>
                 <div className="p-2 bg-slate-900 border border-slate-700 min-w-[200px]">
                   <p className="text-[10px] font-bold uppercase text-blue-400">Load Request</p>
@@ -329,7 +336,7 @@ const TripMap: React.FC = () => {
               </Popup>
             </Marker>
           </React.Fragment>
-        ))}
+        </React.Fragment>
       </MapContainer>
 
       <div className="absolute bottom-4 right-4 z-[1000]">
