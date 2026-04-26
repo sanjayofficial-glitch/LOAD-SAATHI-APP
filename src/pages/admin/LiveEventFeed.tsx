@@ -33,7 +33,7 @@ const LiveEventFeed: React.FC<LiveEventFeedProps> = ({ events }) => {
   };
 
   return (
-    <ScrollArea className="h-[200px] w-full rounded-md border border-slate-800 bg-slate-900/20 p-4">
+    <ScrollArea className="flex-1 w-full rounded-md border border-slate-800 bg-slate-900/20 p-4">
       <div className="space-y-4">
         {events.length === 0 ? (
           <p className="text-[10px] text-slate-500 text-center py-8 uppercase font-bold tracking-widest">

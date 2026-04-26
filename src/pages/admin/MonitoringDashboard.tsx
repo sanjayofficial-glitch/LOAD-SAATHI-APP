@@ -111,7 +111,7 @@ const MonitoringDashboard = () => {
         success_rate: successRate
       });
 
-      // Populate Historical Events for the feed
+      // Populate Historical Events
       const [
         { data: histTrips },
         { data: histShipments },
@@ -200,48 +200,9 @@ const MonitoringDashboard = () => {
         }, ...prev].slice(0, 15));
         fetchData();
       })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'requests' }, (payload) => {
-        setEvents(prev => [{
-          id: `request-sent-${Date.now()}`,
-          type: 'booking' as const,
-          message: `New booking request sent for ${payload.new.weight_tonnes}t`,
-          time: 'JUST NOW'
-        }, ...prev].slice(0, 15));
-        fetchData();
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'requests' }, (payload) => {
-        if (payload.new.status === 'accepted' && payload.old.status !== 'accepted') {
-          setEvents(prev => [{
-            id: `booking-accepted-${Date.now()}`,
-            type: 'booking' as const,
-            message: `Booking accepted for ${payload.new.weight_tonnes}t load`,
-            time: 'JUST NOW'
-          }, ...prev].slice(0, 15));
-        }
-        fetchData();
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shipment_requests' }, (payload) => {
-        setEvents(prev => [{
-          id: `offer-${Date.now()}`,
-          type: 'booking' as const,
-          message: `Trucker sent new offer to shipper`,
-          time: 'JUST NOW'
-        }, ...prev].slice(0, 15));
-        fetchData();
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'users' }, (payload) => {
-        setEvents(prev => [{
-          id: `user-${Date.now()}`,
-          type: 'user' as const,
-          message: `New ${payload.new.user_type} joined: ${payload.new.full_name}`,
-          time: 'JUST NOW'
-        }, ...prev].slice(0, 15));
-        fetchData();
-      })
       .subscribe();
 
     const interval = setInterval(fetchData, 15000);
-    
     return () => {
       supabase.removeChannel(channel);
       clearInterval(interval);
@@ -259,7 +220,7 @@ const MonitoringDashboard = () => {
             <h1 className="text-sm font-bold tracking-tight uppercase">Admin Command Center</h1>
             <div className="flex items-center gap-2">
               <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[10px] text-slate-400 font-medium uppercase">System Live (15s Sync)</span>
+              <span className="text-[10px] text-slate-400 font-medium uppercase">System Live</span>
             </div>
           </div>
         </div>
@@ -286,49 +247,10 @@ const MonitoringDashboard = () => {
         <ResizablePanelGroup direction="vertical">
           <ResizablePanel defaultSize={45} minSize={30}>
             <div className="h-full relative border-b border-slate-800">
-              <div className="absolute top-4 left-4 z-10 flex items-center gap-4">
-                <div className="flex items-center gap-2 bg-slate-900/90 border border-slate-700 p-2 rounded-lg backdrop-blur-sm">
-                  <MapIcon className="h-4 w-4 text-green-400" />
-                  <span className="text-xs font-bold uppercase tracking-widest">Global Logistics Flow</span>
-                </div>
-                <div className="flex items-center gap-4 bg-slate-900/80 border border-slate-800 p-2 rounded-lg backdrop-blur-sm">
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-orange-500" />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">TRUCKS</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-blue-500" />
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">LOADS</span>
-                  </div>
-                </div>
-              </div>
               <TripMapComponent trips={trips} shipments={shipments} />
-              
-              <div className="absolute bottom-6 right-6 z-10 flex gap-2">
-                <div className="bg-slate-900/90 border border-slate-700 p-3 rounded-xl backdrop-blur-sm shadow-2xl min-w-[140px]">
-                  <p className="text-[9px] text-slate-500 uppercase font-black mb-1 flex items-center gap-1">
-                    <Truck className="h-3 w-3 text-orange-500" /> Active Trips
-                  </p>
-                  <p className="text-xl font-mono font-bold text-orange-500">
-                    {trips.filter((t: any) => t.status === 'active').length}
-                  </p>
-                </div>
-                <div className="bg-slate-900/90 border border-slate-700 p-3 rounded-xl backdrop-blur-sm shadow-2xl min-w-[140px]">
-                  <p className="text-[9px] text-slate-500 uppercase font-black mb-1 flex items-center gap-1">
-                    <CheckCircle2 className="h-3 w-3 text-green-500" /> Completed
-                  </p>
-                  <p className="text-xl font-mono font-bold text-green-500">
-                    {trips.filter((t: any) => t.status === 'completed').length}
-                  </p>
-                </div>
-                <div className="bg-slate-900/90 border border-slate-700 p-3 rounded-xl backdrop-blur-sm shadow-2xl min-w-[140px]">
-                  <p className="text-[9px] text-slate-500 uppercase font-black mb-1 flex items-center gap-1">
-                    <Package className="h-3 w-3 text-blue-500" /> Pending Loads
-                  </p>
-                  <p className="text-xl font-mono font-bold text-blue-500">
-                    {shipments.filter((s: any) => s.status === 'pending').length}
-                  </p>
-                </div>
+              <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-slate-900/90 border border-slate-700 p-2 rounded-lg backdrop-blur-sm">
+                <MapIcon className="h-4 w-4 text-green-400" />
+                <span className="text-xs font-bold uppercase tracking-widest">Logistics Flow</span>
               </div>
             </div>
           </ResizablePanel>
@@ -337,54 +259,62 @@ const MonitoringDashboard = () => {
 
           <ResizablePanel defaultSize={55}>
             <ResizablePanelGroup direction="horizontal">
-              <ResizablePanel defaultSize={30} minSize={25}>
-                <div className="h-full flex flex-col border-r border-slate-800">
+              {/* Block 1: System */}
+              <ResizablePanel defaultSize={20} minSize={15}>
+                <div className="h-full flex flex-col border-r border-slate-800 p-4 overflow-hidden">
+                  <div className="flex items-center gap-2 mb-4 shrink-0">
+                    <BarChart3 className="h-4 w-4 text-blue-400" />
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">System</h2>
+                  </div>
                   <ScrollArea className="flex-grow">
-                    <div className="p-4 space-y-6">
-                      <section>
-                        <div className="flex items-center gap-2 mb-3">
-                          <BarChart3 className="h-4 w-4 text-blue-400" />
-                          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">System</h2>
-                        </div>
-                        <SystemMetricsPanel metrics={metrics} />
-                      </section>
+                    <SystemMetricsPanel metrics={metrics} />
+                  </ScrollArea>
+                </div>
+              </ResizablePanel>
+              
+              <ResizableHandle withHandle className="bg-slate-800" />
 
-                      <section>
-                        <div className="flex items-center gap-2 mb-3">
-                          <Briefcase className="h-4 w-4 text-purple-400" />
-                          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">Business</h2>
-                        </div>
-                        <BusinessMetricsPanel metrics={businessMetrics} />
-                      </section>
-
-                      <section>
-                        <div className="flex items-center gap-2 mb-3">
-                          <Terminal className="h-4 w-4 text-green-400" />
-                          <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">Console</h2>
-                        </div>
-                        <LiveEventFeed events={events} />
-                      </section>
-                    </div>
+              {/* Block 2: Business */}
+              <ResizablePanel defaultSize={20} minSize={15}>
+                <div className="h-full flex flex-col border-r border-slate-800 p-4 overflow-hidden">
+                  <div className="flex items-center gap-2 mb-4 shrink-0">
+                    <Briefcase className="h-4 w-4 text-purple-400" />
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">Business</h2>
+                  </div>
+                  <ScrollArea className="flex-grow">
+                    <BusinessMetricsPanel metrics={businessMetrics} />
                   </ScrollArea>
                 </div>
               </ResizablePanel>
 
               <ResizableHandle withHandle className="bg-slate-800" />
 
-              <ResizablePanel defaultSize={70}>
-                <div className="h-full flex flex-col">
-                  <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/20 shrink-0">
+              {/* Block 3: Console */}
+              <ResizablePanel defaultSize={30} minSize={20}>
+                <div className="h-full flex flex-col border-r border-slate-800 p-4 overflow-hidden">
+                  <div className="flex items-center gap-2 mb-4 shrink-0">
+                    <Terminal className="h-4 w-4 text-green-400" />
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">Console</h2>
+                  </div>
+                  <LiveEventFeed events={events} />
+                </div>
+              </ResizablePanel>
+
+              <ResizableHandle withHandle className="bg-slate-800" />
+
+              {/* Block 4: User Activity */}
+              <ResizablePanel defaultSize={30} minSize={25}>
+                <div className="h-full flex flex-col p-4 overflow-hidden">
+                  <div className="flex items-center justify-between mb-4 shrink-0">
                     <div className="flex items-center gap-2">
                       <Activity className="h-4 w-4 text-orange-400" />
-                      <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">Real-time User Activity</h2>
+                      <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">Users</h2>
                     </div>
-                    <Badge variant="outline" className="border-slate-700 text-slate-400 font-mono">
-                      {users.length} Active Users
+                    <Badge variant="outline" className="border-slate-700 text-slate-400 font-mono text-[10px]">
+                      {users.length} Active
                     </Badge>
                   </div>
-                  <div className="flex-grow overflow-hidden p-4">
-                    <UserActivityTable users={users} />
-                  </div>
+                  <UserActivityTable users={users} />
                 </div>
               </ResizablePanel>
             </ResizablePanelGroup>
