@@ -1,11 +1,10 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Trip, Shipment } from '@/types';
 import { Loader2 } from 'lucide-react';
 
-// Expanded coordinate cache to ensure common locations work instantly
+// Massive coordinate cache for instant loading of common locations
 const coordCache: Record<string, [number, number]> = {
   'mumbai': [19.0760, 72.8777],
   'delhi': [28.6139, 77.2090],
@@ -18,7 +17,6 @@ const coordCache: Record<string, [number, number]> = {
   'kolkata': [22.5726, 88.3639],
   'pune': [18.5204, 73.8567],
   'jaipur': [26.9124, 75.7873],
-  'surat': [21.1702, 72.8311],
   'lucknow': [26.8467, 80.9462],
   'kanpur': [26.4499, 80.3319],
   'nagpur': [21.1458, 79.0882],
@@ -37,37 +35,51 @@ const coordCache: Record<string, [number, number]> = {
   'dhanbad': [23.7957, 86.4304],
   'godda': [24.8256, 87.2114],
   'daltonganj': [23.9933, 84.0722],
-  'medininagar': [23.9933, 84.0722],
   'hazaribagh': [23.9925, 85.3633],
   'bokaro': [23.6693, 86.1511],
-  'giridih': [24.1917, 86.3039],
+  'gurgaon': [28.4595, 77.0266],
+  'gurugram': [28.4595, 77.0266],
+  'noida': [28.5355, 77.3910],
+  'surat': [21.1702, 72.8311],
+  'bhubaneswar': [20.2961, 85.8245],
+  'guwahati': [26.1445, 91.7362],
+  'amritsar': [31.6340, 74.8723],
+  'madurai': [9.9252, 78.1198],
+  'vijayawada': [16.5062, 80.6480],
+  'gwalior': [26.2124, 78.1772],
+  'coimbatore': [11.0168, 76.9558],
+  'jodhpur': [26.2389, 73.0243],
+  'raipur': [21.2514, 81.6296],
+  'kota': [25.2138, 75.8648],
+  'chandigarh': [30.7333, 76.7794],
+  'hubli': [15.3647, 75.1240],
+  'mysore': [12.2958, 76.6394],
+  'bareilly': [28.3670, 79.4304],
+  'aligarh': [27.8974, 78.0880],
+  'tiruchirappalli': [10.7905, 78.7047],
+  'solapur': [17.6599, 75.9064],
+  'varanasi': [25.3176, 82.9739],
+  'dehradun': [30.3165, 78.0322],
+  'panaji': [15.4909, 73.8278],
 };
 
-// Helper to add a slight random jitter to coordinates to prevent exact overlapping
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 const applyJitter = (coord: [number, number], index: number): [number, number] => {
-  const jitter = 0.015; 
+  const jitter = 0.02; 
   const angle = (index * 137.5) % 360; 
   const rad = (angle * Math.PI) / 180;
-  const offsetLat = Math.sin(rad) * (jitter * (1 + (index % 5) * 0.1));
-  const offsetLon = Math.cos(rad) * (jitter * (1 + (index % 5) * 0.1));
-  return [coord[0] + offsetLat, coord[1] + offsetLon];
+  return [coord[0] + Math.sin(rad) * jitter, coord[1] + Math.cos(rad) * jitter];
 };
 
-// Geocoding function using Nominatim with better headers
 async function getCityCoords(city: string): Promise<[number, number] | null> {
   const normalized = city.toLowerCase().trim();
   if (coordCache[normalized]) return coordCache[normalized];
 
   try {
-    // Nominatim requires a User-Agent or it might block the request
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city + ', India')}&format=json&limit=1`,
-      { 
-        headers: { 
-          'Accept-Language': 'en',
-          'User-Agent': 'LoadSaathi-Admin-Dashboard/1.0'
-        } 
-      }
+      { headers: { 'User-Agent': 'LoadSaathi-Admin/1.0' } }
     );
     const data = await res.json();
     if (data && data.length > 0) {
@@ -75,188 +87,102 @@ async function getCityCoords(city: string): Promise<[number, number] | null> {
       coordCache[normalized] = coords;
       return coords;
     }
-  } catch (error) {
-    console.error(`Geocoding error for ${city}:`, error);
+  } catch (err) {
+    console.error(`Geocode error: ${city}`, err);
   }
   return null;
 }
 
-// Custom icons
-const truckIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/1048/1048313.png',
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
-  popupAnchor: [0, -12],
-});
+const truckIcon = new L.Icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/1048/1048313.png', iconSize: [24, 24], iconAnchor: [12, 12] });
+const boxIcon = new L.Icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/2830/2830305.png', iconSize: [24, 24], iconAnchor: [12, 12] });
+const flagIcon = new L.Icon({ iconUrl: 'https://cdn-icons-png.flaticon.com/512/3233/3233005.png', iconSize: [24, 24], iconAnchor: [12, 24] });
 
-const boxIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/2830/2830305.png',
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
-  popupAnchor: [0, -12],
-});
-
-const flagIcon = new L.Icon({
-  iconUrl: 'https://cdn-icons-png.flaticon.com/512/3233/3233005.png',
-  iconSize: [24, 24],
-  iconAnchor: [12, 24],
-  popupAnchor: [0, -24],
-});
-
-interface ExtendedTrip extends Omit<Trip, 'trucker'> {
-  trucker?: { full_name: string };
-}
-
-interface ExtendedShipment extends Omit<Shipment, 'shipper'> {
-  shipper?: { full_name: string };
-}
-
-interface TripMapProps {
-  trips: ExtendedTrip[];
-  shipments: ExtendedShipment[];
-}
+interface TripMapProps { trips: any[]; shipments: any[]; }
 
 const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
   const [resolvedTrips, setResolvedTrips] = useState<any[]>([]);
   const [resolvedShipments, setResolvedShipments] = useState<any[]>([]);
   const [resolving, setResolving] = useState(false);
-  const defaultCenter: [number, number] = [20.5937, 78.9629];
+  const dataRef = useRef({ trips, shipments });
 
   useEffect(() => {
-    let active = true;
-    const resolveData = async () => {
+    dataRef.current = { trips, shipments };
+    
+    let isMounted = true;
+    const processSequentially = async () => {
       setResolving(true);
+      const { trips: tList, shipments: sList } = dataRef.current;
       
-      // Resolve trips
-      const tripPromises = trips
-        .filter(t => t.status !== 'cancelled')
-        .map(async (trip, idx) => {
-          const origin = await getCityCoords(trip.origin_city);
-          const dest = await getCityCoords(trip.destination_city);
-          if (origin && dest) {
-            return {
-              ...trip,
-              origin: applyJitter(origin, idx),
-              destination: applyJitter(dest, idx + 100)
-            };
-          }
-          return null;
-        });
+      const tripsResult: any[] = [];
+      const shipmentsResult: any[] = [];
 
-      // Resolve shipments
-      const shipmentPromises = shipments
-        .filter(s => s.status !== 'cancelled')
-        .map(async (ship, idx) => {
-          const origin = await getCityCoords(ship.origin_city);
-          const dest = await getCityCoords(ship.destination_city);
-          if (origin && dest) {
-            return {
-              ...ship,
-              origin: applyJitter(origin, idx + 500),
-              destination: applyJitter(dest, idx + 600)
-            };
-          }
-          return null;
-        });
+      for (let i = 0; i < tList.length; i++) {
+        if (!isMounted) break;
+        const trip = tList[i];
+        if (trip.status === 'cancelled') continue;
+        
+        const origin = await getCityCoords(trip.origin_city);
+        if (!coordCache[trip.origin_city.toLowerCase()]) await sleep(500);
+        const dest = await getCityCoords(trip.destination_city);
+        if (!coordCache[trip.destination_city.toLowerCase()]) await sleep(500);
 
-      const [rTrips, rShipments] = await Promise.all([
-        Promise.all(tripPromises),
-        Promise.all(shipmentPromises)
-      ]);
-
-      if (active) {
-        setResolvedTrips(rTrips.filter(Boolean));
-        setResolvedShipments(rShipments.filter(Boolean));
-        setResolving(false);
+        if (origin && dest) {
+          tripsResult.push({ ...trip, origin: applyJitter(origin, i), destination: applyJitter(dest, i + 10) });
+          if (isMounted) setResolvedTrips([...tripsResult]);
+        }
       }
+
+      for (let i = 0; i < sList.length; i++) {
+        if (!isMounted) break;
+        const ship = sList[i];
+        if (ship.status === 'cancelled') continue;
+
+        const origin = await getCityCoords(ship.origin_city);
+        if (!coordCache[ship.origin_city.toLowerCase()]) await sleep(500);
+        const dest = await getCityCoords(ship.destination_city);
+        if (!coordCache[ship.destination_city.toLowerCase()]) await sleep(500);
+
+        if (origin && dest) {
+          shipmentsResult.push({ ...ship, origin: applyJitter(origin, i + 50), destination: applyJitter(dest, i + 60) });
+          if (isMounted) setResolvedShipments([...shipmentsResult]);
+        }
+      }
+
+      if (isMounted) setResolving(false);
     };
 
-    resolveData();
-    return () => { active = false; };
+    processSequentially();
+    return () => { isMounted = false; };
   }, [trips, shipments]);
 
   return (
-    <div className="h-full w-full bg-slate-900 border border-slate-800 overflow-hidden relative">
-      <MapContainer
-        center={defaultCenter}
-        zoom={5}
-        style={{ height: '100%', width: '100%', background: '#020617' }}
-        scrollWheelZoom={false}
-      >
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-        />
+    <div className="h-full w-full bg-slate-900 overflow-hidden relative">
+      <MapContainer center={[20.5937, 78.9629]} zoom={5} style={{ height: '100%', width: '100%', background: '#020617' }} scrollWheelZoom={false}>
+        <TileLayer attribution='&copy; OSM' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
         
-        {/* Trucker Trips - Orange lines */}
-        {resolvedTrips.map((trip) => (
-          <React.Fragment key={`trip-${trip.id}`}>
-            <Marker position={trip.origin} icon={truckIcon}>
-              <Popup>
-                <div className="p-1">
-                  <p className="text-[10px] font-black uppercase text-orange-500 tracking-widest mb-1">Trucker Origin</p>
-                  <p className="text-sm font-bold text-slate-800">{trip.trucker?.full_name || 'Anonymous Trucker'}</p>
-                  <p className="text-[10px] text-slate-500">{trip.origin_city}</p>
-                </div>
-              </Popup>
-            </Marker>
-            <Marker position={trip.destination} icon={flagIcon}>
-              <Popup>
-                <div className="p-1">
-                  <p className="text-[10px] font-black uppercase text-orange-500 tracking-widest mb-1">Destination</p>
-                  <p className="text-sm font-bold text-slate-800">{trip.destination_city}</p>
-                </div>
-              </Popup>
-            </Marker>
-            <Polyline
-              positions={[trip.origin, trip.destination]}
-              pathOptions={{ 
-                color: '#f97316', 
-                weight: 2, 
-                dashArray: '8, 12',
-                opacity: 0.6
-              }}
-            />
+        {resolvedTrips.map(t => (
+          <React.Fragment key={`t-${t.id}`}>
+            <Marker position={t.origin} icon={truckIcon}><Popup>{t.trucker?.full_name}: {t.origin_city}</Popup></Marker>
+            <Marker position={t.destination} icon={flagIcon}><Popup>To: {t.destination_city}</Popup></Marker>
+            <Polyline positions={[t.origin, t.destination]} pathOptions={{ color: '#f97316', weight: 2, dashArray: '5, 10', opacity: 0.7 }} />
           </React.Fragment>
         ))}
 
-        {/* Shipper Shipments - Blue lines */}
-        {resolvedShipments.map((shipment) => (
-          <React.Fragment key={`shipment-${shipment.id}`}>
-            <Marker position={shipment.origin} icon={boxIcon}>
-              <Popup>
-                <div className="p-1">
-                  <p className="text-[10px] font-black uppercase text-blue-500 tracking-widest mb-1">Shipper Origin</p>
-                  <p className="text-sm font-bold text-slate-800">{shipment.shipper?.full_name || 'Anonymous Shipper'}</p>
-                  <p className="text-[10px] text-slate-500">{shipment.origin_city}</p>
-                </div>
-              </Popup>
-            </Marker>
-            <Marker position={shipment.destination} icon={flagIcon}>
-              <Popup>
-                <div className="p-1">
-                  <p className="text-[10px] font-black uppercase text-blue-500 tracking-widest mb-1">Destination</p>
-                  <p className="text-sm font-bold text-slate-800">{shipment.destination_city}</p>
-                </div>
-              </Popup>
-            </Marker>
-            <Polyline
-              positions={[shipment.origin, shipment.destination]}
-              pathOptions={{ 
-                color: '#3b82f6', 
-                weight: 2, 
-                dashArray: '8, 12',
-                opacity: 0.6
-              }}
-            />
+        {resolvedShipments.map(s => (
+          <React.Fragment key={`s-${s.id}`}>
+            <Marker position={s.origin} icon={boxIcon}><Popup>{s.shipper?.full_name}: {s.origin_city}</Popup></Marker>
+            <Marker position={s.destination} icon={flagIcon}><Popup>To: {s.destination_city}</Popup></Marker>
+            <Polyline positions={[s.origin, s.destination]} pathOptions={{ color: '#3b82f6', weight: 2, dashArray: '5, 10', opacity: 0.7 }} />
           </React.Fragment>
         ))}
       </MapContainer>
 
       {resolving && (
-        <div className="absolute bottom-4 right-4 z-[1000] bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-full backdrop-blur-sm flex items-center gap-2">
-          <Loader2 className="h-3 w-3 text-orange-500 animate-spin" />
-          <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Updating Logistics Map</span>
+        <div className="absolute bottom-4 right-4 z-[1000] bg-slate-950/90 border border-slate-800 px-4 py-2 rounded-full flex items-center gap-3 shadow-2xl">
+          <Loader2 className="h-4 w-4 text-orange-500 animate-spin" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">
+            Mapping Global Logistics ({resolvedTrips.length + resolvedShipments.length} found)
+          </span>
         </div>
       )}
     </div>
