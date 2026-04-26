@@ -190,7 +190,7 @@ const MonitoringDashboard = () => {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-[#0a0e14] text-slate-300 font-bold">
+      <div className="h-screen flex items-center justify-center bg-slate-950 text-slate-300 font-bold">
         <RefreshCw className="h-8 w-8 animate-spin mr-2 text-orange-500" /> 
         <span className="tracking-widest uppercase text-xs">Loading Command Center...</span>
       </div>
@@ -198,74 +198,69 @@ const MonitoringDashboard = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-[#0a0e14] text-slate-50 overflow-hidden font-sans">
-      <header className="h-16 border-b border-slate-800/50 bg-[#0d121a] flex items-center justify-between px-6 shadow-2xl">
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3">
-            <div className="bg-orange-600 p-2 rounded-lg shadow-[0_0_20px_rgba(234,88,12,0.3)]">
-              <ShieldCheck className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-base font-black tracking-tighter uppercase text-slate-100">Command Center</h1>
-              <div className="flex items-center gap-2">
-                <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                <span className="text-[10px] text-green-500/80 font-black uppercase tracking-widest">System Live</span>
-              </div>
+    <div className="h-screen flex flex-col bg-slate-950 text-slate-50 overflow-hidden font-sans">
+      <header className="h-14 border-b border-slate-800 bg-slate-900 flex items-center justify-between px-6">
+        <div className="flex items-center gap-4">
+          <div className="bg-orange-600 p-2 rounded-lg">
+            <ShieldCheck className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h1 className="text-lg font-bold tracking-tight text-slate-100">Command Center</h1>
+            <div className="flex items-center gap-2">
+              <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+              <span className="text-xs text-green-500/80 font-medium uppercase tracking-wider">System Live</span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-8">
-          <div className="flex items-center gap-4 px-6 border-x border-slate-800/50">
-            <div className="flex flex-col items-end">
-              <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest">Sync Token</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] font-mono font-bold text-blue-400">ACTIVE_OK</span>
-                <CheckCircle2 className="h-3 w-3 text-blue-400" />
-              </div>
-            </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-lg border border-slate-700">
+            <span className="text-xs text-slate-400 font-medium">Token:</span>
+            <span className="text-xs font-mono text-blue-400">ACTIVE</span>
+            <CheckCircle2 className="h-3.5 w-3.5 text-blue-400" />
           </div>
           
           <Button 
             variant="outline" 
             size="sm" 
             onClick={() => fetchAllData()} 
-            className="border-slate-700 bg-slate-900/50 hover:bg-slate-800 text-slate-300 font-black text-[10px] uppercase tracking-widest h-9 px-4"
+            className="border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-300 font-medium text-xs h-9 px-3"
           >
-            <RefreshCw className="h-3.5 w-3.5 mr-2" /> Refresh
+            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+            Refresh
           </Button>
         </div>
       </header>
 
       <main className="flex-grow overflow-hidden">
         <ResizablePanelGroup direction="vertical">
-          <ResizablePanel defaultSize={50} minSize={30}>
+          <ResizablePanel defaultSize={55} minSize={40}>
             <ResizablePanelGroup direction="horizontal">
               <ResizablePanel defaultSize={50}>
-                <div className="h-full relative bg-[#0f172a] border-r border-slate-800/50">
+                <div className="h-full relative bg-slate-900/50 border-r border-slate-800/30">
                   <TripMapComponent items={trips} type="trip" color="#f97316" />
-                  <div className="absolute top-4 left-4 z-[1000] flex items-center gap-3 bg-slate-950/90 border border-orange-500/20 p-2.5 rounded-xl backdrop-blur-xl shadow-2xl">
-                    <div className="bg-orange-500/20 p-1.5 rounded-lg">
+                  <div className="absolute top-3 left-3 z-10 flex items-center gap-2.5 bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 p-2.5 rounded-lg">
+                    <div className="bg-orange-500/20 p-1.5 rounded-md">
                       <Truck className="h-4 w-4 text-orange-500" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-200">Trucker Network</span>
-                      <span className="text-[9px] font-bold text-orange-500/80">{businessMetrics.tripsCount} Active Trips</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Trucker Network</span>
+                      <span className="text-sm font-bold text-orange-400">{businessMetrics.tripsCount} Active</span>
                     </div>
                   </div>
                 </div>
               </ResizablePanel>
-              <ResizableHandle withHandle className="bg-slate-800/50 w-1" />
+              <ResizableHandle withHandle className="w-1 bg-slate-800/50" />
               <ResizablePanel defaultSize={50}>
-                <div className="h-full relative bg-[#0f172a]">
+                <div className="h-full relative bg-slate-900/50">
                   <TripMapComponent items={shipments} type="shipment" color="#3b82f6" />
-                  <div className="absolute top-4 left-4 z-[1000] flex items-center gap-3 bg-slate-950/90 border border-blue-500/20 p-2.5 rounded-xl backdrop-blur-xl shadow-2xl">
-                    <div className="bg-blue-500/20 p-1.5 rounded-lg">
+                  <div className="absolute top-3 left-3 z-10 flex items-center gap-2.5 bg-slate-900/80 backdrop-blur-sm border border-slate-700/50 p-2.5 rounded-lg">
+                    <div className="bg-blue-500/20 p-1.5 rounded-md">
                       <Package className="h-4 w-4 text-blue-500" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-200">Shipper Network</span>
-                      <span className="text-[9px] font-bold text-blue-500/80">{businessMetrics.shipmentsCount} Live Loads</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Shipper Network</span>
+                      <span className="text-sm font-bold text-blue-400">{businessMetrics.shipmentsCount} Loads</span>
                     </div>
                   </div>
                 </div>
@@ -273,55 +268,49 @@ const MonitoringDashboard = () => {
             </ResizablePanelGroup>
           </ResizablePanel>
 
-          <ResizableHandle withHandle className="bg-slate-800/50 h-1" />
+          <ResizableHandle withHandle className="h-1 bg-slate-800/50" />
 
-          <ResizablePanel defaultSize={50}>
+          <ResizablePanel defaultSize={45}>
             <ResizablePanelGroup direction="horizontal">
-              <ResizablePanel defaultSize={20}>
-                <div className="h-full flex flex-col border-r border-slate-800/50 p-5 bg-[#0a0e14]">
-                  <div className="flex items-center gap-2 mb-6 shrink-0">
+              <ResizablePanel defaultSize={22}>
+                <div className="h-full flex flex-col border-r border-slate-800/30 bg-slate-900/30 p-4">
+                  <div className="flex items-center gap-2 mb-4">
                     <BarChart3 className="h-4 w-4 text-blue-400" />
-                    <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500">System Health</h2>
+                    <h2 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">System Health</h2>
                   </div>
-                  <ScrollArea className="flex-grow">
+                  <ScrollArea className="flex-grow -mr-2 pr-2">
                     <SystemMetricsPanel metrics={metrics} />
                   </ScrollArea>
                 </div>
               </ResizablePanel>
-
-              <ResizableHandle withHandle className="bg-slate-800/50 w-1" />
-
-              <ResizablePanel defaultSize={20}>
-                <div className="h-full flex flex-col border-r border-slate-800/50 p-5 bg-[#0a0e14]">
-                  <div className="flex items-center gap-2 mb-6 shrink-0">
+              <ResizableHandle withHandle className="w-1 bg-slate-800/50" />
+              <ResizablePanel defaultSize={22}>
+                <div className="h-full flex flex-col border-r border-slate-800/30 bg-slate-900/30 p-4">
+                  <div className="flex items-center gap-2 mb-4">
                     <Briefcase className="h-4 w-4 text-purple-400" />
-                    <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Business Ops</h2>
+                    <h2 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Business Ops</h2>
                   </div>
-                  <ScrollArea className="flex-grow">
+                  <ScrollArea className="flex-grow -mr-2 pr-2">
                     <BusinessMetricsPanel {...businessMetrics} />
                   </ScrollArea>
                 </div>
               </ResizablePanel>
-
-              <ResizableHandle withHandle className="bg-slate-800/50 w-1" />
-
-              <ResizablePanel defaultSize={30}>
-                <div className="h-full flex flex-col border-r border-slate-800/50 p-5 bg-[#0a0e14]">
-                  <div className="flex items-center gap-2 mb-6 shrink-0">
+              <ResizableHandle withHandle className="w-1 bg-slate-800/50" />
+              <ResizablePanel defaultSize={28}>
+                <div className="h-full flex flex-col border-r border-slate-800/30 bg-slate-900/30 p-4">
+                  <div className="flex items-center gap-2 mb-4">
                     <Terminal className="h-4 w-4 text-green-400" />
-                    <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500">Live Console</h2>
+                    <h2 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Live Console</h2>
                   </div>
                   <LiveEventFeed events={events} />
                 </div>
               </ResizablePanel>
-
-              <ResizableHandle withHandle className="bg-slate-800/50 w-1" />
-
-              <ResizablePanel defaultSize={30}>
-                <div className="h-full flex flex-col p-5 bg-[#0a0e14]">
-                  <div className="flex items-center gap-2 mb-6 shrink-0">
+              <ResizableHandle withHandle className="w-1 bg-slate-800/50" />
+              <ResizablePanel defaultSize={28}>
+                <div className="h-full flex flex-col bg-slate-900/30 p-4">
+                  <div className="flex items-center gap-2 mb-4">
                     <Activity className="h-4 w-4 text-orange-400" />
-                    <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-500">User Traffic</h2>
+                    <h2 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">User Traffic</h2>
                   </div>
                   <UserActivityTable users={users} />
                 </div>
