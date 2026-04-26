@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Polyline, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Loader2, Truck, Package, Badge } from 'lucide-react';
+import { Loader2, Truck, Package } from 'lucide-react';
 import { Trip, Shipment } from '@/types';
 
 const coordCache: Record<string, [number, number]> = {
@@ -76,40 +76,88 @@ async function getCityCoords(city: string): Promise<[number, number] | null> {
   return null;
 }
 
-// Custom SVG icons
+// Create HTML-based icons using Leaflet divIcon (these will render reliably)
 const createTripIcon = (color: string) => {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="1" y="3" width="15" height="13" rx="2" ry="2"/>
-    <circle cx="5" cy="18" r="2"/>
-    <circle cx="18" cy="18" r="2"/>
-    <path d="M5 9l-1 4h12l-1-4"/>
-  </svg>`;
-  return `data:image/svg+xml;base64,${btoa(svg)}`;
+  return L.divIcon({
+    className: 'custom-trip-icon',
+    html: `<div style="
+      width: 28px;
+      height: 28px;
+      background: transparent;
+      position: relative;
+      transform: translate(-50%, -50%);
+    ">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="1" y="3" width="15" height="13" rx="2" ry="2"/>
+        <circle cx="5" cy="18" r="2"/>
+        <circle cx="18" cy="18" r="2"/>
+        <path d="M5 9l-1 4h12l-1-4"/>
+      </svg>
+    </div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14]
+  });
 };
 
 const createLoadIcon = (color: string) => {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4a2 2 0 0 0 2 0l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-    <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-    <line x1="12" y1="22.08" x2="12" y2="12"/>
-  </svg>`;
-  return `data:image/svg+xml;base64,${btoa(svg)}`;
+  return L.divIcon({
+    className: 'custom-load-icon',
+    html: `<div style="
+      width: 28px;
+      height: 28px;
+      background: transparent;
+      position: relative;
+      transform: translate(-50%, -50%);
+    ">
+      <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4a2 2 0 0 0 2 0l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+        <line x1="12" y1="22.08" x2="12" y2="12"/>
+      </svg>
+    </div>`,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14]
+  });
 };
 
 const createOriginIcon = (color: string) => {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="${color}">
-    <circle cx="12" cy="12" r="10" fill="${color}" opacity="0.8"/>
-    <circle cx="12" cy="12" r="4" fill="white"/>
-  </svg>`;
-  return `data:image/svg+xml;base64,${btoa(svg)}`;
+  return L.divIcon({
+    className: 'custom-origin-icon',
+    html: `<div style="
+      width: 24px;
+      height: 24px;
+      background: transparent;
+      position: relative;
+      transform: translate(-50%, -50%);
+    ">
+      <svg viewBox="0 0 24 24" width="24" height="24">
+        <circle cx="12" cy="12" r="10" fill="${color}" opacity="0.8"/>
+        <circle cx="12" cy="12" r="4" fill="white"/>
+      </svg>
+    </div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+  });
 };
 
 const createDestinationIcon = (color: string) => {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="${color}" stroke-width="2">
-    <circle cx="12" cy="12" r="10" stroke="${color}" fill="none"/>
-    <circle cx="12" cy="12" r="4" fill="${color}" opacity="0.6"/>
-  </svg>`;
-  return `data:image/svg+xml;base64,${btoa(svg)}`;
+  return L.divIcon({
+    className: 'custom-destination-icon',
+    html: `<div style="
+      width: 24px;
+      height: 24px;
+      background: transparent;
+      position: relative;
+      transform: translate(-50%, -50%);
+    ">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="${color}" stroke-width="2">
+        <circle cx="12" cy="12" r="10" stroke="${color}" fill="none"/>
+        <circle cx="12" cy="12" r="4" fill="${color}" opacity="0.6"/>
+      </svg>
+    </div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+  });
 };
 
 const TripMap: React.FC<{ trips: any[]; shipments: any[] }> = ({ trips, shipments }) => {
@@ -183,14 +231,14 @@ const TripMap: React.FC<{ trips: any[]; shipments: any[] }> = ({ trips, shipment
         <TileLayer attribution='&copy; OSM' url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png" />
         {resolvedTrips.map((trip) => (
           <React.Fragment key={`trip-${trip.id}`}>
-            <Marker position={trip.origin} icon={L.icon({ iconUrl: createOriginIcon('#f97316'), iconSize: [24, 24], iconAnchor: [12, 12] })}>
+            <Marker position={trip.origin} icon={createOriginIcon('#f97316')}>
               <Popup><div className="p-2 bg-slate-900 border border-slate-700"><p className="text-[10px] font-black uppercase text-orange-400">Trip Origin</p><p className="text-sm font-bold text-slate-100">{trip.trucker?.full_name || 'Carrier'}</p><p className="text-xs text-slate-400">{trip.origin_city}</p></div></Popup>
             </Marker>
-            <Marker position={trip.destination} icon={L.icon({ iconUrl: createDestinationIcon('#f97316'), iconSize: [24, 24], iconAnchor: [12, 12] })}>
+            <Marker position={trip.destination} icon={createDestinationIcon('#f97316')}>
               <Popup><div className="p-2 bg-slate-900 border border-slate-700"><p className="text-[10px] font-black uppercase text-orange-400">Trip Destination</p><p className="text-sm font-bold text-slate-100">{trip.destination_city}</p></div></Popup>
             </Marker>
             <Polyline positions={[trip.origin, trip.destination]} pathOptions={{ color: '#f97316', weight: 3, opacity: 0.8, dashArray: '10, 10' }} />
-            <Marker position={[(trip.origin[0] + trip.destination[0]) / 2, (trip.origin[1] + trip.destination[1]) / 2]} icon={L.icon({ iconUrl: createTripIcon('#f97316'), iconSize: [28, 28], iconAnchor: [14, 14] })}>
+            <Marker position={[(trip.origin[0] + trip.destination[0]) / 2, (trip.origin[1] + trip.destination[1]) / 2]} icon={createTripIcon('#f97316')}>
               <Popup><div className="p-2 bg-slate-900 border border-slate-700"><p className="text-[10px] font-black uppercase text-orange-400">Active Trip</p><p className="text-sm font-bold text-slate-100">{trip.origin_city} → {trip.destination_city}</p></div></Popup>
             </Marker>
           </React.Fragment>
@@ -198,14 +246,14 @@ const TripMap: React.FC<{ trips: any[]; shipments: any[] }> = ({ trips, shipment
 
         {resolvedShipments.map((shipment) => (
           <React.Fragment key={`shipment-${shipment.id}`}>
-            <Marker position={shipment.origin} icon={L.icon({ iconUrl: createOriginIcon('#3b82f6'), iconSize: [24, 24], iconAnchor: [12, 12] })}>
+            <Marker position={shipment.origin} icon={createOriginIcon('#3b82f6')}>
               <Popup><div className="p-2 bg-slate-900 border border-slate-700"><p className="text-[10px] font-black uppercase text-blue-400">Load Origin</p><p className="text-sm font-bold text-slate-100">{shipment.shipper?.full_name || 'Shipper'}</p><p className="text-xs text-slate-400">{shipment.origin_city}</p></div></Popup>
             </Marker>
-            <Marker position={shipment.destination} icon={L.icon({ iconUrl: createDestinationIcon('#3b82f6'), iconSize: [24, 24], iconAnchor: [12, 12] })}>
+            <Marker position={shipment.destination} icon={createDestinationIcon('#3b82f6')}>
               <Popup><div className="p-2 bg-slate-900 border border-slate-700"><p className="text-[10px] font-black uppercase text-blue-400">Load Destination</p><p className="text-sm font-bold text-slate-100">{shipment.destination_city}</p></div></Popup>
             </Marker>
             <Polyline positions={[shipment.origin, shipment.destination]} pathOptions={{ color: '#3b82f6', weight: 3, opacity: 0.8, dashArray: '5, 5' }} />
-            <Marker position={[(shipment.origin[0] + shipment.destination[0]) / 2, (shipment.origin[1] + shipment.destination[1]) / 2]} icon={L.icon({ iconUrl: createLoadIcon('#3b82f6'), iconSize: [28, 28], iconAnchor: [14, 14] })}>
+            <Marker position={[(shipment.origin[0] + shipment.destination[0]) / 2, (shipment.origin[1] + shipment.destination[1]) / 2]} icon={createLoadIcon('#3b82f6')}>
               <Popup><div className="p-2 bg-slate-900 border border-slate-700"><p className="text-[10px] font-black uppercase text-blue-400">Load Request</p><p className="text-sm font-bold text-slate-100">{shipment.origin_city} → {shipment.destination_city}</p></div></Popup>
             </Marker>
           </React.Fragment>
