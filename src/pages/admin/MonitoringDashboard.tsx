@@ -89,13 +89,6 @@ const MonitoringDashboard = () => {
       
       if (shipmentData) setShipments(shipmentData);
 
-      // Fetch system metrics
-      const { data: metricsData, error: metricsError } = await supabaseClient.rpc('get_system_metrics');
-      if (!metricsError && metricsData) {
-        const m = Array.isArray(metricsData) ? metricsData[0] : metricsData;
-        setMetrics(m);
-      }
-
       // Calculate Business Metrics
       const { data: requests } = await supabaseClient.from('requests').select('status, weight_tonnes, trip:trips(price_per_tonne)');
       
