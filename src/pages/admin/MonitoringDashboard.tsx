@@ -15,7 +15,10 @@ import {
   RefreshCw, 
   ShieldCheck,
   Briefcase,
-  Terminal
+  Terminal,
+  Truck,
+  Package,
+  CheckCircle2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,11 +29,20 @@ import BusinessMetricsPanel from './BusinessMetricsPanel';
 import LiveEventFeed from './LiveEventFeed';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
+interface Event {
+  id: string;
+  type: 'trip' | 'booking' | 'user' | 'chat' | 'alert';
+  message: string;
+  time: string;
+  raw_date?: string;
+}
+
 const MonitoringDashboard = () => {
   const { getAuthenticatedClient } = useSupabase();
   const [users, setUsers] = useState([]);
   const [trips, setTrips] = useState([]);
-  const [events, setEvents] = useState([]);
+  const [shipments, setShipments] = useState([]);
+  const [events, setEvents] = useState<Event[]>([]);
   const [metrics, setMetrics] = useState({ 
     active_connections: 0, 
     api_response_time: 0, 
@@ -39,6 +51,7 @@ const MonitoringDashboard = () => {
   });
   const [businessMetrics, setBusinessMetrics] = useState({
     total_shipments: 0,
+    total_trips: 0,
     pending_requests: 0,
     accepted_requests: 0,
     estimated_revenue: 0,
@@ -60,15 +73,23 @@ const MonitoringDashboard = () => {
       
       if (userData) setUsers(userData);
 
-      // Fetch trips
+      // Fetch trips with trucker info
       const { data: tripData } = await supabaseClient
         .from('trips')
-        .select('*')
+        .select('*, trucker:users!trips_trucker_id_fkey(full_name)')
         .order('created_at', { ascending: false });
       
       if (tripData) setTrips(tripData);
 
-      // Fetch system metrics via RPC
+      // Fetch shipments with shipper info
+      const { data: shipmentData } = await supabaseClient
+        .from('shipments')
+        .select('*, shipper:users!shipments_shipper_id_fkey(full_name)')
+        .order('created_at', { ascending: false });
+      
+      if (shipmentData) setShipments(shipmentData);
+
+      // Fetch system metrics
       const { data: metricsData, error: metricsError } = await supabaseClient.rpc('get_system_metrics');
       if (!metricsError && metricsData) {
         const m = Array.isArray(metricsData) ? metricsData[0] : metricsData;
@@ -76,8 +97,7 @@ const MonitoringDashboard = () => {
       }
 
       // Calculate Business Metrics
-      const { data: shipments } = await supabaseClient.from('shipments').select('id, origin_city, created_at');
-      const { data: requests } = await supabaseClient.from('requests').select('status, weight_tonnes, trip:trips(price_per_tonne), created_at');
+      const { data: requests } = await supabaseClient.from('requests').select('status, weight_tonnes, trip:trips(price_per_tonne)');
       
       const pending = requests?.filter(r => r.status === 'pending').length || 0;
       const accepted = requests?.filter(r => r.status === 'accepted') || [];
@@ -85,13 +105,39 @@ const MonitoringDashboard = () => {
       const successRate = requests?.length ? Math.round((accepted.length / requests.length) * 100) : 0;
 
       setBusinessMetrics({
-        total_shipments: shipments?.length || 0,
+        total_shipments: shipmentData?.length || 0,
+        total_trips: tripData?.length || 0,
         pending_requests: pending,
         accepted_requests: accepted.length,
         estimated_revenue: revenue,
         success_rate: successRate
       });
 
+      // Historical events
+      const [{ data: hTrips }, { data: hShips }] = await Promise.all([
+        supabaseClient.from('trips').select('id, origin_city, destination_city, created_at').limit(3),
+        supabaseClient.from('shipments').select('id, origin_city, created_at').limit(3)
+      ]);
+
+      const formattedHist: Event[] = [
+        ...(hTrips || []).map(t => ({
+          id: `t-${t.id}`,
+          type: 'trip' as const,
+          message: `Trip activity: ${t.origin_city} → ${t.destination_city}`,
+          time: new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          raw_date: t.created_at
+        })),
+        ...(hShips || []).map(s => ({
+          id: `s-${s.id}`,
+          type: 'trip' as const,
+          message: `New load detected at ${s.origin_city}`,
+          time: new Date(s.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          raw_date: s.created_at
+        }))
+      ]
+      .sort((a, b) => new Date(b.raw_date || '').getTime() - new Date(a.raw_date || '').getTime());
+
+      setEvents(formattedHist);
       setLastUpdated(new Date());
     } catch (err) {
       console.error('[Monitoring] Fetch error:', err);
@@ -102,180 +148,115 @@ const MonitoringDashboard = () => {
 
   useEffect(() => {
     fetchData();
-    
-    // Set up real-time subscriptions for immediate visual feedback
-    const channel = supabase
-      .channel('admin-monitor-all')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'trips' }, (payload) => {
-        setEvents(prev => [{
-          id: `trip-${Date.now()}`,
-          type: 'trip',
-          message: `New trip: ${payload.new.origin_city} → ${payload.new.destination_city}`,
-          time: 'JUST NOW'
-        }, ...prev].slice(0, 15));
-        fetchData();
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shipments' }, (payload) => {
-        setEvents(prev => [{
-          id: `shipment-${Date.now()}`,
-          type: 'trip',
-          message: `New load posted from ${payload.new.origin_city}`,
-          time: 'JUST NOW'
-        }, ...prev].slice(0, 15));
-        fetchData();
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'requests' }, (payload) => {
-        setEvents(prev => [{
-          id: `request-sent-${Date.now()}`,
-          type: 'booking',
-          message: `New booking request sent for ${payload.new.weight_tonnes}t`,
-          time: 'JUST NOW'
-        }, ...prev].slice(0, 15));
-        fetchData();
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'requests' }, (payload) => {
-        if (payload.new.status === 'accepted' && payload.old.status !== 'accepted') {
-          setEvents(prev => [{
-            id: `booking-accepted-${Date.now()}`,
-            type: 'booking',
-            message: `Booking accepted for ${payload.new.weight_tonnes}t load`,
-            time: 'JUST NOW'
-          }, ...prev].slice(0, 15));
-          fetchData();
-        }
-      })
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'users' }, (payload) => {
-        setEvents(prev => [{
-          id: `user-${Date.now()}`,
-          type: 'user',
-          message: `New ${payload.new.user_type} joined: ${payload.new.full_name}`,
-          time: 'JUST NOW'
-        }, ...prev].slice(0, 15));
-        fetchData();
-      })
-      .subscribe();
-
-    // Set up 15-second interval refresh as requested
     const interval = setInterval(fetchData, 15000);
-    
-    return () => {
-      supabase.removeChannel(channel);
-      clearInterval(interval);
-    };
+    return () => clearInterval(interval);
   }, [fetchData]);
 
   return (
-    <div className="h-screen flex flex-col bg-slate-950 text-slate-50 overflow-hidden">
-      <header className="h-14 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between px-6 shrink-0">
+    <div className="h-screen flex flex-col bg-slate-950 text-slate-50 overflow-hidden font-sans">
+      <header className="h-14 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between px-6 shrink-0 shadow-2xl">
         <div className="flex items-center gap-4">
-          <div className="bg-orange-600 p-1.5 rounded-lg">
+          <div className="bg-orange-600 p-1.5 rounded-lg shadow-[0_0_15px_rgba(234,88,12,0.4)]">
             <ShieldCheck className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-sm font-bold tracking-tight uppercase">Admin Command Center</h1>
+            <h1 className="text-sm font-black tracking-tight uppercase">Command Center</h1>
             <div className="flex items-center gap-2">
               <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[10px] text-slate-400 font-medium uppercase">System Live (15s Sync)</span>
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">System Live</span>
             </div>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="text-right hidden sm:block">
-            <p className="text-[10px] text-slate-500 uppercase font-bold">Last Sync</p>
-            <p className="text-xs font-mono">{lastUpdated.toLocaleTimeString()}</p>
+          <div className="text-right hidden sm:block border-r border-slate-800 pr-4 mr-2">
+            <p className="text-[9px] text-slate-500 uppercase font-black tracking-tighter">Sync Token</p>
+            <p className="text-[11px] font-mono text-slate-300">ACTIVE_OK</p>
           </div>
           <Button 
             variant="outline" 
             size="sm" 
             onClick={fetchData}
             disabled={loading}
-            className="border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300"
+            className="border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold text-[10px] uppercase tracking-widest"
           >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3 w-3 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
       </header>
 
       <main className="flex-grow overflow-hidden">
-        <ResizablePanelGroup direction="horizontal">
-          <ResizablePanel defaultSize={25} minSize={20}>
-            <div className="h-full flex flex-col border-r border-slate-800">
-              <ScrollArea className="flex-grow">
-                <div className="p-4 space-y-8">
-                  <section>
-                    <div className="flex items-center gap-2 mb-4">
-                      <BarChart3 className="h-4 w-4 text-blue-400" />
-                      <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">System Health</h2>
-                    </div>
-                    <SystemMetricsPanel metrics={metrics} />
-                  </section>
-
-                  <section>
-                    <div className="flex items-center gap-2 mb-4">
-                      <Briefcase className="h-4 w-4 text-purple-400" />
-                      <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">Business Intelligence</h2>
-                    </div>
-                    <BusinessMetricsPanel metrics={businessMetrics} />
-                  </section>
-
-                  <section>
-                    <div className="flex items-center gap-2 mb-4">
-                      <Terminal className="h-4 w-4 text-green-400" />
-                      <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">Live Events</h2>
-                    </div>
-                    <LiveEventFeed events={events} />
-                  </section>
-                </div>
-              </ScrollArea>
-            </div>
-          </ResizablePanel>
-
-          <ResizableHandle withHandle className="bg-slate-800" />
-
+        <ResizablePanelGroup direction="vertical">
           <ResizablePanel defaultSize={45} minSize={30}>
-            <div className="h-full flex flex-col">
-              <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/20">
-                <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-orange-400" />
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">Real-time Activity</h2>
-                </div>
-                <Badge variant="outline" className="border-slate-700 text-slate-400 font-mono">
-                  {users.length} Active Users
-                </Badge>
-              </div>
-              <div className="flex-grow overflow-hidden p-4">
-                <UserActivityTable users={users} />
+            <div className="h-full relative bg-slate-900">
+              <TripMapComponent trips={trips} shipments={shipments} />
+              <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-slate-950/80 border border-slate-800 p-2 rounded-lg backdrop-blur-md shadow-2xl">
+                <MapIcon className="h-4 w-4 text-green-400" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-200">Global Logistics Flow</span>
               </div>
             </div>
           </ResizablePanel>
 
           <ResizableHandle withHandle className="bg-slate-800" />
 
-          <ResizablePanel defaultSize={30} minSize={20}>
-            <div className="h-full relative">
-              <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-slate-900/90 border border-slate-700 p-2 rounded-lg backdrop-blur-sm">
-                <MapIcon className="h-4 w-4 text-green-400" />
-                <span className="text-xs font-bold uppercase tracking-widest">Logistics Map</span>
-              </div>
-              <TripMapComponent trips={trips} />
+          <ResizablePanel defaultSize={55}>
+            <ResizablePanelGroup direction="horizontal">
+              <ResizablePanel defaultSize={20} minSize={15}>
+                <div className="h-full flex flex-col border-r border-slate-800 p-4 bg-slate-950/50">
+                  <div className="flex items-center gap-2 mb-4 shrink-0">
+                    <BarChart3 className="h-4 w-4 text-blue-400" />
+                    <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">System</h2>
+                  </div>
+                  <ScrollArea className="flex-grow">
+                    <SystemMetricsPanel metrics={metrics} />
+                  </ScrollArea>
+                </div>
+              </ResizablePanel>
               
-              <div className="absolute bottom-6 right-6 z-10 flex flex-col gap-2">
-                <div className="bg-slate-900/90 border border-slate-700 p-3 rounded-xl backdrop-blur-sm shadow-2xl min-w-[120px]">
-                  <p className="text-[9px] text-slate-500 uppercase font-black mb-1">Active Trips</p>
-                  <p className="text-xl font-mono font-bold text-orange-500">
-                    {trips.filter(t => t.status === 'active').length}
-                  </p>
+              <ResizableHandle withHandle className="bg-slate-800" />
+
+              <ResizablePanel defaultSize={20} minSize={15}>
+                <div className="h-full flex flex-col border-r border-slate-800 p-4 bg-slate-950/50">
+                  <div className="flex items-center gap-2 mb-4 shrink-0">
+                    <Briefcase className="h-4 w-4 text-purple-400" />
+                    <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Business</h2>
+                  </div>
+                  <ScrollArea className="flex-grow">
+                    <BusinessMetricsPanel metrics={businessMetrics} />
+                  </ScrollArea>
                 </div>
-                <div className="bg-slate-900/90 border border-slate-800 p-3 rounded-xl backdrop-blur-sm shadow-2xl min-w-[120px]">
-                  <p className="text-[9px] text-slate-500 uppercase font-black mb-1">Completed</p>
-                  <p className="text-xl font-mono font-bold text-green-500">
-                    {trips.filter(t => t.status === 'completed').length}
-                  </p>
+              </ResizablePanel>
+
+              <ResizableHandle withHandle className="bg-slate-800" />
+
+              <ResizablePanel defaultSize={30} minSize={20}>
+                <div className="h-full flex flex-col border-r border-slate-800 p-4 bg-slate-950/50">
+                  <div className="flex items-center gap-2 mb-4 shrink-0">
+                    <Terminal className="h-4 w-4 text-green-400" />
+                    <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Console</h2>
+                  </div>
+                  <LiveEventFeed events={events} />
                 </div>
-              </div>
-            </div>
+              </ResizablePanel>
+
+              <ResizableHandle withHandle className="bg-slate-800" />
+
+              <ResizablePanel defaultSize={30} minSize={25}>
+                <div className="h-full flex flex-col p-4 bg-slate-950/50">
+                  <div className="flex items-center justify-between mb-4 shrink-0">
+                    <div className="flex items-center gap-2">
+                      <Activity className="h-4 w-4 text-orange-400" />
+                      <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Live Traffic</h2>
+                    </div>
+                    <Badge variant="outline" className="border-slate-800 bg-slate-900 text-slate-500 font-mono text-[9px] px-1.5 py-0">
+                      {users.length} OPS
+                    </Badge>
+                  </div>
+                  <UserActivityTable users={users} />
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
           </ResizablePanel>
         </ResizablePanelGroup>
       </main>
