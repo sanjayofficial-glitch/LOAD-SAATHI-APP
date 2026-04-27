@@ -2,7 +2,7 @@
 
 import React from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate, Link, Outlet } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -26,7 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import NotificationBell from "./NotificationBell";
 
-export default function Layout({ children }: { children?: React.ReactNode }) {
+export default function Layout({ children }: { children: React.ReactNode }) {
   const { userProfile, signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -152,7 +152,7 @@ export default function Layout({ children }: { children?: React.ReactNode }) {
       </nav>
 
       <main className="flex-grow">
-        {children || <Outlet />}
+        {children}
       </main>
 
       <footer className="bg-white border-t py-8 mt-auto">

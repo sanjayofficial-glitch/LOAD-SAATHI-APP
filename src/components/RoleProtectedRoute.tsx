@@ -1,12 +1,12 @@
 "use client";
 
 import React from 'react';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
 interface RoleProtectedRouteProps {
-  children?: React.ReactNode;
+  children: React.ReactNode;
   allowedRole?: 'shipper' | 'trucker' | 'both' | 'admin';
 }
 
@@ -48,8 +48,8 @@ const RoleProtectedRoute = ({ children, allowedRole }: RoleProtectedRouteProps) 
     return <Navigate to={targetPath} replace />;
   }
 
-  // All checks passed – render children if provided, otherwise render nested routes via Outlet
-  return children ? <>{children}</> : <Outlet />;
+  // All checks passed – render the protected component
+  return <>{children}</>;
 };
 
 export default RoleProtectedRoute;
