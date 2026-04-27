@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Truck, Package, CheckCircle, ArrowRight, Calendar, IndianRupee } from 'lucide-react';
 import { useUser } from '@clerk/clerk-react';
@@ -26,6 +26,12 @@ const Index = () => {
 
   // Path to the Lottie file in public folder
   const lottieUrl = "/loader.lottie";
+
+  const handleAnimationEnd = useCallback(() => {
+    localStorage.setItem('hasSeenSplash', 'true');
+    setVideoEnded(true);
+    setShowSplash(false);
+  }, []);
 
   useEffect(() => {
     const fetchRecentTrips = async () => {
@@ -55,13 +61,14 @@ const Index = () => {
       setShowSplash(false);
       setVideoEnded(true);
     } else {
-      // Safety timeout: if animation doesn't finish in 5 seconds, skip it
+      // Safety timeout: increased to 10 seconds to ensure longer animations can finish
+      // but still provides a fallback if the Lottie fails to load/trigger
       const timer = setTimeout(() => {
         handleAnimationEnd();
-      }, 5000);
+      }, 10000);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [handleAnimationEnd]);
 
   // Handle redirection AFTER animation ends or if splash is skipped
   useEffect(() => {
@@ -71,12 +78,6 @@ const Index = () => {
       navigate('/auth-sync');
     }
   }, [isLoaded, isSignedIn, user, navigate, videoEnded]);
-
-  const handleAnimationEnd = () => {
-    localStorage.setItem('hasSeenSplash', 'true');
-    setVideoEnded(true);
-    setShowSplash(false);
-  };
 
   if (isLoading || !isLoaded) {
     return <IndexSkeleton />;
@@ -118,8 +119,11 @@ const Index = () => {
         </div>
 
         <button 
-          onClick={handleAnimationEnd}
-          className="absolute bottom-8 right-8 bg-gray-50 hover:bg-gray-100 text-gray-400 hover:text-gray-600 px-4 py-1.5 rounded-full border border-gray-100 transition-all z-50 text-xs font-bold uppercase tracking-tighter shadow-sm"
+          onClick={(e) => {
+            e.preventDefault();
+            handleAnimationEnd();
+          }}
+          className="absolute bottom-8 right-8 bg-gray-50 hover:bg-gray-100 text-gray-400 hover:text-gray-600 px-4 py-1.5 rounded-full border border-gray-100 transition-all z-50 text-xs font-bold uppercase tracking-tighter shadow-sm active:scale-95"
         >
           Skip
         </button>

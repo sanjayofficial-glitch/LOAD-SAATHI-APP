@@ -20,7 +20,9 @@ const LottieLoader: React.FC<LottieLoaderProps> = ({
         <DotLottiePlayer
           src={src}
           autoplay
+          loop={false}
           onEvent={(event) => {
+            // Listen for the 'complete' event specifically
             if (event === 'complete') {
               onComplete();
             }
