@@ -14,7 +14,6 @@ interface Event {
   type: 'trip' | 'booking' | 'user' | 'chat' | 'alert';
   message: string;
   time: string;
-  // The following properties are required by the TS error but we can mark them as optional
   [key: string]: any;
 }
 
@@ -25,17 +24,16 @@ import SystemMetricsPanel from './SystemMetricsPanel';
 import BusinessMetricsPanel from './BusinessMetricsPanel';
 import LiveEventFeed from './LiveEventFeed';
 
-// Import components that were causing errors
-import { ShieldCheck as ShieldIcon } from 'lucide-react'; // Fix for ShieldCheck
-import { Briefcase as BriefcaseIcon } from 'lucide-react'; // Fix for Briefcase
-
 const MonitoringDashboard = () => {
   const { getAuthenticatedClient } = useSupabase();
   const [users, setUsers] = useState([]);
   const [trips, setTrips] = useState([]);
   const [shipments, setShipments] = useState([]);
   const [events, setEvents] = useState([]);
-  const [metrics, setMetrics] = useState({     active_connections: 0,     api_response_time: 0,     error_rate: 0,
+  const [metrics, setMetrics] = useState({ 
+    active_connections: 0, 
+    api_response_time: 0, 
+    error_rate: 0,
     active_requests: 0 
   });
   const [businessMetrics, setBusinessMetrics] = useState({
@@ -59,9 +57,11 @@ const MonitoringDashboard = () => {
         .select('*')
         .order('created_at', { ascending: false })
         .limit(50);
-            if (userData) setUsers(userData);
+      
+      if (userData) setUsers(userData);
 
-      // Fetch trips with trucker info      const { data: tripData } = await supabaseClient
+      // Fetch trips with trucker info
+      const { data: tripData } = await supabaseClient
         .from('trips')
         .select('*, trucker:users!trips_trucker_id_fkey(full_name)')
         .order('created_at', { ascending: false });
@@ -93,7 +93,8 @@ const MonitoringDashboard = () => {
         success_rate: successRate
       });
 
-      // Historical events      const [{ data: hTrips }, { data: hShips }] = await Promise.all([
+      // Historical events
+      const [{ data: hTrips }, { data: hShips }] = await Promise.all([
         supabaseClient.from('trips').select('id, origin_city, destination_city, created_at').limit(3),
         supabaseClient.from('shipments').select('id, origin_city, created_at').limit(3)
       ]);
@@ -135,7 +136,7 @@ const MonitoringDashboard = () => {
       <header className="h-14 border-b border-slate-800 bg-slate-900/50 flex items-center justify-between px-6 shrink-0 shadow-2xl">
         <div className="flex items-center gap-4">
           <div className="bg-orange-600 p-1.5 rounded-lg shadow-[0_0_15px_rgba(234,88,12,0.4)]">
-            <ShieldIcon className="h-5 w-5 text-white" />
+            <ShieldCheck className="h-5 w-5 text-white" />
           </div>
           <div>
             <h1 className="text-sm font-black uppercase tracking-wider">Command Center</h1>
@@ -185,7 +186,7 @@ const MonitoringDashboard = () => {
               <ResizablePanel defaultSize={20} minSize={15}>
                 <div className="h-full flex flex-col border-r border-slate-800 p-4 bg-slate-950/50">
                   <div className="flex items-center gap-2 mb-4 shrink-0">
-                    <BriefcaseIcon className="h-4 w-4 text-purple-400" />
+                    <Briefcase className="h-4 w-4 text-purple-400" />
                     <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Business</h2>
                   </div>
                   <ScrollArea className="flex-grow">
@@ -199,7 +200,6 @@ const MonitoringDashboard = () => {
               <ResizablePanel defaultSize={30} minSize={25}>
                 <div className="h-full flex flex-col p-4 bg-slate-950/50">
                   <div className="flex items-center gap-2 mb-4 shrink-0">
-                    {/* Replaced Activity with Truck icon */}
                     <Truck className="h-4 w-4 text-orange-600" />
                     <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Live Traffic</h2>
                   </div>
