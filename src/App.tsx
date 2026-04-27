@@ -47,6 +47,17 @@ const queryClient = new QueryClient();
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || "";
 
 const App = () => {
+  if (!CLERK_PUBLISHABLE_KEY) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-red-50 p-4">
+        <div className="text-center">
+          <h1 className="text-xl font-bold text-red-600 mb-2">Configuration Error</h1>
+          <p className="text-red-500">Missing VITE_CLERK_PUBLISHABLE_KEY in environment variables.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
       <QueryClientProvider client={queryClient}>
@@ -61,33 +72,35 @@ const App = () => {
               <Route path="/choose-role" element={<ChooseRole />} />
 
               {/* Protected Routes with Layout */}
-              <Route element={<Layout><RoleProtectedRoute allowedRole="both"><div>Protected Content</div></RoleProtectedRoute></Layout>}>
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/messages" element={<ChatList />} />
-                <Route path="/chat/:requestId" element={<Chat />} />
-              </Route>
+              <Route element={<Layout />}>
+                <Route element={<RoleProtectedRoute allowedRole="both" />}>
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/messages" element={<ChatList />} />
+                  <Route path="/chat/:requestId" element={<Chat />} />
+                </Route>
 
-              {/* Shipper Routes */}
-              <Route path="/shipper" element={<Layout><RoleProtectedRoute allowedRole="shipper"><div>Shipper Area</div></RoleProtectedRoute></Layout>}>
-                <Route path="dashboard" element={<ShipperDashboard />} />
-                <Route path="post-shipment" element={<PostShipments />} />
-                <Route path="my-shipments" element={<MyShipments />} />
-                <Route path="shipments/:id" element={<ShipmentDetail />} />
-                <Route path="shipments/:shipmentId/edit" element={<EditShipment />} />
-                <Route path="history" element={<ShipperHistory />} />
-              </Route>
-              <Route path="/browse-trucks" element={<Layout><RoleProtectedRoute allowedRole="shipper"><BrowseTrips /></RoleProtectedRoute></Layout>} />
-              <Route path="/trips/:tripId" element={<Layout><RoleProtectedRoute allowedRole="shipper"><TruckerTripDetail /></RoleProtectedRoute></Layout>} />
+                {/* Shipper Routes */}
+                <Route element={<RoleProtectedRoute allowedRole="shipper" />}>
+                  <Route path="/shipper/dashboard" element={<ShipperDashboard />} />
+                  <Route path="/shipper/post-shipment" element={<PostShipments />} />
+                  <Route path="/shipper/my-shipments" element={<MyShipments />} />
+                  <Route path="/shipper/shipments/:id" element={<ShipmentDetail />} />
+                  <Route path="/shipper/shipments/:shipmentId/edit" element={<EditShipment />} />
+                  <Route path="/shipper/history" element={<ShipperHistory />} />
+                  <Route path="/browse-trucks" element={<BrowseTrips />} />
+                  <Route path="/trips/:tripId" element={<TruckerTripDetail />} />
+                </Route>
 
-              {/* Trucker Routes */}
-              <Route path="/trucker" element={<Layout><RoleProtectedRoute allowedRole="trucker"><div>Trucker Area</div></RoleProtectedRoute></Layout>}>
-                <Route path="dashboard" element={<TruckerDashboard />} />
-                <Route path="post-trip" element={<PostTrip />} />
-                <Route path="my-trips" element={<TruckerHub />} />
-                <Route path="trips/:tripId" element={<TruckerTripDetail />} />
-                <Route path="trips/:tripId/edit" element={<EditTrip />} />
-                <Route path="browse-shipments" element={<BrowseShipments />} />
-                <Route path="history" element={<TruckerHistory />} />
+                {/* Trucker Routes */}
+                <Route element={<RoleProtectedRoute allowedRole="trucker" />}>
+                  <Route path="/trucker/dashboard" element={<TruckerDashboard />} />
+                  <Route path="/trucker/post-trip" element={<PostTrip />} />
+                  <Route path="/trucker/my-trips" element={<TruckerHub />} />
+                  <Route path="/trucker/trips/:tripId" element={<TruckerTripDetail />} />
+                  <Route path="/trucker/trips/:tripId/edit" element={<EditTrip />} />
+                  <Route path="/trucker/browse-shipments" element={<BrowseShipments />} />
+                  <Route path="/trucker/history" element={<TruckerHistory />} />
+                </Route>
               </Route>
 
               {/* Admin Routes */}
