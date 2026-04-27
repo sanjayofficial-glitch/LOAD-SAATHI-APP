@@ -35,7 +35,6 @@ const Chat = lazy(() => import("./pages/Chat"));
 const ChatList = lazy(() => import("./pages/ChatList"));
 const Profile = lazy(() => import("./pages/Profile"));
 const NotFound = lazy(() => import("./pages/NotFound"));
-const AdminMonitoringDashboard = lazy(() => import("./pages/admin/MonitoringDashboard"));
 
 const queryClient = new QueryClient();
 
@@ -74,7 +73,7 @@ function App() {
                       <Outlet />
                     </RoleProtectedRoute>
                   }>
-                    <Route path="/admin/monitoring" element={<AdminMonitoringDashboard />} />
+                    {/* AdminMonitoringDashboard removed - no route for /admin/monitoring */}
                   </Route>
 
                   {/* Authenticated routes wrapped with Layout */}
