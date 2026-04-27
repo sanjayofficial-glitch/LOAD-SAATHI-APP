@@ -1,6 +1,31 @@
-import EditShipment from "./pages/shipper/EditShipment";
-import ShipmentDetail from "./pages/ShipmentDetail";
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+import Index from "./pages/Index";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import NotFound from "./pages/NotFound";
+import AuthSync from "./components/AuthSync";
+import Layout from "./components/Layout";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
+import ChooseRole from "./pages/ChooseRole";
+import Profile from "./pages/Profile";
+import Chat from "./pages/Chat";
+import ChatList from "./pages/ChatList";
+import TripDetail from "./pages/TripDetail";
+import ShipmentDetail from "./pages/ShipmentDetail";
+import EditShipment from "./pages/shipper/EditShipment";
+import TruckerHub from "./pages/trucker/TruckerHub";
+import TruckerTripDetail from "./pages/trucker/TruckerTripDetail";
+import TruckerDashboard from "./pages/trucker/Dashboard";
+import ShipperDashboard from "./pages/shipper/Dashboard";
+import ShipperHistory from "./pages/shipper/ShipperHistory";
+import TruckerHistory from "./pages/trucker/TruckerHistory";
+import BrowseTrips from "./pages/shipper/BrowseTrips";
+import BrowseShipments from "./pages/trucker/BrowseShipments";
+import PostTrip from "./pages/trucker/PostTrip";
+import PostShipments from "./pages/shipper/PostShipments";
+import AdminMonitoring from "./pages/admin/MonitoringDashboard";
 
 function App() {
   return (
@@ -22,13 +47,21 @@ function App() {
       <Route path="/trucker/post-trip" element={<PostTrip />} />
       <Route path="/shipper/post-shipment" element={<PostShipments />} />
 
-      {/* Direct routes to avoid children prop issues with RoleProtectedRoute */}
-      <Route path="/shipper/dashboard" element={<ShipperDashboard />} />
-      <Route path="/shipper/my-shipments" element={<ShipperHistory />} />
-      <Route path="/trucker/dashboard" element={<TruckerDashboard />} />
-      <Route path="/trucker/my-trips" element={<TruckerHub />} />
-      <Route path="/trucker/trips/:tripId" element={<TruckerTripDetail />} />
-      <Route path="/admin/monitoring" element={<AdminMonitoring />} />
+      {/* Wrap nested routes with RoleProtectedRoute to provide children */}
+      <Route element={<RoleProtectedRoute allowedRole="shipper" />}>
+        <Route path="/shipper/dashboard" element={<ShipperDashboard />} />
+        <Route path="/shipper/my-shipments" element={<ShipperHistory />} />
+      </Route>
+
+      <Route element={<RoleProtectedRoute allowedRole="trucker" />}>
+        <Route path="/trucker/dashboard" element={<TruckerDashboard />} />
+        <Route path="/trucker/my-trips" element={<TruckerHub />} />
+        <Route path="/trucker/trips/:tripId" element={<TruckerTripDetail />} />
+      </Route>
+
+      <Route element={<RoleProtectedRoute allowedRole="admin" />}>
+        <Route path="/admin/monitoring" element={<AdminMonitoring />} />
+      </Route>
 
       <Route path="*" element={<NotFound />} />
     </Routes>
