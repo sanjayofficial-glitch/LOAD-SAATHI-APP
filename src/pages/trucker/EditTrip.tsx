@@ -1,8 +1,3 @@
-const EditTrip = () => {
-  // Minimal implementation for compilation
-  return (
-    <div>Edit Trip</div>;
-  };
-};
-
-export default EditTrip;
+export default function EditTrip() {
+  return <div>Edit Trip</div>;
+}

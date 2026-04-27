@@ -1,108 +1,70 @@
-"use client";
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+import Index from "./pages/Index";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import NotFound from "./pages/NotFound";
+import AuthSync from "./components/AuthSync";
+import Layout from "./components/Layout";
+import RoleProtectedRoute from "./components/RoleProtectedRoute";
+import ChooseRole from "./pages/ChooseRole";
+import Profile from "./pages/Profile";
+import Chat from "./pages/Chat";
+import ChatList from "./pages/ChatList";
+import TripDetail from "./pages/TripDetail";
+import ShipmentDetail from "./pages/ShipmentDetail";
+import EditShipment from "./pages/shipper/EditShipment";
+import TruckerHub from "./pages/trucker/TruckerHub";
+import TruckerTripDetail from "./pages/trucker/TruckerTripDetail";
+import TruckerDashboard from "./pages/trucker/Dashboard";
+import ShipperDashboard from "./pages/shipper/Dashboard";
+import ShipperHistory from "./pages/shipper/ShipperHistory";
+import TruckerHistory from "./pages/trucker/TruckerHistory";
+import BrowseTrips from "./pages/shipper/BrowseTrips";
+import BrowseShipments from "./pages/trucker/BrowseShipments";
+import PostTrip from "./pages/trucker/PostTrip";
+import PostShipments from "./pages/shipper/PostShipments";
+import AdminMonitoring from "./pages/admin/MonitoringDashboard";
 
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ClerkProvider } from '@clerk/clerk-react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { Toaster } from "@/components/ui/sonner";
-
-// Pages
-import Index from './pages/Index';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import ChooseRole from './pages/ChooseRole';
-import AuthSync from './components/AuthSync';
-import Profile from './pages/Profile';
-import Chat from './pages/Chat';
-import ChatList from './pages/ChatList';
-import NotFound from './pages/NotFound';
-
-// Shipper Pages
-import ShipperDashboard from './pages/shipper/Dashboard';
-import PostShipments from './pages/shipper/PostShipments';
-import MyShipments from './pages/shipper/MyShipments';
-import ShipmentDetail from './pages/shipper/ShipmentDetail';
-import EditShipment from './pages/shipper/EditShipment';
-import BrowseTrips from './pages/shipper/BrowseTrips';
-import ShipperHistory from './pages/shipper/ShipperHistory';
-
-// Trucker Pages
-import TruckerDashboard from './pages/trucker/Dashboard';
-import PostTrip from './pages/trucker/PostTrip';
-import TruckerHub from './pages/trucker/TruckerHub';
-import TruckerTripDetail from './pages/trucker/TruckerTripDetail';
-import EditTrip from './pages/trucker/EditTrip';
-import BrowseShipments from './pages/trucker/BrowseShipments';
-import TruckerHistory from './pages/trucker/TruckerHistory';
-
-// Admin Pages
-import MonitoringDashboard from './pages/admin/MonitoringDashboard';
-
-// Components
-import Layout from './components/Layout';
-import RoleProtectedRoute from './components/RoleProtectedRoute';
-
-const queryClient = new QueryClient();
-const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || "";
-
-const App = () => {
+export default function App() {
   return (
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <Router>
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/" element={<Index />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route path="/auth-sync" element={<AuthSync />} />
-              <Route path="/choose-role" element={<ChooseRole />} />
+    <Routes>
+      <Route path="/" element={<Index />} />
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/choose-role" element={<ChooseRole />} />
+      <Route path="/auth-sync" element={<AuthSync />} />
+      <Route path="/profile" element={<Profile />} />
+      <Route path="/chat/:requestId" element={<Chat />} />
+      <Route path="/messages" element={<ChatList />} />
+      <Route path="/trips/:tripId" element={<TripDetail />} />
+      <Route path="/shipments/:id" element={<ShipmentDetail />} />
+      <Route path="/shipments/:shipmentId/edit" element={<EditShipment />} />
+      <Route path="/browse-trucks" element={<BrowseTrips />} />
+      <Route path="/trucker/browse-shipments" element={<BrowseShipments />} />
+      <Route path="/trucker/post-trip" element={<PostTrip />} />
+      <Route path="/shipper/post-shipment" element={<PostShipments />} />
 
-              {/* Protected Routes with Layout */}
-              <Route element={<Layout><RoleProtectedRoute allowedRole="both"><div>Protected Content</div></RoleProtectedRoute></Layout>}>
-                <Route path="/profile" element={<Profile />} />
-                <Route path="/messages" element={<ChatList />} />
-                <Route path="/chat/:requestId" element={<Chat />} />
-              </Route>
+      <Route element={<Layout />}>
+        <Route element={<RoleProtectedRoute allowedRole="shipper" />}>
+          <Route path="/shipper/dashboard" element={<ShipperDashboard />} />
+          <Route path="/shipper/my-shipments" element={<ShipperHistory />} />
+        </Route>
 
-              {/* Shipper Routes */}
-              <Route path="/shipper" element={<Layout><RoleProtectedRoute allowedRole="shipper"><div>Shipper Area</div></RoleProtectedRoute></Layout>}>
-                <Route path="dashboard" element={<ShipperDashboard />} />
-                <Route path="post-shipment" element={<PostShipments />} />
-                <Route path="my-shipments" element={<MyShipments />} />
-                <Route path="shipments/:id" element={<ShipmentDetail />} />
-                <Route path="shipments/:shipmentId/edit" element={<EditShipment />} />
-                <Route path="history" element={<ShipperHistory />} />
-              </Route>
-              <Route path="/browse-trucks" element={<Layout><RoleProtectedRoute allowedRole="shipper"><BrowseTrips /></RoleProtectedRoute></Layout>} />
-              <Route path="/trips/:tripId" element={<Layout><RoleProtectedRoute allowedRole="shipper"><TruckerTripDetail /></RoleProtectedRoute></Layout>} />
+        <Route element={<RoleProtectedRoute allowedRole="trucker" />}>
+          <Route path="/trucker/dashboard" element={<TruckerDashboard />} />
+          <Route path="/trucker/my-trips" element={<TruckerHub />} />
+          <Route path="/trucker/trips/:tripId" element={<TruckerTripDetail />} />
+        </Route>
 
-              {/* Trucker Routes */}
-              <Route path="/trucker" element={<Layout><RoleProtectedRoute allowedRole="trucker"><div>Trucker Area</div></RoleProtectedRoute></Layout>}>
-                <Route path="dashboard" element={<TruckerDashboard />} />
-                <Route path="post-trip" element={<PostTrip />} />
-                <Route path="my-trips" element={<TruckerHub />} />
-                <Route path="trips/:tripId" element={<TruckerTripDetail />} />
-                <Route path="trips/:tripId/edit" element={<EditTrip />} />
-                <Route path="browse-shipments" element={<BrowseShipments />} />
-                <Route path="history" element={<TruckerHistory />} />
-              </Route>
+        <Route element={<RoleProtectedRoute allowedRole="admin" />}>
+          <Route path="/admin/monitoring" element={<AdminMonitoring />} />
+        </Route>
+      </Route>
 
-              {/* Admin Routes */}
-              <Route path="/admin/monitoring" element={<RoleProtectedRoute allowedRole="admin"><MonitoringDashboard /></RoleProtectedRoute>} />
-
-              {/* Fallback */}
-              <Route path="/404" element={<NotFound />} />
-              <Route path="*" element={<Navigate to="/404" replace />} />
-            </Routes>
-          </Router>
-          <Toaster position="top-center" />
-        </AuthProvider>
-      </QueryClientProvider>
-    </ClerkProvider>
+      <Route path="*" element={<NotFound />} />
+    </Routes>
   );
-};
-
-export default App;
+}
