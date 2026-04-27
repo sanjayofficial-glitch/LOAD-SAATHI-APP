@@ -61,7 +61,7 @@ const TripMapComponent: React.FC<TripMapProps> = ({ trips, shipments }) => {
     // Robust jitter to ensure every single icon is visible even in the same city
     // We use the index to ensure they spread out in a circle
     const angle = (index * 137.5) * (Math.PI / 180); // Golden angle
-    const radius = 0.08; // Spread radius
+    const radius = 0.02; // Smaller spread radius to stay on land
     const jitterLat = Math.sin(angle) * radius;
     const jitterLng = Math.cos(angle) * radius;
     
