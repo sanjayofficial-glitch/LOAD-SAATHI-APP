@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -8,22 +8,22 @@ interface TripMapProps {
   shipments: any[];
 }
 
-// Custom high-tech icons
+// Stylized high-tech icons matching the screenshot
 const truckIcon = new L.Icon({
   iconUrl: 'https://cdn-icons-png.flaticon.com/512/1048/1048313.png',
-  iconSize: [20, 20],
-  iconAnchor: [10, 10],
-  className: 'drop-shadow-[0_0_5px_rgba(234,88,12,0.8)]'
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+  className: 'drop-shadow-[0_0_8px_rgba(34,211,238,0.8)] brightness-125'
 });
 
 const boxIcon = new L.Icon({
   iconUrl: 'https://cdn-icons-png.flaticon.com/512/2830/2830305.png',
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
-  className: 'drop-shadow-[0_0_5px_rgba(59,130,246,0.8)]'
+  iconSize: [20, 20],
+  iconAnchor: [10, 10],
+  className: 'drop-shadow-[0_0_8px_rgba(249,115,22,0.8)] brightness-125'
 });
 
-// Expanded geocoding cache
+// Expanded geocoding cache for India
 const geoCache: Record<string, [number, number]> = {
   "Mumbai": [19.0760, 72.8777], "Delhi": [28.6139, 77.2090], "Bangalore": [12.9716, 77.5946],
   "Hyderabad": [17.3850, 78.4867], "Ahmedabad": [23.0225, 72.5714], "Chennai": [13.0827, 80.2707],
@@ -52,14 +52,13 @@ const geoCache: Record<string, [number, number]> = {
   "Hisar": [29.1492, 75.7217], "Ambala": [30.3782, 76.7767], "Shimla": [31.1048, 77.1734],
   "Haridwar": [29.9457, 78.1642], "Rishikesh": [30.0869, 78.2676], "Haldwani": [29.2183, 79.5130],
   "Almora": [29.5892, 79.6467], "Nainital": [29.3919, 79.4542], "Pithoragarh": [29.5829, 80.2182],
-  "Rudrapur": [28.9861, 79.3919], "Kashipur": [29.2104, 78.9619], "Roorkee": [29.8543, 77.8880]
+  "Rudrapur": [28.9861, 79.3919], "Kashipur": [29.2104, 78.9619], "Roorkee": [29.8543, 77.8880],
+  "Garhwa": [24.1745, 83.8112], "Sambalpur": [21.4669, 83.9812], "Durg": [21.1905, 81.2849]
 };
 
 const TripMapComponent: React.FC<TripMapProps> = ({ trips, shipments }) => {
   const center: [number, number] = [22.5937, 78.9629];
 
-  // Function to get coordinates with a small random offset (jitter)
-  // This ensures markers in the same city don't overlap perfectly
   const getCoords = (city: string, index: number): [number, number] | null => {
     if (!city) return null;
     const cleanCity = city.split(',')[0].trim();
@@ -67,9 +66,9 @@ const TripMapComponent: React.FC<TripMapProps> = ({ trips, shipments }) => {
     
     if (!baseCoords) return null;
 
-    // Add jitter based on index to keep it deterministic but spread out
-    const jitterLat = (Math.sin(index * 12.9898) * 0.01);
-    const jitterLng = (Math.cos(index * 78.233) * 0.01);
+    // Robust jitter to ensure every single icon is visible even in the same city
+    const jitterLat = (Math.sin(index * 12.9898) * 0.05);
+    const jitterLng = (Math.cos(index * 78.233) * 0.05);
     
     return [baseCoords[0] + jitterLat, baseCoords[1] + jitterLng];
   };
@@ -96,10 +95,9 @@ const TripMapComponent: React.FC<TripMapProps> = ({ trips, shipments }) => {
             {origin && (
               <Marker position={origin} icon={truckIcon}>
                 <Popup className="dark-popup">
-                  <div className="text-[10px] font-mono">
-                    <p className="text-orange-500 font-bold">TRUCK: {trip.vehicle_number}</p>
-                    <p className="text-slate-300">{trip.origin_city} → {trip.destination_city}</p>
-                    <p className="text-slate-500">Rate: ₹{trip.price_per_tonne}/t</p>
+                  <div className="text-[10px] font-mono bg-slate-950 text-slate-300 p-1">
+                    <p className="text-cyan-400 font-bold">TRUCK_NODE: {trip.vehicle_number}</p>
+                    <p>{trip.origin_city} → {trip.destination_city}</p>
                   </div>
                 </Popup>
               </Marker>
@@ -109,10 +107,10 @@ const TripMapComponent: React.FC<TripMapProps> = ({ trips, shipments }) => {
               <Polyline 
                 positions={[origin, dest]}
                 pathOptions={{ 
-                  color: '#ea580c', 
-                  weight: 1, 
-                  dashArray: '5, 10',
-                  opacity: 0.6
+                  color: '#06b6d4', 
+                  weight: 1.5, 
+                  dashArray: '4, 8',
+                  opacity: 0.7
                 }}
               />
             )}
@@ -129,10 +127,9 @@ const TripMapComponent: React.FC<TripMapProps> = ({ trips, shipments }) => {
             {origin && (
               <Marker position={origin} icon={boxIcon}>
                 <Popup className="dark-popup">
-                  <div className="text-[10px] font-mono">
-                    <p className="text-blue-500 font-bold">LOAD: {shipment.goods_description}</p>
-                    <p className="text-slate-300">{shipment.origin_city} → {shipment.destination_city}</p>
-                    <p className="text-slate-500">Weight: {shipment.weight_tonnes}t</p>
+                  <div className="text-[10px] font-mono bg-slate-950 text-slate-300 p-1">
+                    <p className="text-orange-500 font-bold">LOAD_NODE: {shipment.goods_description}</p>
+                    <p>{shipment.origin_city} → {shipment.destination_city}</p>
                   </div>
                 </Popup>
               </Marker>
@@ -142,10 +139,10 @@ const TripMapComponent: React.FC<TripMapProps> = ({ trips, shipments }) => {
               <Polyline 
                 positions={[origin, dest]}
                 pathOptions={{ 
-                  color: '#3b82f6', 
-                  weight: 1, 
-                  dashArray: '3, 6',
-                  opacity: 0.5
+                  color: '#f97316', 
+                  weight: 1.5, 
+                  dashArray: '2, 4',
+                  opacity: 0.6
                 }}
               />
             )}
