@@ -121,10 +121,15 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
         const trip = tList[i];
         if (trip.status === 'cancelled') continue;
         
+        const originCity = trip.origin_city.toLowerCase().trim();
+        const destCity = trip.destination_city.toLowerCase().trim();
+        
         const origin = await getCityCoords(trip.origin_city);
-        if (!coordCache[trip.origin_city.toLowerCase()]) await sleep(500);
+        // Only sleep if we actually hit the API (not in cache)
+        if (!coordCache[originCity]) await sleep(500);
+        
         const dest = await getCityCoords(trip.destination_city);
-        if (!coordCache[trip.destination_city.toLowerCase()]) await sleep(500);
+        if (!coordCache[destCity]) await sleep(500);
 
         if (origin && dest) {
           tripsResult.push({ ...trip, origin: applyJitter(origin, i), destination: applyJitter(dest, i + 10) });
@@ -137,10 +142,14 @@ const TripMap: React.FC<TripMapProps> = ({ trips, shipments }) => {
         const ship = sList[i];
         if (ship.status === 'cancelled') continue;
 
+        const originCity = ship.origin_city.toLowerCase().trim();
+        const destCity = ship.destination_city.toLowerCase().trim();
+
         const origin = await getCityCoords(ship.origin_city);
-        if (!coordCache[ship.origin_city.toLowerCase()]) await sleep(500);
+        if (!coordCache[originCity]) await sleep(500);
+        
         const dest = await getCityCoords(ship.destination_city);
-        if (!coordCache[ship.destination_city.toLowerCase()]) await sleep(500);
+        if (!coordCache[destCity]) await sleep(500);
 
         if (origin && dest) {
           shipmentsResult.push({ ...ship, origin: applyJitter(origin, i + 50), destination: applyJitter(dest, i + 60) });

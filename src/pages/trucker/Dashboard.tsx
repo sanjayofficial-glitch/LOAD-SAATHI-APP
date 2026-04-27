@@ -42,51 +42,30 @@ const TruckerDashboard = () => {
       
       const supabase = createClerkSupabaseClient(supabaseToken);
 
-      // 1. Active Trips count
-      const { count: activeCount } = await supabase
-        .from('trips')
-        .select('*', { count: 'exact', head: true })
-        .eq('trucker_id', userProfile.id)
-        .eq('status', 'active');
-
-      // 2. Pending Booking Requests count (shipper -> trip)
-      const { count: pendingBookingCount } = await supabase
-        .from('requests')
-        .select('*', { count: 'exact', head: true })
-        .eq('receiver_id', userProfile.id)
-        .eq('status', 'pending');
-
-      // 3. Completed Trips count
-      const { count: completedCount } = await supabase
-        .from('trips')
-        .select('*', { count: 'exact', head: true })
-        .eq('trucker_id', userProfile.id)
-        .eq('status', 'completed');
-
-      // 4. Calculate total earnings (both from bookings and offers)
-      // a. From bookings accepted (shipper -> trip)
-      const { data: bookingEarnings } = await supabase
-        .from('requests')
-        .select('weight_tonnes, trip:trips(price_per_tonne)')
-        .eq('receiver_id', userProfile.id)
-        .eq('status', 'accepted');
-
-      // b. From offers accepted (trucker -> load)
-      const { data: offerEarnings } = await supabase
-        .from('shipment_requests')
-        .select('proposed_price_per_tonne, shipment:shipments(weight_tonnes)')
-        .eq('trucker_id', userProfile.id)
-        .eq('status', 'accepted');
+      // Fetch all data in parallel for maximum speed
+      const [
+        activeRes,
+        pendingRes,
+        completedRes,
+        bookingEarningsRes,
+        offerEarningsRes
+      ] = await Promise.all([
+        supabase.from('trips').select('*', { count: 'exact', head: true }).eq('trucker_id', userProfile.id).eq('status', 'active'),
+        supabase.from('requests').select('*', { count: 'exact', head: true }).eq('receiver_id', userProfile.id).eq('status', 'pending'),
+        supabase.from('trips').select('*', { count: 'exact', head: true }).eq('trucker_id', userProfile.id).eq('status', 'completed'),
+        supabase.from('requests').select('weight_tonnes, trip:trips(price_per_tonne)').eq('receiver_id', userProfile.id).eq('status', 'accepted'),
+        supabase.from('shipment_requests').select('proposed_price_per_tonne, shipment:shipments(weight_tonnes)').eq('trucker_id', userProfile.id).eq('status', 'accepted')
+      ]);
 
       const totalEarnings = (
-        (bookingEarnings?.reduce((sum, r: any) => sum + (r.weight_tonnes * (r.trip?.price_per_tonne || 0)), 0) || 0) +
-        (offerEarnings?.reduce((sum, o: any) => sum + ((o.proposed_price_per_tonne || 0) * (o.shipment?.weight_tonnes || 0)), 0) || 0)
+        (bookingEarningsRes.data?.reduce((sum, r: any) => sum + (r.weight_tonnes * (r.trip?.price_per_tonne || 0)), 0) || 0) +
+        (offerEarningsRes.data?.reduce((sum, o: any) => sum + ((o.proposed_price_per_tonne || 0) * (o.shipment?.weight_tonnes || 0)), 0) || 0)
       );
 
       setStats({
-        activeTrips: activeCount || 0,
-        pendingRequests: pendingBookingCount || 0,
-        completedTrips: completedCount || 0,
+        activeTrips: activeRes.count || 0,
+        pendingRequests: pendingRes.count || 0,
+        completedTrips: completedRes.count || 0,
         totalEarnings
       });
     } catch (err: any) {

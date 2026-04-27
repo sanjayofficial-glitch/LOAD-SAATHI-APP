@@ -56,62 +56,34 @@ const ShipperDashboard = () => {
       if (!supabaseToken) throw new Error('No Supabase token');
       const supabase = createClerkSupabaseClient(supabaseToken);
 
-      // 1. Fetch active shipments count
-      const { count: activeCount } = await supabase
-        .from('shipments')
-        .select('*', { count: 'exact', head: true })
-        .eq('shipper_id', userProfile.id)
-        .eq('status', 'pending');
-      
-      // 2. Fetch completed shipments count
-      const { count: completedCount } = await supabase
-        .from('shipments')
-        .select('*', { count: 'exact', head: true })
-        .eq('shipper_id', userProfile.id)
-        .eq('status', 'completed');
-      
-      // 3. Fetch incoming offers count (trucker -> shipper)
-      const { count: pendingOffersCount } = await supabase
-        .from('shipment_requests')
-        .select('*', { count: 'exact', head: true })
-        .eq('shipper_id', userProfile.id)
-        .eq('status', 'pending');
-
-      // 4. Calculate total spent (from both requests and accepted offers)
-      // a. From direct requests (shipper -> trip)
-      const { data: requestSpent } = await supabase
-        .from('requests')
-        .select('weight_tonnes, trip:trips(price_per_tonne)')
-        .eq('shipper_id', userProfile.id)
-        .eq('status', 'accepted');
-
-      // b. From shipment requests (trucker -> shipment)
-      const { data: offerSpent } = await supabase
-        .from('shipment_requests')
-        .select('proposed_price_per_tonne, shipment:shipments(weight_tonnes)')
-        .eq('shipper_id', userProfile.id)
-        .eq('status', 'accepted');
+      // Fetch all data in parallel for maximum speed
+      const [
+        activeRes,
+        completedRes,
+        pendingOffersRes,
+        requestSpentRes,
+        offerSpentRes,
+        upcomingRes
+      ] = await Promise.all([
+        supabase.from('shipments').select('*', { count: 'exact', head: true }).eq('shipper_id', userProfile.id).eq('status', 'pending'),
+        supabase.from('shipments').select('*', { count: 'exact', head: true }).eq('shipper_id', userProfile.id).eq('status', 'completed'),
+        supabase.from('shipment_requests').select('*', { count: 'exact', head: true }).eq('shipper_id', userProfile.id).eq('status', 'pending'),
+        supabase.from('requests').select('weight_tonnes, trip:trips(price_per_tonne)').eq('shipper_id', userProfile.id).eq('status', 'accepted'),
+        supabase.from('shipment_requests').select('proposed_price_per_tonne, shipment:shipments(weight_tonnes)').eq('shipper_id', userProfile.id).eq('status', 'accepted'),
+        supabase.from('shipments').select('*').eq('shipper_id', userProfile.id).eq('status', 'pending').order('departure_date', { ascending: true }).limit(3)
+      ]);
 
       const totalSpent = (
-        (requestSpent?.reduce((sum, r: any) => sum + (r.weight_tonnes * (r.trip?.price_per_tonne || 0)), 0) || 0) +
-        (offerSpent?.reduce((sum, o: any) => sum + ((o.proposed_price_per_tonne || 0) * (o.shipment?.weight_tonnes || 0)), 0) || 0)
+        (requestSpentRes.data?.reduce((sum, r: any) => sum + (r.weight_tonnes * (r.trip?.price_per_tonne || 0)), 0) || 0) +
+        (offerSpentRes.data?.reduce((sum, o: any) => sum + ((o.proposed_price_per_tonne || 0) * (o.shipment?.weight_tonnes || 0)), 0) || 0)
       );
 
-      // 5. Fetch upcoming loads
-      const { data: upcoming } = await supabase
-        .from('shipments')
-        .select('*')
-        .eq('shipper_id', userProfile.id)
-        .eq('status', 'pending')
-        .order('departure_date', { ascending: true })
-        .limit(3);
-
       setStats({ 
-        activeShipments: activeCount || 0, 
-        pendingRequests: pendingOffersCount || 0, 
-        completedShipments: completedCount || 0,
+        activeShipments: activeRes.count || 0, 
+        pendingRequests: pendingOffersRes.count || 0, 
+        completedShipments: completedRes.count || 0,
         totalSpent,
-        upcomingShipments: upcoming || []
+        upcomingShipments: upcomingRes.data || []
       });
     } catch (err: any) {
       console.error('[ShipperDashboard] Error:', err);
