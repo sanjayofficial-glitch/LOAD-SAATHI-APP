@@ -2,7 +2,6 @@ import React from 'react';
 import { MapContainer, Marker, TileLayer, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Truck, Flag } from 'lucide-react';
 
 interface Trip {
   id: string;
@@ -10,6 +9,8 @@ interface Trip {
   origin_lng: number;
   destination_lat: number;
   destination_lng: number;
+  origin_city: string;
+  destination_city: string;
   trucker?: {
     full_name: string;
   };
@@ -21,6 +22,8 @@ interface Shipment {
   origin_lng: number;
   destination_lat: number;
   destination_lng: number;
+  origin_city: string;
+  destination_city: string;
   shipper?: {
     full_name: string;
   };
@@ -35,10 +38,16 @@ const TripMapComponent: React.FC<{ trips: Trip[]; shipments: Shipment[] }> = ({ 
     iconAnchor: [12, 12] as L.PointExpression,
   });
 
-  const shipmentIcon = new L.Icon({
+  const boxIcon = new L.Icon({
     iconUrl: 'https://cdn-icons-png.flaticon.com/512/2830/2830305.png',
     iconSize: [24, 24] as L.PointExpression,
     iconAnchor: [12, 12] as L.PointExpression,
+  });
+
+  const flagIcon = new L.Icon({
+    iconUrl: 'https://cdn-icons-png.flaticon.com/512/3233/3233005.png',
+    iconSize: [24, 24] as L.PointExpression,
+    iconAnchor: [12, 24] as L.PointExpression,
   });
 
   return (
@@ -52,9 +61,19 @@ const TripMapComponent: React.FC<{ trips: Trip[]; shipments: Shipment[] }> = ({ 
           <Popup>{trip.trucker?.full_name || 'Truck'}</Popup>
         </Marker>
       ))}
+      {trips.map((trip) => (
+        <Marker key={`t-dest-${trip.id}`} position={[trip.destination_lat, trip.destination_lng]} icon={flagIcon}>
+          <Popup>To: {trip.destination_city}</Popup>
+        </Marker>
+      ))}
       {shipments.map((shipment) => (
-        <Marker key={`s-${shipment.id}`} position={[shipment.origin_lat, shipment.origin_lng]} icon={shipmentIcon}>
+        <Marker key={`s-${shipment.id}`} position={[shipment.origin_lat, shipment.origin_lng]} icon={boxIcon}>
           <Popup>{shipment.shipper?.full_name || 'Shipment'}</Popup>
+        </Marker>
+      ))}
+      {shipments.map((shipment) => (
+        <Marker key={`s-dest-${shipment.id}`} position={[shipment.destination_lat, shipment.destination_lng]} icon={flagIcon}>
+          <Popup>To: {shipment.destination_city}</Popup>
         </Marker>
       ))}
     </MapContainer>
