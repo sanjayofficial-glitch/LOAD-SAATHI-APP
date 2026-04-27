@@ -104,8 +104,53 @@ const TripMapComponent = ({ trips, height = '300px' }: TripMapProps) => {
   // Center fallback
   const center: [number, number] = [22.5937, 78.9629];
 
+  // Calculate totals
+  const totalTrips = trips.length;
+  const totalLoads = trips.reduce((sum, trip) => sum + (trip.available_capacity_tonnes || 0), 0);
+
   return (
-    <div className="rounded-lg overflow-hidden border border-gray-200" style={{ height }}>
+    <div className="rounded-lg overflow-hidden border border-gray-200 relative" style={{ height }}>
+      {/* Summary Panel - positioned absolutely over the map */}
+      <div className="absolute top-4 left-4 z-[1000] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg border border-gray-200 p-4 min-w-[200px]">
+        <div className="space-y-4">
+          {/* Total Trips */}
+          <div className="flex items-center gap-3">
+            <div className="bg-orange-100 p-2 rounded-lg">
+              <svg className="h-5 w-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium uppercase">Total Trips</p>
+              <p className="text-2xl font-bold text-gray-900">{totalTrips}</p>
+            </div>
+          </div>
+
+          {/* Divider with connecting line icon */}
+          <div className="flex items-center justify-center">
+            <div className="h-6 w-6 text-orange-400">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M12 5v14M5 12h14" strokeDasharray="4,4"/>
+                <circle cx="12" cy="12" r="3" fill="currentColor"/>
+              </svg>
+            </div>
+          </div>
+
+          {/* Total Loads */}
+          <div className="flex items-center gap-3">
+            <div className="bg-blue-100 p-2 rounded-lg">
+              <svg className="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium uppercase">Total Loads</p>
+              <p className="text-2xl font-bold text-blue-600">{totalLoads.toLocaleString()}t</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <MapContainer
         center={center}
         zoom={5}
