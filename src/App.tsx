@@ -47,21 +47,59 @@ function App() {
       <Route path="/trucker/post-trip" element={<PostTrip />} />
       <Route path="/shipper/post-shipment" element={<PostShipments />} />
 
-      {/* Wrap nested routes with RoleProtectedRoute to provide children */}
-      <Route element={<RoleProtectedRoute allowedRole="shipper" />}>
-        <Route path="/shipper/dashboard" element={<ShipperDashboard />} />
-        <Route path="/shipper/my-shipments" element={<ShipperHistory />} />
-      </Route>
+      {/* Shipper routes */}
+      <Route
+        path="/shipper/dashboard"
+        element={
+          <RoleProtectedRoute allowedRole="shipper">
+            <ShipperDashboard />
+          </RoleProtectedRoute>
+        }
+      />
+      <Route
+        path="/shipper/my-shipments"
+        element={
+          <RoleProtectedRoute allowedRole="shipper">
+            <ShipperHistory />
+          </RoleProtectedRoute>
+        }
+      />
 
-      <Route element={<RoleProtectedRoute allowedRole="trucker" />}>
-        <Route path="/trucker/dashboard" element={<TruckerDashboard />} />
-        <Route path="/trucker/my-trips" element={<TruckerHub />} />
-        <Route path="/trucker/trips/:tripId" element={<TruckerTripDetail />} />
-      </Route>
+      {/* Trucker routes */}
+      <Route
+        path="/trucker/dashboard"
+        element={
+          <RoleProtectedRoute allowedRole="trucker">
+            <TruckerDashboard />
+          </RoleProtectedRoute>
+        }
+      />
+      <Route
+        path="/trucker/my-trips"
+        element={
+          <RoleProtectedRoute allowedRole="trucker">
+            <TruckerHub />
+          </RoleProtectedRoute>
+        }
+      />
+      <Route
+        path="/trucker/trips/:tripId"
+        element={
+          <RoleProtectedRoute allowedRole="trucker">
+            <TruckerTripDetail />
+          </RoleProtectedRoute>
+        }
+      />
 
-      <Route element={<RoleProtectedRoute allowedRole="admin" />}>
-        <Route path="/admin/monitoring" element={<AdminMonitoring />} />
-      </Route>
+      {/* Admin routes */}
+      <Route
+        path="/admin/monitoring"
+        element={
+          <RoleProtectedRoute allowedRole="admin">
+            <AdminMonitoring />
+          </RoleProtectedRoute>
+        }
+      />
 
       <Route path="*" element={<NotFound />} />
     </Routes>
