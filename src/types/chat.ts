@@ -11,6 +11,5 @@ export interface Message {
 export interface ChatParticipant {
   id: string;
   name: string;
-  avatar?: string;
   user_type: 'trucker' | 'shipper';
 }
