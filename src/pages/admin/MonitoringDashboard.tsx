@@ -47,13 +47,35 @@ const MonitoringDashboard = () => {
         .from('trips')
         .select('*')
         .order('created_at', { ascending: false });
-      setTrips(tripData || []);
 
       const { data: shipmentData } = await supabase
         .from('shipments')
         .select('*')
         .order('created_at', { ascending: false });
-      setShipments(shipmentData || []);
+
+      // Ensure required fields exist for TripMapComponent
+      const tripsWithCoords = (tripData || []).map((t: any) => ({
+        ...t,
+        origin_lat: t.origin_lat || 20.5937,
+        origin_lng: t.origin_lng || 78.9629,
+        destination_lat: t.destination_lat || 20.5937,
+        destination_lng: t.destination_lng || 78.9629,
+        origin_city: t.origin_city || 'Unknown',
+        destination_city: t.destination_city || 'Unknown',
+      }));
+
+      const shipmentsWithCoords = (shipmentData || []).map((s: any) => ({
+        ...s,
+        origin_lat: s.origin_lat || 20.5937,
+        origin_lng: s.origin_lng || 78.9629,
+        destination_lat: s.destination_lat || 20.5937,
+        destination_lng: s.destination_lng || 78.9629,
+        origin_city: s.origin_city || 'Unknown',
+        destination_city: s.destination_city || 'Unknown',
+      }));
+
+      setTrips(tripsWithCoords);
+      setShipments(shipmentsWithCoords);
 
       // Dummy system metrics (replace with real queries as needed)
       setMetrics({
@@ -81,7 +103,7 @@ const MonitoringDashboard = () => {
 
       // Recent events (simple mock)
       const recentEvents: Event[] = [];
-      (tripData || []).slice(0, 3).forEach((t: any) => {
+      (tripsWithCoords || []).slice(0, 3).forEach((t: any) => {
         recentEvents.push({
           id: `trip-${t.id}`,
           type: 'trip',
@@ -90,7 +112,7 @@ const MonitoringDashboard = () => {
           raw_date: t.created_at,
         });
       });
-      (shipmentData || []).slice(0, 3).forEach((s: any) => {
+      (shipmentsWithCoords || []).slice(0, 3).forEach((s: any) => {
         recentEvents.push({
           id: `ship-${s.id}`,
           type: 'booking',
