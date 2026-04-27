@@ -27,7 +27,7 @@ import PostTrip from "./pages/trucker/PostTrip";
 import PostShipments from "./pages/shipper/PostShipments";
 import AdminMonitoring from "./pages/admin/MonitoringDashboard";
 
-export default function App() {
+function App() {
   return (
     <Routes>
       <Route path="/" element={<Index />} />
@@ -68,3 +68,5 @@ export default function App() {
     </Routes>
   );
 }
+
+export default App;

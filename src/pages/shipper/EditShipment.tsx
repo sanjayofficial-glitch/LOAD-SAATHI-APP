@@ -1,1 +1,3 @@
-export default EditShipment;
+export default function EditShipment() {
+  return <div>Edit Shipment</div>;
+}
