@@ -8,7 +8,8 @@ import SystemMetricsPanel from './SystemMetricsPanel';
 import BusinessMetricsPanel from './BusinessMetricsPanel';
 import LiveEventFeed from './LiveEventFeed';
 
-interface Event {
+// Rename local Event type to avoid conflict with global Event
+interface SystemEvent {
   id: string;
   type: string;
   message: string;
@@ -20,7 +21,7 @@ const MonitoringDashboard = () => {
   const { getAuthenticatedClient } = useSupabase();
   const [trips, setTrips] = useState<any[]>([]);
   const [shipments, setShipments] = useState<any[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
+  const [events, setEvents] = useState<SystemEvent[]>([]);
   const [metrics, setMetrics] = useState({
     active_connections: 0,
     api_response_time: 0,
@@ -58,7 +59,7 @@ const MonitoringDashboard = () => {
       setMetrics({
         active_connections: Math.floor(Math.random() * 100),
         api_response_time: Math.floor(Math.random() * 300),
-        error_rate: Math.random().toFixed(2),
+        error_rate: (Math.random() * 100).toFixed(2),
         active_requests: Math.floor(Math.random() * 50),
       });
 
@@ -79,7 +80,7 @@ const MonitoringDashboard = () => {
       });
 
       // Recent events (simple mock)
-      const recentEvents: Event[] = [];
+      const recentEvents: SystemEvent[] = [];
       (tripData || []).slice(0, 3).forEach((t: any) => {
         recentEvents.push({
           id: `trip-${t.id}`,
