@@ -287,7 +287,7 @@ const MonitoringDashboard = () => {
         <ResizablePanelGroup direction="vertical">
           <ResizablePanel defaultSize={45} minSize={30}>
             <div className="h-full relative bg-slate-900">
-              <TripMapComponent trips={trips} shipments={shipments} />
+              <TripMapComponent items={[...trips, ...shipments]} type="logistics" color="blue" />
               <div className="absolute top-4 left-4 z-10 flex items-center gap-2 bg-slate-950/80 border border-slate-800 p-2 rounded-lg">
                 <MapIcon className="h-4 w-4 text-green-400" />
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-200">Global Logistics Flow</span>
