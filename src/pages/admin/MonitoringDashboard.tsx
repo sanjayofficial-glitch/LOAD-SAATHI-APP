@@ -315,7 +315,7 @@ const MonitoringDashboard = () => {
               <ResizablePanel defaultSize={15} minSize={12}>
                 <div className="h-full flex flex-col border-r border-slate-800 p-3 bg-slate-950/50 overflow-hidden">
                   <ScrollArea className="flex-grow">
-                    <BusinessMetricsPanel metrics={businessMetrics} />
+                    <BusinessMetricsPanel tripsCount={businessMetrics.total_trips} shipmentsCount={businessMetrics.total_shipments} pendingRequests={businessMetrics.pending_requests} acceptedRequests={businessMetrics.accepted_requests} estimatedRevenue={businessMetrics.estimated_revenue} successRate={businessMetrics.success_rate} />
                     <div className="mt-4 pt-4 border-t border-slate-800">
                       <RequestFlowPanel pending={requestFlow.pending} accepted={requestFlow.accepted} completed={requestFlow.completed} rejected={requestFlow.rejected} />
                     </div>
