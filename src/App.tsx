@@ -10,6 +10,7 @@ import { Skeleton } from "./components/ui/skeleton";
 import Layout from "./components/Layout";
 import RoleProtectedRoute from "./components/RoleProtectedRoute";
 import { lazy, Suspense } from "react";
+import { Analytics } from "@vercel/analytics/react";
 
 const Index = lazy(() => import("./pages/Index"));
 const Login = lazy(() => import("./pages/Login"));
@@ -172,6 +173,7 @@ function App() {
         </QueryClientProvider>
       </ClerkProvider>
       <Toaster position="top-center" richColors />
+      <Analytics />
     </ErrorBoundary>
   );
 }
